@@ -1,0 +1,64 @@
+:root {
+    /* Brand Colors */
+    --color-primary: #0088cc;       /* Telegram Blue */
+    --color-primary-hover: #007ab8;
+    --color-primary-soft: #e5f3fa;  /* Light blue background */
+    --color-primary-ring: rgba(0, 136, 204, 0.3);
+    
+    --color-success: #07c160;       /* WeChat Green */
+    --color-success-hover: #06ad56;
+    
+    --color-danger: #ff3b30;        /* Standard Danger Red */
+    --color-danger-hover: #d63128;
+    
+    --color-warning: #ffcc00;
+    
+    /* Backgrounds */
+    --color-bg-body: #f0f2f5;       /* Light gray background */
+    --color-bg-surface: #ffffff;    /* Cards, Sidebar, Header */
+    --color-bg-secondary: #f5f6f7;  /* Inputs, secondary areas */
+    --color-bg-hover: #f0f2f5;
+    
+    /* Text */
+    --color-text-main: #050505;
+    --color-text-secondary: #65676b;
+    --color-text-tertiary: #b0b3b8;
+    --color-text-inverse: #ffffff;
+    
+    /* Borders */
+    --color-border: #dfe3e8;
+    --color-border-light: #ebedf0;
+    
+    /* Legacy variables mapping */
+    --color-cream: var(--color-bg-surface);
+    --color-softcream: var(--color-bg-secondary);
+    --color-dark: var(--color-text-main);
+    
+    --font-roboto: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+body {
+    font-family: var(--font-roboto);
+    background-color: var(--color-bg-body);
+    color: var(--color-text-main);
+    margin: 0;
+}
+
+a {
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+a:hover {
+    text-decoration: underline;
+    color: var(--color-primary-hover);
+}
+
+/* Basic Reset */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+}
+
+
