@@ -25,6 +25,7 @@
         path?: string | null;
         status?: string | null;
         type?: string | null;
+        billing_interval?: string | null;
         private?: boolean;
         max_chats?: number | string | null;
         charge?: number | string | null;
@@ -32,6 +33,7 @@
         certified?: boolean;
         next_prototype_id?: number | null;
         is_author?: boolean;
+        is_local?: boolean;
     };
 
     let { prototypeId = null } = $props() as { prototypeId?: string | number | null };
@@ -48,6 +50,15 @@
     $effect(() => {
         if (prototypeId) {
             loadPrototype();
+        }
+    });
+
+    $effect(() => {
+        if (!prototype) return;
+        if (prototype.type === 'subscription') {
+            if (!prototype.billing_interval) prototype.billing_interval = 'monthly';
+        } else {
+            if (prototype.billing_interval) prototype.billing_interval = null;
         }
     });
 
@@ -82,7 +93,11 @@
             path: prototype.path ?? null,
             status: prototype.status ?? '',
             type: prototype.type ?? 'token',
-            reply_window: Number.parseInt(String(prototype.reply_window ?? ''), 10) || 0
+            billing_interval: (prototype.type ?? 'token') === 'subscription'
+                ? (prototype.billing_interval ?? 'monthly')
+                : null,
+            reply_window: Number.parseInt(String(prototype.reply_window ?? ''), 10) || 0,
+            is_local: Boolean(prototype.is_local),
         };
 
         const res = await updatePrototype(data);
@@ -173,7 +188,9 @@
 
             <InfoStackTextarea title="Description" id="protoDescription" bind:value={prototype!.description} readonly={!isEditing} />
             
-            <InfoStackInput title="Access Point" id="accessPoint" bind:value={prototype!.access_point} readonly={!isEditing} />
+            <InfoStackInput title="Local" value={prototype!.is_local ? 'Yes' : 'No'} readonly />
+
+            <InfoStackInput title="Access Point" id="accessPoint" bind:value={prototype!.access_point} readonly={!isEditing || Boolean(prototype!.is_local)} />
             
             <InfoStackSelect title="Status" id="protoStatus" bind:value={prototype!.status} disabled={!isEditing}>
                 <option value="">Not Set</option>
@@ -192,6 +209,15 @@
                 <option value="token">Token</option>
                 <option value="subscription">Subscription</option>
             </InfoStackSelect>
+
+            {#if prototype!.type === 'subscription'}
+                <InfoStackSelect title="Billing Interval" id="protoBillingInterval" bind:value={prototype!.billing_interval} disabled={!isEditing}>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                </InfoStackSelect>
+            {/if}
             
             <InfoStackInput title="Charge" type="number" id="protoCharge" bind:value={prototype!.charge} readonly={!isEditing} step="0.01" min="0" />
             
@@ -209,7 +235,7 @@
                 </InfoStackItem>
             {/if}
 
-            {#if prototype!.is_author}
+            {#if prototype!.is_author && !prototype!.is_local}
                 <InfoStackInput title="Token" value="••••••••••" readonly>
                     {#snippet end()}
                         <Button variant="icon-button" onclick={openTokenModal} aria-label="Show Token">

@@ -1,4 +1,5 @@
-import { request } from '../utils.js';
+import { request, encryptWithPublicKeyToken } from '../utils.js';
+import { getMyConductorPublicKey } from './user.js';
 
 export async function addToMyModels(prototypeId, name = null) {
     const body = { prototype_id: parseInt(prototypeId) };
@@ -61,5 +62,36 @@ export function removeModelFromUserModelList(modelId) {
 }
 
 export function updateModel(data) {
-    return request('/api/change_model', { body: data });
+    return (async () => {
+        const body = {
+            model_id: data?.model_id,
+            name: data?.name,
+            description: data?.description,
+        };
+
+        const isLocal = Boolean(data?.is_local);
+        const plaintext = data?.local_settings_plaintext;
+
+        if (isLocal && plaintext != null && String(plaintext).trim() !== '') {
+            let parsed;
+            try {
+                parsed = JSON.parse(String(plaintext));
+            } catch {
+                return { result: 1, msg: 'Local settings must be valid JSON' };
+            }
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+                return { result: 1, msg: 'Local settings must be a JSON object' };
+            }
+            const key = await getMyConductorPublicKey();
+            if (!key) return { result: 1, msg: 'conductor_public_key is required for local model settings' };
+            const enc = await encryptWithPublicKeyToken(key, JSON.stringify(parsed));
+            body.settings = { __enc__: enc };
+        } else if (data?.settings !== undefined) {
+            if (!isLocal) {
+                body.settings = data.settings;
+            }
+        }
+
+        return request('/api/change_model', { body });
+    })();
 }

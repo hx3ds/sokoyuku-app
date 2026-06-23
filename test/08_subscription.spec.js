@@ -14,11 +14,12 @@ test.describe('Subscription Page', () => {
         model_id: 'model_123',
         status: 'active',
         auto_renew: true,
-        available_until: new Date().toISOString(),
+        period: new Date().toISOString(),
         prototype: {
           name: 'Cool Model',
           description: 'Very cool',
-          monthly_charge: 500
+          billing_interval: 'monthly',
+          interval_charge: 500
         }
       }
     ];

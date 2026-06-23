@@ -4,6 +4,7 @@
     import InfoStackInput from '../InfoStack/InfoStackInput.svelte';
     import InfoStackSelect from '../InfoStack/InfoStackSelect.svelte';
     import InfoStackTextarea from '../InfoStack/InfoStackTextarea.svelte';
+    import InfoStackToggle from '../InfoStack/InfoStackToggle.svelte';
     import CommonButton from '../Button/Button.svelte';
 
     let { 
@@ -11,13 +12,20 @@
         onsubmit = () => {} 
     } = $props();
 
-    let form = $state({ name: '', account_username: '', description: '', account_token: '', type: 'telegram', server: '' });
+    let form = $state({ name: '', account_username: '', description: '', account_token: '', type: 'telegram', server: '', is_local: false });
 
     $effect(() => {
         if (form.type !== 'matrix') {
             form.server = '';
         }
     });
+
+    /** @param {KeyboardEvent} e */
+    function handleKeydown(e) {
+        if (e.key === 'Enter') {
+            onsubmit(form);
+        }
+    }
 </script>
 
 {#snippet accountIcon()}
@@ -27,7 +35,7 @@
         title="Add New Account" 
         onclose={() => onclose()}
         className="h-full"
-        onkeydown={(e) => e.key === 'Enter' && onsubmit(form)}
+        onkeydown={handleKeydown}
         icon={accountIcon}
     >
     <InfoStackInput 
@@ -53,6 +61,11 @@
         title="Account Token"
         placeholder="Enter token"
         required
+    />
+    <InfoStackToggle
+        title="Local Account"
+        description={form.is_local ? 'Token will be encrypted with your Conductor public key before upload' : 'Token will be stored normally'}
+        bind:checked={form.is_local}
     />
     <InfoStackSelect
         id="type"

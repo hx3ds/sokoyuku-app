@@ -4,6 +4,7 @@
     import InfoStackInput from '../InfoStack/InfoStackInput.svelte';
     import InfoStackSelect from '../InfoStack/InfoStackSelect.svelte';
     import InfoStackTextarea from '../InfoStack/InfoStackTextarea.svelte';
+    import InfoStackToggle from '../InfoStack/InfoStackToggle.svelte';
 
     /** @type {any} */
     let { 
@@ -14,7 +15,7 @@
     } = $props();
 
     let isEditing = $state(false);
-    let editForm = $state({ account_id: null, account_username: '', name: '', description: '', account_token: '', type: 'telegram', server: '' });
+    let editForm = $state({ account_id: null, account_username: '', name: '', description: '', account_token: '', type: 'telegram', server: '', is_local: false });
 
     $effect(() => {
         if (account) {
@@ -35,14 +36,15 @@
             description: account.description,
             account_token: '',
             type: account.type || 'telegram',
-            server: account.server || ''
+            server: account.server || '',
+            is_local: Boolean(account.is_local)
         };
         isEditing = true;
     }
 
     function handleCancel() {
         isEditing = false;
-        editForm = { account_id: null, account_username: '', name: '', description: '', account_token: '', type: 'telegram', server: '' };
+        editForm = { account_id: null, account_username: '', name: '', description: '', account_token: '', type: 'telegram', server: '', is_local: false };
     }
 
     async function handleSave() {
@@ -94,11 +96,21 @@
         {/if}
 
         {#if isEditing}
+            <InfoStackToggle
+                title="Local Account"
+                description={editForm.is_local ? 'Token will be encrypted with your Conductor public key before upload' : 'Token will be stored normally'}
+                bind:checked={editForm.is_local}
+            />
+        {:else}
+            <InfoStackInput title="Local" value={account.is_local ? 'Yes' : 'No'} readonly />
+        {/if}
+
+        {#if isEditing}
             <InfoStackInput 
                 title="Token" 
                 bind:value={editForm.account_token} 
                 type="password" 
-                placeholder="Enter new token to change" 
+                placeholder={editForm.is_local ? "Enter new token to encrypt" : "Enter new token to change"} 
             />
         {:else}
             <InfoStackInput title="Token" value="••••••••" readonly />

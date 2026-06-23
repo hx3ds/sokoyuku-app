@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
     import { onMount } from 'svelte';
     import { fetchAllSubscriptions, cancelPlatformSubscription, cancelModelSubscription } from '../../proxy/subscription.js';
     import { showError, showConfirm } from '../../components/Modal/state.svelte.js';
@@ -8,11 +8,46 @@
     import InfoStack from '../../components/InfoStack/InfoStack.svelte';
     import InfoStackItem from '../../components/InfoStack/InfoStackItem.svelte';
 
-    let platformSub = $state(null);
-    let modelSubs = $state([]);
+    type PlatformPlan = {
+        name: string;
+        description?: string | null;
+        price: number;
+        interval?: string | null;
+    };
+
+    type PlatformSubscription = {
+        subscription_id?: string;
+        status: string;
+        current_period_end?: string;
+        cancel_at_period_end?: boolean;
+        plan: PlatformPlan;
+    };
+
+    type ModelPrototype = {
+        name: string;
+        description?: string | null;
+        billing_interval?: string | null;
+        interval_charge: number;
+    };
+
+    type ModelSubscription = {
+        model_id: string;
+        period?: string | null;
+        auto_renew?: boolean;
+        status?: string;
+        prototype: ModelPrototype;
+    };
+
+    type SubscriptionsResponse = {
+        platform: PlatformSubscription | null;
+        models: ModelSubscription[];
+    };
+
+    let platformSub = $state<PlatformSubscription | null>(null);
+    let modelSubs = $state<ModelSubscription[]>([]);
     let loading = $state(true);
-    let error = $state(null);
-    let processingId = $state(null); // ID of subscription being cancelled
+    let error = $state<string | null>(null);
+    let processingId = $state<string | null>(null); // ID of subscription being cancelled
 
     onMount(async () => {
         await loadData();
@@ -21,7 +56,7 @@
     async function loadData() {
         loading = true;
         try {
-            const data = await fetchAllSubscriptions();
+            const data = await fetchAllSubscriptions() as unknown as SubscriptionsResponse;
             platformSub = data.platform;
             modelSubs = data.models || [];
         } catch (err) {
@@ -51,7 +86,7 @@
         }
     }
 
-    async function handleCancelModel(modelId) {
+    async function handleCancelModel(modelId: string) {
         if (!await showConfirm('Are you sure you want to cancel this model subscription? Auto-renewal will be disabled.')) return;
 
         processingId = modelId;
@@ -69,13 +104,13 @@
         }
     }
 
-    function formatDate(dateString) {
+    function formatDate(dateString?: string | null) {
         if (!dateString) return 'N/A';
         return new Date(dateString).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
     }
     
-    function formatCurrency(amount) {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+    function formatCurrency(amount?: number | null) {
+        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount ?? 0);
     }
 </script>
 
@@ -93,24 +128,24 @@
         >
             {#if platformSub && ['active', 'trialing', 'past_due'].includes(platformSub.status)}
                 <InfoStackItem 
-                    title={platformSub.plan.name} 
-                    description={platformSub.plan.description}
+                    title={platformSub!.plan.name} 
+                    description={platformSub!.plan.description ?? ''}
                     lines={3}
                 >
                     {#snippet titleSuffix()}
-                        {#if platformSub.status === 'past_due'}
+                        {#if platformSub!.status === 'past_due'}
                             <span style="font-size: 0.75rem; padding: 0.125rem 0.5rem; border-radius: 0.25rem; background-color: #fee2e2; color: #991b1b; margin-left: 0.5rem;">Past Due</span>
-                        {:else if platformSub.status === 'trialing'}
+                        {:else if platformSub!.status === 'trialing'}
                             <span style="font-size: 0.75rem; padding: 0.125rem 0.5rem; border-radius: 0.25rem; background-color: #dbeafe; color: #1e40af; margin-left: 0.5rem;">Trial</span>
                         {/if}
                     {/snippet}
 
                     <div style="padding-top: 0.25rem; font-size: 0.875rem; color: var(--color-text-secondary);">
-                        <span style="font-weight: 500;">Price:</span> {formatCurrency(platformSub.plan.price)}/{platformSub.plan.interval || 'month'}
+                        <span style="font-weight: 500;">Price:</span> {formatCurrency(platformSub!.plan.price)}/{platformSub!.plan.interval || 'month'}
                         <span style="padding-left: 0.5rem; padding-right: 0.5rem;">•</span>
-                        <span style="font-weight: 500;">Next Payment:</span> {formatDate(platformSub.current_period_end)}
+                        <span style="font-weight: 500;">Next Payment:</span> {formatDate(platformSub!.current_period_end)}
                         
-                        {#if platformSub.cancel_at_period_end}
+                        {#if platformSub!.cancel_at_period_end}
                             <div style="padding-top: 0.25rem; color: #d97706; font-weight: 500;">
                                 Cancels at end of period
                             </div>
@@ -118,7 +153,7 @@
                     </div>
 
                     {#snippet actions()}
-                        {#if !platformSub.cancel_at_period_end}
+                        {#if !platformSub!.cancel_at_period_end}
                             <Button 
                                 variant="danger"
                                 onclick={handleCancelPlatform} 
@@ -138,11 +173,11 @@
             {#each modelSubs as sub}
                 <InfoStackItem 
                     title={sub.prototype.name} 
-                    description={sub.prototype.description}
+                    description={sub.prototype.description ?? ''}
                     href="/model/{sub.model_id}"
                 >
                     <div style="padding-top: 0.25rem; font-size: 0.875rem; color: var(--color-text-secondary);">
-                        <span style="font-weight: 500;">Price:</span> {formatCurrency(sub.prototype.monthly_charge)}/month
+                        <span style="font-weight: 500;">Price:</span> {formatCurrency(sub.prototype.interval_charge)}/{sub.prototype.billing_interval || 'monthly'}
                         <span style="padding-left: 0.5rem; padding-right: 0.5rem;">•</span>
                         <span style="font-weight: 500;">Available Until:</span> {formatDate(sub.period)}
                         
@@ -157,7 +192,7 @@
                         {#if sub.auto_renew}
                             <Button 
                                 variant="danger"
-                                onclick={(e) => {
+                                onclick={(e: MouseEvent) => {
                                     e.preventDefault();
                                     handleCancelModel(sub.model_id);
                                 }}

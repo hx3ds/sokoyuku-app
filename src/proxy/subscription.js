@@ -49,10 +49,6 @@ export async function fetchAllSubscriptions() {
     return data.result === 0 ? data.data : [];
 }
 
-export function createModelSubscriptionWallet(data) {
-    return request('/api/create_model_subscription_wallet', { body: data });
-}
-
 export async function fetchSubscriptionPlans() {
     const data = await request('/api/get_subscription_plans');
     return data.result === 0 ? data.data : [];

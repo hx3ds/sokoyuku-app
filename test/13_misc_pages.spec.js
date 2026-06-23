@@ -16,7 +16,7 @@ test.describe('Miscellaneous Pages', () => {
     await expect(page).toHaveURL(/\/payment-history/);
     
     // Check Title
-    await expect(page.getByText('Transaction History')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Transaction History' })).toBeVisible();
     const empty = page.locator('.not-found-text', { hasText: 'No transaction history' });
     const items = page.locator('#page-payment-history .list-item');
     await expect.poll(async () => (await empty.count()) + (await items.count())).toBeGreaterThan(0);

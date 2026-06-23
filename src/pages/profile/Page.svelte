@@ -1,6 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { fetchProfile, updateProfile } from '../../proxy/user.js';
+    import { fetchProfile, updateProfile, getMyConductorPublicKey, setMyConductorPublicKey } from '../../proxy/user.js';
     import { signOut } from '../../proxy/auth.js';
     import { getStripeConnectStatus, createStripeConnectOnboardingLink } from '../../proxy/payout.js';
     import { showError } from '../../components/Modal/state.svelte.js';
@@ -45,6 +45,11 @@
     let connectLoading = $state(false);
     let connectSubmitting = $state(false);
 
+    let conductorPublicKey = $state('');
+    let conductorPublicKeyLoading = $state(false);
+    let conductorPublicKeyEditing = $state(false);
+    let conductorPublicKeyDraft = $state('');
+
     // List Items Configuration
     const devItems = [
         { href: '/my-prototypes', title: 'My Prototypes' },
@@ -60,6 +65,7 @@
     onMount(async () => {
         await loadProfile();
         await loadConnectStatus();
+        await loadConductorPublicKey();
     });
 
     async function loadProfile() {
@@ -83,6 +89,54 @@
             connectStatus = null;
         }
         connectLoading = false;
+    }
+
+    async function loadConductorPublicKey() {
+        conductorPublicKeyLoading = true;
+        try {
+            const key = await getMyConductorPublicKey({ refresh: true });
+            conductorPublicKey = String(key || '');
+            conductorPublicKeyDraft = conductorPublicKey;
+        } catch (e) {
+            console.error('Error loading conductor public key:', e);
+        }
+        conductorPublicKeyLoading = false;
+    }
+
+    function startEditConductorPublicKey() {
+        conductorPublicKeyDraft = conductorPublicKey;
+        conductorPublicKeyEditing = true;
+    }
+
+    function cancelEditConductorPublicKey() {
+        conductorPublicKeyDraft = conductorPublicKey;
+        conductorPublicKeyEditing = false;
+    }
+
+    async function saveConductorPublicKey() {
+        const next = String(conductorPublicKeyDraft || '').trim();
+        if (next && !next.startsWith('lcpk1:')) {
+            await showError('Invalid conductor public key token. It must start with "lcpk1:".');
+            return;
+        }
+        const res = await setMyConductorPublicKey(next);
+        if (res.result !== 0) {
+            await showError('Failed to update conductor public key: ' + res.msg);
+            return;
+        }
+        conductorPublicKey = String(res.data?.conductor_public_key || '');
+        conductorPublicKeyDraft = conductorPublicKey;
+        conductorPublicKeyEditing = false;
+    }
+
+    async function copyToClipboard(text: string) {
+        const val = String(text || '');
+        if (!val) return;
+        try {
+            await navigator.clipboard.writeText(val);
+        } catch {
+            prompt('Copy:', val);
+        }
     }
 
     async function handleStripeConnect() {
@@ -207,6 +261,56 @@
                     </Button>
                 {/snippet}
             </InfoStackItem>
+        </InfoStack>
+
+        <InfoStack
+            title="Local Conductor"
+            loading={conductorPublicKeyLoading}
+            editable={true}
+            isEditing={conductorPublicKeyEditing}
+            onedit={startEditConductorPublicKey}
+            oncancel={cancelEditConductorPublicKey}
+            onsave={saveConductorPublicKey}
+        >
+            {#if conductorPublicKeyEditing}
+                <InfoStackInput
+                    title="Conductor Public Key"
+                    type="text"
+                    bind:value={conductorPublicKeyDraft}
+                    placeholder="lcpk1:..."
+                >
+                    {#snippet end()}
+                        <Button
+                            variant="icon-button"
+                            onclick={() => copyToClipboard(conductorPublicKeyDraft)}
+                            aria-label="Copy"
+                        >
+                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.981-2.192l.516-.043a48.666 48.666 0 0 1 6.504 0l.516.043c1.136.094 1.98 1.057 1.98 2.192V7.5M8.25 7.5H6.108c-1.135 0-2.098.845-2.192 1.981l-.043.516a48.666 48.666 0 0 0 0 6.504l.043.516c.094 1.136 1.057 1.98 2.192 1.98H8.25m0-11.25h7.5m0 0h2.142c1.135 0 2.098.845 2.192 1.981l.043.516a48.666 48.666 0 0 1 0 6.504l-.043.516c-.094 1.136-1.057 1.98-2.192 1.98H15.75m-7.5 0h7.5m-7.5 0v-2.25m7.5 2.25v-2.25m0-9V6.108" />
+                            </svg>
+                        </Button>
+                    {/snippet}
+                </InfoStackInput>
+            {:else}
+                <InfoStackInput
+                    title="Conductor Public Key"
+                    type="password"
+                    value={conductorPublicKey}
+                    readonly
+                >
+                    {#snippet end()}
+                        <Button
+                            variant="icon-button"
+                            onclick={() => copyToClipboard(conductorPublicKey)}
+                            aria-label="Copy"
+                        >
+                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.981-2.192l.516-.043a48.666 48.666 0 0 1 6.504 0l.516.043c1.136.094 1.98 1.057 1.98 2.192V7.5M8.25 7.5H6.108c-1.135 0-2.098.845-2.192 1.981l-.043.516a48.666 48.666 0 0 0 0 6.504l.043.516c.094 1.136 1.057 1.98 2.192 1.98H8.25m0-11.25h7.5m0 0h2.142c1.135 0 2.098.845 2.192 1.981l.043.516a48.666 48.666 0 0 1 0 6.504l-.043.516c-.094 1.136-1.057 1.98-2.192 1.98H15.75m-7.5 0h7.5m-7.5 0v-2.25m7.5 2.25v-2.25m0-9V6.108" />
+                            </svg>
+                        </Button>
+                    {/snippet}
+                </InfoStackInput>
+            {/if}
         </InfoStack>
 
         <!-- Sign Out -->

@@ -49,7 +49,9 @@ export async function updatePrototype(data) {
         'max_chats',
         'charge',
         'type',
+        'billing_interval',
         'reply_window',
+        'is_local',
     ];
 
     const missingRequired = requiredKeys.some((key) => data?.[key] == null);
@@ -69,7 +71,11 @@ export async function updatePrototype(data) {
         max_chats: body.max_chats ?? 1,
         charge: body.charge ?? 0,
         type: body.type ?? 'token',
+        billing_interval: (body.type ?? 'token') === 'subscription'
+            ? (body.billing_interval ?? 'monthly')
+            : null,
         reply_window: body.reply_window ?? 0,
+        is_local: Boolean(body.is_local),
     };
     return request('/api/change_prototype', { body: normalized });
 }

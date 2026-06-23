@@ -24,6 +24,7 @@
         charge?: number | null;
         type?: string | null;
         account_username?: string | null;
+        is_local?: boolean | null;
     };
 
     let { modelId = null } = $props() as { modelId?: string | null };
@@ -31,6 +32,7 @@
     let loading = $state(true);
     let isEditing = $state(false);
     let originalValues = $state<Model | null>(null);
+    let localSettingsPlaintext = $state('');
 
     $effect(() => {
         if (modelId) {
@@ -57,6 +59,7 @@
             }
         }
         model = nextModel;
+        localSettingsPlaintext = '';
         loading = false;
     }
 
@@ -74,11 +77,14 @@
 
     async function handleSave() {
         if (!model) return;
+        const isLocal = Boolean(model.is_local);
         const data = {
             model_id: model.model_id,
             name: model.name,
             description: model.description,
-            settings: model.settings
+            settings: model.settings,
+            is_local: model.is_local,
+            local_settings_plaintext: isLocal ? localSettingsPlaintext : undefined,
         };
 
         const res = await updateModel(data);
@@ -96,6 +102,12 @@
         const date = new Date(dateString);
         return date.toLocaleString();
     }
+
+    function getEncryptedSettingsToken(settings: Record<string, unknown> | null | undefined) {
+        const s = (settings || {}) as Record<string, unknown> & { __enc__?: unknown };
+        const enc = s.__enc__;
+        return typeof enc === 'string' ? enc : '';
+    }
 </script>
 
 <PageContainer id="page-model">
@@ -104,6 +116,7 @@
     {:else if !model}
         <NotFound text="Model Not Found" />
     {:else}
+        {@const isLocal = Boolean(model!.is_local)}
         <!-- Model Information -->
         <InfoStack 
             title="Model Details"
@@ -131,6 +144,7 @@
 
             <InfoStackTextarea title="Description" id="model-description" bind:value={model!.description} readonly={!isEditing} />
 
+            <InfoStackInput title="Local" value={isLocal ? 'Yes' : 'No'} readonly />
             <InfoStackInput title="Max Chats" value={model!.max_chats} readonly />
             <InfoStackInput title="Access Point" value={model!.access_point} readonly />
             <InfoStackInput title="Type" value={model!.type} readonly />
@@ -142,23 +156,38 @@
 
         <!-- Model Settings -->
         <InfoStack title="Model Settings">
-            {#if !model!.settings || Object.keys(model!.settings).length === 0}
-                <div style="color: #65676b; padding: 0.5rem; font-size: 0.875rem; text-align: center; width: 100%;">No settings configured</div>
+            {#if isLocal}
+                <InfoStackTextarea
+                    title="Encrypted Settings"
+                    value={getEncryptedSettingsToken(model!.settings)}
+                    readonly
+                />
+                <InfoStackTextarea
+                    title="New Settings (JSON Object)"
+                    bind:value={localSettingsPlaintext}
+                    readonly={!isEditing}
+                    placeholder="Enter a JSON object"
+                    rows={6}
+                />
             {:else}
-                {#each Object.entries(model!.settings) as [key, value]}
-                    <InfoStackInput title={key} 
-                           value={typeof value === 'object' ? JSON.stringify(value) : value}
-                           readonly={!isEditing}
-                           oninput={(e: Event) => {
-                                const target = e.target as HTMLInputElement;
-                                try {
-                                    model!.settings![key] = JSON.parse(target.value);
-                                } catch(err) {
-                                    model!.settings![key] = target.value;
-                                }
-                           }}
-                    />
-                {/each}
+                {#if !model!.settings || Object.keys(model!.settings).length === 0}
+                    <div style="color: #65676b; padding: 0.5rem; font-size: 0.875rem; text-align: center; width: 100%;">No settings configured</div>
+                {:else}
+                    {#each Object.entries(model!.settings) as [key, value]}
+                        <InfoStackInput title={key} 
+                               value={typeof value === 'object' ? JSON.stringify(value) : value}
+                               readonly={!isEditing}
+                               oninput={(e: Event) => {
+                                    const target = e.target as HTMLInputElement;
+                                    try {
+                                        model!.settings![key] = JSON.parse(target.value);
+                                    } catch(err) {
+                                        model!.settings![key] = target.value;
+                                    }
+                               }}
+                        />
+                    {/each}
+                {/if}
             {/if}
         </InfoStack>
 

@@ -151,3 +151,42 @@ export async function closePool() {
     pool = null;
   }
 }
+
+export async function dbQuery(text, params = []) {
+  return getPool().query(text, params);
+}
+
+export async function getContactByUserId(userId) {
+  const res = await dbQuery(
+    `SELECT user_id, username, email, conductor_public_key
+     FROM contact
+     WHERE user_id = $1::uuid
+     LIMIT 1`,
+    [userId]
+  );
+  return res.rows[0] || null;
+}
+
+export async function getUserAccountByUsername(accountUsername) {
+  const res = await dbQuery(
+    `SELECT account_id, account_username, account_token, is_local
+     FROM user_account
+     WHERE account_username = $1
+     ORDER BY account_id DESC
+     LIMIT 1`,
+    [accountUsername]
+  );
+  return res.rows[0] || null;
+}
+
+export async function getModelByUserAndName(userId, name) {
+  const res = await dbQuery(
+    `SELECT model_id, user_id, prototype_id, name, settings, is_local, conductor_address
+     FROM model
+     WHERE user_id = $1::uuid AND name = $2
+     ORDER BY model_id DESC
+     LIMIT 1`,
+    [userId, name]
+  );
+  return res.rows[0] || null;
+}

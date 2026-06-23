@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
     import { onMount, onDestroy } from 'svelte';
     import * as ModelAPI from '../../proxy/model.js';
     import * as AccountAPI from '../../proxy/account.js';
@@ -8,31 +8,61 @@
     import { modelStore } from '../../store/models.svelte.js';
     import { accountStore } from '../../store/accounts.svelte.js';
 
-    
+    import PageContainer from '../../components/PageContainer.svelte';
     import InfoStack from '../../components/InfoStack/InfoStack.svelte';
     import InfoStackItem from '../../components/InfoStack/InfoStackItem.svelte';
     import ActionMenu from '../../components/Button/ActionMenu.svelte';
     import MenuItem from '../../components/Button/MenuItem.svelte';
     import Button from '../../components/Button/Button.svelte';
     import OpenChatButton from '../../components/Button/OpenChatButton.svelte';
-
     import AccountSelectModal from '../../components/Modal/AccountSelectModal.svelte';
     import ChatManagementModal from '../../components/Modal/ChatManagementModal.svelte';
     import AddAccountModal from '../../components/Modal/AddAccountModal.svelte';
     import AccountDetailsModal from '../../components/Modal/AccountDetailsModal.svelte';
 
-    let activeMenu = $state(null);
+    type Model = {
+        model_id: string;
+        prototype_id?: number;
+        name: string;
+        description?: string | null;
+        status?: string | null;
+        type?: string | null;
+        period?: string | null;
+        auto_renew?: boolean | null;
+        stripe_subscription_id?: string | null;
+        subscription_status?: string | null;
+        account_id?: string | null;
+        account_username?: string | null;
+        is_local?: boolean;
+    };
+
+    type Account = {
+        account_id: string;
+        account_username: string;
+        name: string;
+        description?: string | null;
+        type?: string | null;
+        server?: string | null;
+        is_local?: boolean;
+        created_at?: string | null;
+        models?: Array<{ model_id: string; name: string }>;
+    };
+
+    type ModalType = 'accountSelect' | 'chatManage' | 'addAccount' | 'accountDetails' | null;
+
+    const modelStoreAny = modelStore as any;
+    const accountStoreAny = accountStore as any;
+
+    let activeMenu: string | null = $state(null);
     
     // UI State
-    let activeModal = $state(null); // 'accountSelect', 'chatManage', 'addAccount', 'accountDetails'
-    let modalData = $state(null);
-    let modalLoading = $state(false);
-    let modalBusyAccountId = $state(null);
-    let isEditingAccount = $state(false);
-    let managedChats = $state([]);
-    let isAccountsSectionExpanded = $state(false);
-
-    import PageContainer from '../../components/PageContainer.svelte';
+    let activeModal: ModalType = $state(null);
+    let modalData: Model | Account | null = $state(null);
+    let modalLoading: boolean = $state(false);
+    let modalBusyAccountId: string | null = $state(null);
+    let isEditingAccount: boolean = $state(false);
+    let managedChats: any[] = $state([]);
+    let isAccountsSectionExpanded: boolean = $state(false);
 
     onMount(async () => {
         await loadData();
@@ -41,10 +71,11 @@
 
     onDestroy(() => document.removeEventListener('click', closeMenu));
 
-    const formatDate = d => d ? new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '';
+    const formatDate = (d: string | null | undefined) =>
+        d ? new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '';
 
-    function getDeleteDisabledReason(model) {
-        if (model.stripe_subscription_id && !['canceled', 'incomplete_expired'].includes(model.subscription_status)) {
+    function getDeleteDisabledReason(model: Model) {
+        if (model.stripe_subscription_id && !['canceled', 'incomplete_expired'].includes(model.subscription_status || '')) {
             return 'Cannot delete model with active subscription. Please unsubscribe first.';
         }
         if (model.period && new Date(model.period) > new Date()) {
@@ -64,16 +95,16 @@
         ]);
     }
 
-    const closeMenu = () => activeMenu = null;
+    const closeMenu = () => (activeMenu = null);
     
-    function handleToggleMenu(event) {
+    function handleToggleMenu(event: { detail: { id: string; event: MouseEvent } }) {
         const { id, event: e } = event.detail;
         e.stopPropagation();
         activeMenu = activeMenu === id ? null : id;
     }
 
     // Generic Action Helper
-    async function performAction(actionFn, arg, confirmMsg = null) {
+    async function performAction(actionFn: (arg: any) => Promise<any>, arg: any, confirmMsg: string | null = null) {
         if (confirmMsg && !await showConfirm(confirmMsg)) return;
         
         const res = await actionFn(arg);
@@ -87,7 +118,7 @@
     }
 
     // Modals
-    const openModal = (type, data = null) => {
+    const openModal = (type: Exclude<ModalType, null>, data: any = null) => {
         activeModal = type;
         modalData = data;
         modalLoading = false;
@@ -95,7 +126,7 @@
         isEditingAccount = false;
         managedChats = [];
         
-        if (type === 'chatManage' && data) loadChats(data.model_id);
+        if (type === 'chatManage' && data?.model_id) loadChats(String(data.model_id));
     };
     
     const closeModal = () => {
@@ -105,18 +136,18 @@
         isEditingAccount = false;
     };
 
-    function normalizeId(id) {
-        return typeof id === 'string' ? id.replace(/-/g, '') : id;
+    function normalizeId(id: string) {
+        return String(id || '').replace(/-/g, '');
     }
 
-    function buildTelegramStartLink(accountUsername, modelId, otp) {
+    function buildTelegramStartLink(accountUsername: string | null | undefined, modelId: string, otp: string | number | null | undefined) {
         const username = String(accountUsername || '').replace(/^@/, '').trim();
         if (!username) return null;
         const start = `${normalizeId(modelId)}${String(otp)}`;
         return `https://t.me/${username}?start=${start}`;
     }
 
-    async function copyTextToClipboard(text) {
+    async function copyTextToClipboard(text: string) {
         try {
             await navigator.clipboard.writeText(text);
             return true;
@@ -126,13 +157,13 @@
     }
 
     // Chat Logic
-    async function handleStartChat(account) {
-        const model = modalData; // from 'accountSelect'
+    async function handleStartChat(account: Account) {
+        const model = modalData as Model | null;
         if (!model || !account) return;
         if (modalLoading) return;
 
         const accountId = account.account_id;
-        const existingModel = modelStore.models.find(m => m.account_id === accountId);
+        const existingModel = (modelStoreAny.models as Model[]).find((m) => m.account_id === accountId);
         if (existingModel && existingModel.model_id !== model.model_id) {
             if (!await showConfirm(`Account "${account.account_username}" is used by "${existingModel.name}". Reassign?`)) return;
         }
@@ -176,7 +207,7 @@
     }
 
     // Model Actions
-    const handleDeleteModel = (id) => performAction(async (arg) => {
+    const handleDeleteModel = (id: string) => performAction(async (arg: string) => {
         const res = await ModelAPI.deleteModel(arg);
         if (res.result === 0) {
             modelStore.remove(arg);
@@ -185,7 +216,7 @@
     }, id, 'Delete this model? This cannot be undone.');
 
     // Subscription
-    async function handleSubscriptionCheckout(modelId) {
+    async function handleSubscriptionCheckout(modelId: string) {
         const res = await SubAPI.createModelSubscriptionCheckout({
             model_id: modelId,
             success_url: `${window.location.origin}/models?subscription=success`,
@@ -195,12 +226,12 @@
         else showError(res.msg || 'Checkout failed');
     }
 
-    const handleUnsubscribe = (id) => performAction(SubAPI.cancelModelSubscription, id, 'Cancel subscription?');
+    const handleUnsubscribe = (id: string) => performAction(SubAPI.cancelModelSubscription, id, 'Cancel subscription?');
 
-    async function handleShare(modelId) {
-        const model = modelStore.models.find(m => m.model_id === modelId);
+    async function handleShare(modelId: string) {
+        const model = (modelStoreAny.models as Model[]).find((m) => m.model_id === modelId);
         const accountId = model?.account_id;
-        const account = accountStore.accounts?.find(a => a.account_id === accountId);
+        const account = (accountStoreAny.accounts as Account[])?.find((a) => a.account_id === accountId);
 
         if (!accountId) return showError('No account assigned to this model.');
 
@@ -236,42 +267,43 @@
     }
 
     // Chat Management
-    async function loadChats(modelId) {
+    async function loadChats(modelId: string) {
         modalLoading = true;
         const res = await ChatAPI.getModelChats(modelId);
         managedChats = res.result === 0 ? (res.data.chats || []) : [];
         modalLoading = false;
     }
 
-    async function handleRemoveChat(chatId) {
-        if (!modalData) return;
+    async function handleRemoveChat(chatId: string) {
+        const model = modalData as Model | null;
+        if (!model) return;
         
         if (!await showConfirm('Remove this chat?')) return;
         
-        const res = await ChatAPI.removeChatFromModel(modalData.model_id, chatId);
+        const res = await ChatAPI.removeChatFromModel(model.model_id, chatId);
         if (res.result === 0) {
             showSuccess('Chat removed');
-            await loadChats(modalData.model_id);
+            await loadChats(model.model_id);
         } else {
             showError(res.msg);
         }
     }
 
-    async function handleOpenChat(chat) {
+    async function handleOpenChat(chat: any) {
         // Implement logic to open chat details or navigate
         console.log('Open chat', chat);
     }
 
-    async function handleAddAccountToChat(chatId) {
+    async function handleAddAccountToChat(chatId: string) {
         console.log('Add account to chat', chatId);
     }
 
-    async function handleRemoveAccountFromChat(data) {
+    async function handleRemoveAccountFromChat(data: any) {
         console.log('Remove account from chat', data);
     }
     
     // Account Management
-    async function handleAddAccountSubmit(formData) {
+    async function handleAddAccountSubmit(formData: any) {
         const res = await AccountAPI.addAccount(formData);
         if (res.result === 0) {
             if (res.data?.account_id) {
@@ -281,7 +313,8 @@
                     name: res.data.name,
                     description: res.data.description,
                     type: res.data.type,
-                    server: res.data.server
+                    server: res.data.server,
+                    is_local: res.data.is_local
                 });
             } else {
                 await accountStore.load();
@@ -293,19 +326,19 @@
         }
     }
 
-    async function saveAccountChanges(formData) {
+    async function saveAccountChanges(formData: any) {
         const res = await AccountAPI.changeAccount(formData);
         if (res.result === 0) {
             accountStore.update(formData);
             // Update local modalData to reflect changes
-            const updated = accountStore.accounts.find(a => a.account_id === formData.account_id);
+            const updated = (accountStoreAny.accounts as Account[]).find((a) => a.account_id === formData.account_id);
             if (updated) modalData = { ...updated };
         } else {
             showError(res.msg);
         }
     }
     
-    const handleRemoveAccount = (accountId) => performAction(async (arg) => {
+    const handleRemoveAccount = (accountId: string) => performAction(async (arg: string) => {
         const res = await AccountAPI.removeAccount(arg);
         if (res.result === 0) {
             accountStore.remove(arg);
@@ -313,7 +346,7 @@
         return res;
     }, accountId, 'Remove this account?');
     
-    function navigateToModel(id) {
+    function navigateToModel(id: string) {
         history.pushState(null, '', `/model/${id}`);
         window.dispatchEvent(new PopStateEvent('popstate'));
     }
@@ -335,14 +368,14 @@
             >
                 
                 {#snippet actions()}
-                    <OpenChatButton onclick={(e) => { e.stopPropagation(); openModal('accountSelect', model); }} />
+                    <OpenChatButton onclick={(e: MouseEvent) => { e.stopPropagation(); openModal('accountSelect', model); }} />
                     
                     <ActionMenu 
                         isOpen={activeMenu === model.model_id}
                         iconSize="1.5rem"
                         padding="0.25rem"
                         width="8rem"
-                        onclick={(e) => handleToggleMenu({ detail: { id: model.model_id, event: e } })}
+                        onclick={(e: MouseEvent) => handleToggleMenu({ detail: { id: model.model_id, event: e } })}
                     >
                         {@const deleteDisabledReason = getDeleteDisabledReason(model)}
                         {#if deleteDisabledReason}
@@ -402,7 +435,7 @@
                         iconSize="1.25rem" padding="0.25rem"
                         isOpen={activeMenu === (account.account_id ?? account.account_username)} 
                         width="8rem"
-                        onclick={(e) => handleToggleMenu({ detail: { id: account.account_id ?? account.account_username, event: e } })}
+                        onclick={(e: MouseEvent) => handleToggleMenu({ detail: { id: account.account_id ?? account.account_username, event: e } })}
                     >
                         <MenuItem onclick={() => openModal('accountDetails', { ...account })}>Edit</MenuItem>
                         <MenuItem onclick={() => handleRemoveAccount(account.account_id)}>Delete</MenuItem>

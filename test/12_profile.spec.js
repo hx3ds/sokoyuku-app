@@ -70,14 +70,17 @@ test.describe('Profile Page', () => {
     await expect(descriptionInput).toBeVisible();
     
     // 2. Click Edit button
-    await page.getByRole('button', { name: 'Edit' }).click();
+    const myInfoSection = page.locator('.list-section', {
+      has: page.getByRole('heading', { name: 'My Information' }),
+    });
+    await myInfoSection.getByRole('button', { name: 'Edit' }).click();
 
     // 3. Edit profile
     await fullNameInput.fill(updatedName);
     await descriptionInput.fill(updatedDescription);
 
     // 4. Save
-    await page.getByRole('button', { name: 'Save' }).click();
+    await myInfoSection.getByRole('button', { name: 'Save' }).click();
 
     // 5. Verify update
     await expect(fullNameInput).toHaveValue(updatedName);

@@ -24,6 +24,7 @@
         path: '',
         max_chats: 1,
         type: 'token',
+        billing_interval: 'monthly',
         charge: 100,
         reply_window: 600,
         private: false,
@@ -45,6 +46,7 @@
             path: '',
             max_chats: 1,
             type: 'token',
+            billing_interval: 'monthly',
             charge: 100,
             reply_window: 600,
             private: false,
@@ -58,7 +60,11 @@
         creating = true;
         createError = '';
 
-        const res = await createPrototype({ ...newPrototype });
+        const payload = {
+            ...newPrototype,
+            billing_interval: newPrototype.type === 'subscription' ? (newPrototype.billing_interval || 'monthly') : null
+        };
+        const res = await createPrototype(payload);
 
         if (res.result === 0) {
             oncreated();
@@ -130,6 +136,17 @@
             <option value="token">token</option>
             <option value="subscription">subscription</option>
         </InfoStackSelect>
+        {#if newPrototype.type === 'subscription'}
+            <InfoStackSelect 
+                title="Billing Interval" 
+                bind:value={newPrototype.billing_interval}
+            >
+                <option value="daily">daily</option>
+                <option value="weekly">weekly</option>
+                <option value="monthly">monthly</option>
+                <option value="yearly">yearly</option>
+            </InfoStackSelect>
+        {/if}
         <InfoStackToggle 
             title="Private Visibility" 
             description={newPrototype.private ? 'Only visible to you' : 'Visible to everyone'}

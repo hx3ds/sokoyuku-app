@@ -1,7 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const startConsulCommand = 'bash start_consul.sh local';
-
 export default defineConfig({
   testDir: './test',
   fullyParallel: false,
@@ -44,19 +42,5 @@ export default defineConfig({
       dependencies: ['setup'],
     },
     */
-  ],
-  webServer: [
-    {
-      command: startConsulCommand,
-      cwd: '..',
-      url: 'http://localhost:9000/healthz',
-      reuseExistingServer: !process.env.CI,
-      timeout: 180 * 1000,
-    },
-    {
-      command: 'npm run dev',
-      url: 'http://localhost:8880',
-      reuseExistingServer: !process.env.CI,
-    },
   ],
 });
