@@ -50,6 +50,13 @@
             void loadPrototypes();
         }, 300);
     }
+
+    function focusSearchInput() {
+        const input = document.getElementById('explore-search-input');
+        if (input instanceof HTMLInputElement) {
+            input.focus();
+        }
+    }
 </script>
 
 <PageContainer id="page-explore">
@@ -58,6 +65,7 @@
     >
         <div style="border-bottom: 1px solid #e1e4e8; margin-bottom: 0.5rem;">
             <InfoStackInput 
+                id="explore-search-input"
                 type="text" 
                 placeholder="Search prototypes..." 
                 bind:value={searchText}
@@ -65,13 +73,20 @@
                 inputClass="search-input"
             >
                 {#snippet end()}
-                    <svg style="width: 1rem; height: 1rem; color: #586069;" 
-                            fill="none" 
-                            stroke="currentColor"
-                            stroke-width="1.5"
-                            viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-                    </svg>
+                    <button
+                        type="button"
+                        onclick={focusSearchInput}
+                        aria-label="Focus search"
+                        style="display: inline-flex; align-items: center; justify-content: center; padding: 0; background: transparent; border: none; cursor: pointer; color: var(--color-primary);"
+                    >
+                        <svg style="width: 1rem; height: 1rem;" 
+                                fill="none" 
+                                stroke="currentColor"
+                                stroke-width="1.5"
+                                viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                        </svg>
+                    </button>
                 {/snippet}
             </InfoStackInput>
         </div>

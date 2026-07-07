@@ -23,47 +23,49 @@
     } = $props();
 </script>
 
-<InfoStackItem {title} {description} {className} start={startProp} {hover} {isLabel} href={readonly ? href : undefined}>
+<InfoStackItem
+    {title}
+    {description}
+    {className}
+    start={startProp}
+    {hover}
+    {isLabel}
+    href={readonly ? href : undefined}
+    {actions}
+>
     {#snippet children()}
-        <div class="input-container">
-            <div class="input-wrapper">
-                {#if inputStart}
-                    <div class="start-slot">
-                        {@render inputStart()}
-                    </div>
-                {/if}
-                {#if readonly && href}
-                    <div 
-                        class="input-field {inputClass}"
-                        class:pl-10={inputStart}
-                        class:pr-10={endProp}
-                    >
-                        {value}
-                    </div>
-                {:else}
-                    <input 
-                        {type} 
-                        bind:value 
-                        {required}
-                        {readonly}
-                        {disabled}
-                        class="input-field {inputClass}"
-                        class:pl-10={inputStart}
-                        class:pr-10={endProp}
-                        class:editing={!readonly && !disabled}
-                        {placeholder}
-                        {...rest}
-                    >
-                {/if}
-                {#if endProp}
-                        <div class="end-slot">
-                        {@render endProp()}
-                    </div>
-                {/if}
-            </div>
-            {#if actions}
-                <div class="input-actions">
-                    {@render actions()}
+        <div class="input-wrapper">
+            {#if inputStart}
+                <div class="start-slot">
+                    {@render inputStart()}
+                </div>
+            {/if}
+            {#if readonly && href}
+                <div 
+                    class="input-field {inputClass}"
+                    class:pl-10={inputStart}
+                    class:pr-10={endProp}
+                >
+                    {value}
+                </div>
+            {:else}
+                <input 
+                    {type} 
+                    bind:value 
+                    {required}
+                    {readonly}
+                    {disabled}
+                    class="input-field {inputClass}"
+                    class:pl-10={inputStart}
+                    class:pr-10={endProp}
+                    class:editing={!readonly && !disabled}
+                    {placeholder}
+                    {...rest}
+                >
+            {/if}
+            {#if endProp}
+                    <div class="end-slot">
+                    {@render endProp()}
                 </div>
             {/if}
         </div>
@@ -71,23 +73,10 @@
 </InfoStackItem>
 
 <style>
-    .input-container {
-        display: flex;
-        align-items: flex-end;
-        gap: 0.75rem;
-        width: 100%;
-    }
-
     .input-wrapper {
         position: relative;
         padding-top: 0.5rem;
-        flex: 1;
-        min-width: 0;
-    }
-
-    .input-actions {
-        padding-top: 0.5rem;
-        flex-shrink: 0;
+        width: 100%;
     }
 
     .start-slot, .end-slot {

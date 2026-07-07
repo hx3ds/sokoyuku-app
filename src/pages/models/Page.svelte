@@ -20,6 +20,16 @@
     import AddAccountModal from '../../components/Modal/AddAccountModal.svelte';
     import AccountDetailsModal from '../../components/Modal/AccountDetailsModal.svelte';
 
+    type ModelAccount = {
+        acct_id: string;
+        acct_username: string;
+        acct_type?: string | null;
+        server?: string | null;
+        account_group?: string | null;
+        subscription_disabled?: boolean;
+        is_last_used?: boolean;
+    };
+
     type Model = {
         model_id: string;
         prototype_id?: number;
@@ -31,9 +41,8 @@
         auto_renew?: boolean | null;
         stripe_subscription_id?: string | null;
         subscription_status?: string | null;
-        account_id?: string | null;
-        account_username?: string | null;
         is_local?: boolean;
+        accts?: ModelAccount[];
     };
 
     type Account = {
@@ -46,9 +55,11 @@
         is_local?: boolean;
         created_at?: string | null;
         models?: Array<{ model_id: string; name: string }>;
+        assignedModelName?: string;
+        assignedModelStatus?: 'current' | 'other';
     };
 
-    type ModalType = 'accountSelect' | 'chatManage' | 'addAccount' | 'accountDetails' | null;
+    type ModalType = 'accountSelect' | 'shareAccountSelect' | 'chatManage' | 'addAccount' | 'accountDetails' | null;
 
     const modelStoreAny = modelStore as any;
     const accountStoreAny = accountStore as any;
@@ -147,6 +158,99 @@
         return `https://t.me/${username}?start=${start}`;
     }
 
+    function getModelAccounts(model: Model | null | undefined): ModelAccount[] {
+        return Array.isArray(model?.accts) ? model.accts : [];
+    }
+
+    function getLastUsedModelAccount(model: Model | null | undefined): ModelAccount | null {
+        const accounts = getModelAccounts(model);
+        return accounts.find((account) => account.is_last_used) || null;
+    }
+
+    function getAssignedAccountCount(model: Model | null | undefined): number {
+        return getModelAccounts(model).length;
+    }
+
+    function getResolvedModelAccounts(model: Model | null | undefined): Account[] {
+        return getModelAccounts(model).map((account) => {
+            const stored = (accountStoreAny.accounts as Account[]).find((item) => item.account_id === account.acct_id);
+            return {
+                account_id: account.acct_id,
+                account_username: account.acct_username || stored?.account_username || '',
+                name: stored?.name || account.acct_username || account.acct_id,
+                description: stored?.description || null,
+                type: account.acct_type || stored?.type || null,
+                server: account.server || stored?.server || null,
+                is_local: stored?.is_local,
+                created_at: stored?.created_at,
+                models: stored?.models,
+            };
+        });
+    }
+
+    function findModelUsingAccount(accountId: string, excludeModelId: string | null = null): Model | undefined {
+        return (modelStoreAny.models as Model[]).find((model) => {
+            if (excludeModelId && model.model_id === excludeModelId) {
+                return false;
+            }
+            return getModelAccounts(model).some((account) => account.acct_id === accountId);
+        });
+    }
+
+    function getAccountSelectOptions(model: Model | null | undefined): Account[] {
+        return (accountStoreAny.accounts as Account[]).map((account) => {
+            const currentModelUsesAccount = Boolean(
+                model?.model_id && getModelAccounts(model).some((item) => item.acct_id === account.account_id)
+            );
+            const assignedModel = currentModelUsesAccount
+                ? model
+                : findModelUsingAccount(account.account_id, model?.model_id || null);
+            return {
+                ...account,
+                assignedModelName: assignedModel?.name || undefined,
+                assignedModelStatus: assignedModel
+                    ? (currentModelUsesAccount ? 'current' : 'other')
+                    : undefined,
+            };
+        });
+    }
+
+    function getModelsUsingAccount(accountId: string | null | undefined): Model[] {
+        if (!accountId) return [];
+        return (modelStoreAny.models as Model[]).filter((model) =>
+            getModelAccounts(model).some((account) => account.acct_id === accountId)
+        );
+    }
+
+    function getAccountAssignedModelBadgeText(account: Account | null | undefined): string {
+        const assignedModels = getModelsUsingAccount(account?.account_id);
+        if (assignedModels.length === 0) {
+            return '';
+        }
+        if (assignedModels.length === 1) {
+            return `In ${assignedModels[0].name}`;
+        }
+        return `In ${assignedModels[0].name} +${assignedModels.length - 1}`;
+    }
+
+    function formatModelAccounts(model: Model | null | undefined): string {
+        const accounts = getModelAccounts(model);
+        if (accounts.length === 0) {
+            return 'No accounts assigned';
+        }
+
+        const usernames = accounts
+            .slice(0, 3)
+            .map((account) => `@${account.acct_username}`)
+            .join(', ');
+
+        if (accounts.length <= 3) {
+            return usernames;
+        }
+
+        return `${usernames} +${accounts.length - 3} more`;
+    }
+
     async function copyTextToClipboard(text: string) {
         try {
             await navigator.clipboard.writeText(text);
@@ -163,8 +267,8 @@
         if (modalLoading) return;
 
         const accountId = account.account_id;
-        const existingModel = (modelStoreAny.models as Model[]).find((m) => m.account_id === accountId);
-        if (existingModel && existingModel.model_id !== model.model_id) {
+        const existingModel = findModelUsingAccount(accountId, model.model_id);
+        if (existingModel) {
             if (!await showConfirm(`Account "${account.account_username}" is used by "${existingModel.name}". Reassign?`)) return;
         }
 
@@ -206,6 +310,45 @@
         showError(res.msg || 'Failed to start chat');
     }
 
+    async function handleShareWithAccount(account: Account, modelArg: Model | null = modalData as Model | null) {
+        const model = modelArg;
+        if (!model || !account) return;
+
+        const res = await AccountAPI.requestOtpForChat(account.account_id, model.model_id);
+        if (res.result !== 0) {
+            showError(res.msg || 'Share failed');
+            return;
+        }
+
+        const link = res.data?.link || buildTelegramStartLink(account.account_username, model.model_id, res.data?.otp);
+        if (link) {
+            const copied = await copyTextToClipboard(link);
+            if (!copied) {
+                prompt('Copy link:', link);
+            } else {
+                showSuccess('Link copied!');
+            }
+            closeModal();
+            await loadData();
+            return;
+        }
+
+        if (res.data?.otp) {
+            const otp = String(res.data.otp);
+            const copied = await copyTextToClipboard(otp);
+            if (!copied) {
+                prompt('Copy OTP:', otp);
+            } else {
+                showSuccess('OTP copied!');
+            }
+            closeModal();
+            await loadData();
+            return;
+        }
+
+        showError(res.msg || 'Share failed');
+    }
+
     // Model Actions
     const handleDeleteModel = (id: string) => performAction(async (arg: string) => {
         const res = await ModelAPI.deleteModel(arg);
@@ -230,40 +373,19 @@
 
     async function handleShare(modelId: string) {
         const model = (modelStoreAny.models as Model[]).find((m) => m.model_id === modelId);
-        const accountId = model?.account_id;
-        const account = (accountStoreAny.accounts as Account[])?.find((a) => a.account_id === accountId);
+        const accounts = getResolvedModelAccounts(model);
 
-        if (!accountId) return showError('No account assigned to this model.');
-
-        const res = await AccountAPI.requestOtpForChat(accountId, modelId);
-        if (res.result !== 0) {
-            showError(res.msg || 'Share failed');
+        if (!model || accounts.length === 0) {
+            showError('No account assigned to this model.');
             return;
         }
 
-        const link = res.data?.link || buildTelegramStartLink(account?.account_username, modelId, res.data?.otp);
-        if (link) {
-            const copied = await copyTextToClipboard(link);
-            if (!copied) {
-                prompt('Copy link:', link);
-            } else {
-                showSuccess('Link copied!');
-            }
+        if (accounts.length === 1) {
+            await handleShareWithAccount(accounts[0], model);
             return;
         }
 
-        if (res.data?.otp) {
-            const otp = String(res.data.otp);
-            const copied = await copyTextToClipboard(otp);
-            if (!copied) {
-                prompt('Copy OTP:', otp);
-            } else {
-                showSuccess('OTP copied!');
-            }
-            return;
-        }
-
-        showError(res.msg || 'Share failed');
+        openModal('shareAccountSelect', model);
     }
 
     // Chat Management
@@ -360,12 +482,36 @@
         empty={modelStore.models.length === 0}
         emptyText="No models found"
     >
+        {#snippet icon()}
+            <svg style="width: 1.125rem; height: 1.125rem; color: var(--color-primary);" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
+            </svg>
+        {/snippet}
+
         {#each modelStore.models as model (model.model_id)}
             <InfoStackItem 
                 title={model.name}
                 description={model.description || 'No description'}
                 onclick={() => navigateToModel(model.model_id)}
             >
+                {#snippet titleSuffix()}
+                    <span class="account-count-badge">
+                        {getAssignedAccountCount(model)} {getAssignedAccountCount(model) === 1 ? 'account' : 'accounts'}
+                    </span>
+                {/snippet}
+
+                {#snippet meta()}
+                    {@const lastUsedAccount = getLastUsedModelAccount(model)}
+                    <div class="model-account-meta">
+                        <span>
+                            Last used: {lastUsedAccount ? `@${lastUsedAccount.acct_username}` : 'Not set'}
+                        </span>
+                        <span>
+                            Assigned: {formatModelAccounts(model)}
+                        </span>
+                    </div>
+                {/snippet}
+
                 
                 {#snippet actions()}
                     <OpenChatButton onclick={(e: MouseEvent) => { e.stopPropagation(); openModal('accountSelect', model); }} />
@@ -412,6 +558,12 @@
         emptyText="No accounts found"
         onClick={() => isAccountsSectionExpanded = !isAccountsSectionExpanded}
     >
+        {#snippet icon()}
+            <svg style="width: 1.125rem; height: 1.125rem; color: var(--color-primary);" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m7.875 14.25 1.214 1.942a2.25 2.25 0 0 0 1.908 1.058h2.006c.776 0 1.497-.4 1.908-1.058l1.214-1.942M2.41 9h4.636a2.25 2.25 0 0 1 1.872 1.002l.164.246a2.25 2.25 0 0 0 1.872 1.002h2.092a2.25 2.25 0 0 0 1.872-1.002l.164-.246A2.25 2.25 0 0 1 16.954 9h4.636M2.41 9a2.25 2.25 0 0 0-.16.832V12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 12V9.832c0-.287-.055-.57-.16-.832M2.41 9a2.25 2.25 0 0 1 .382-.632l3.285-3.832a2.25 2.25 0 0 1 1.708-.786h8.43c.657 0 1.281.287 1.709.786l3.284 3.832c.163.19.291.404.382.632M4.5 20.25h15A2.25 2.25 0 0 0 21.75 18v-2.625c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125V18a2.25 2.25 0 0 0 2.25 2.25Z" />
+            </svg>
+        {/snippet}
+
         {#snippet headerActions()}
             <Button variant="icon-button" iconSize="1.25rem" padding="0.25rem" onclick={() => openModal('addAccount')} aria-label="Add account">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.5v15m7.5-7.5h-15" /></svg>
@@ -419,14 +571,21 @@
         {/snippet}
         
         {#each accountStore.accounts as account (account.account_id ?? account.account_username)}
+            {@const assignedModelBadgeText = getAccountAssignedModelBadgeText(account)}
             <InfoStackItem 
                 title={account.name}
                 description={account.description || 'No description'}
                 onclick={() => openModal('accountDetails', { ...account })}
             >
+                {#snippet titleSuffix()}
+                    {#if assignedModelBadgeText}
+                        <span class="account-count-badge">{assignedModelBadgeText}</span>
+                    {/if}
+                {/snippet}
+
                 {#snippet meta()}
                     <div style="color: #586069; font-size: 0.875rem;">
-                        <span>@{account.account_username}</span>
+                        <span>@{account.account_username} · Group: {account.account_group || 'free'}</span>
                     </div>
                 {/snippet}
 
@@ -447,11 +606,28 @@
 
     {#if activeModal === 'accountSelect'}
         <AccountSelectModal 
-            accounts={accountStore.accounts} 
+            accounts={getAccountSelectOptions(modalData as Model | null)}
             loading={modalLoading}
             busyAccountId={modalBusyAccountId}
+            title="Select Account for Chat"
+            emptyText="No accounts found"
+            emptyDescription="Create an account first to assign it to this model"
+            showAssignedModel={true}
             onclose={closeModal}
             onselect={handleStartChat}
+        />
+    {/if}
+
+    {#if activeModal === 'shareAccountSelect'}
+        <AccountSelectModal
+            accounts={getResolvedModelAccounts(modalData as Model | null)}
+            loading={modalLoading}
+            busyAccountId={modalBusyAccountId}
+            title="Select Account to Share"
+            emptyText="No assigned accounts"
+            emptyDescription="Assign at least one account to this model before sharing it"
+            onclose={closeModal}
+            onselect={handleShareWithAccount}
         />
     {/if}
 
@@ -483,3 +659,27 @@
         />
     {/if}
 </PageContainer>
+
+<style>
+    .model-account-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        font-size: 0.75rem;
+        color: var(--color-text-muted, #586069);
+        padding-top: 0.125rem;
+    }
+
+    .account-count-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.125rem 0.5rem;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #4338ca;
+        font-size: 0.75rem;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+</style>

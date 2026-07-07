@@ -23,8 +23,10 @@
     let showHover = $derived(hover === undefined ? isInteractive : hover);
     let hasDescription = $derived(!!(description || children));
 
+    /** @param {MouseEvent} e */
     function handleClick(e) {
-        if (!separateHover && e.target.closest('.actions')) return;
+        const target = e.target instanceof Element ? e.target : null;
+        if (!separateHover && target?.closest('.actions')) return;
         if (onclick) onclick(e);
     }
 </script>
@@ -176,7 +178,7 @@
     .title.label-title {
         font-weight: 400;
         color: var(--color-text-secondary);
-        font-size: 0.875rem;
+        font-size: 0.8rem;
     }
 
     .description {

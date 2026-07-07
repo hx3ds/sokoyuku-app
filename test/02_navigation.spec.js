@@ -20,6 +20,14 @@ test.describe('Navigation', () => {
     // Check for profile elements
     await expect(page.getByText('My Information')).toBeVisible();
   });
+
+  test('should show overview in the desktop right sidebar', async ({ page }) => {
+    await page.goto('/models', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('.right-sidebar')).toContainText('Overview');
+    await expect(page.locator('.right-sidebar')).toContainText('Sokoyuku Subscription');
+    await expect(page.locator('.right-sidebar')).toContainText('Resource Usage');
+    await expect(page.locator('.right-sidebar')).toContainText('Account Usage');
+  });
   
   test('should show user balance/credits', async ({ page }) => {
     await page.goto('/credits');

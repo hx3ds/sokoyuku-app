@@ -1,8 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { generateUser } from './utils';
 import { getVerificationCode } from './db';
+import { installTurnstileMock } from './turnstile';
 
 test.describe('Password Reset Flow', () => {
+  test.beforeEach(async ({ page }) => {
+    await installTurnstileMock(page);
+  });
+
   test('should allow full signup and then password reset', async ({ page }) => {
     // 1. Sign Up a new user
     const user = generateUser();

@@ -71,7 +71,7 @@ test.describe('Chat Flow', () => {
     await modelItem.getByRole('button', { name: 'Open chat' }).click();
     
     // Verify Account Select Modal
-    await expect(page.getByRole('heading', { name: 'Select Account to Add' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Select Account for Chat' })).toBeVisible();
     
     await page.evaluate(() => {
       window.__pw_lastOpenedUrl = null;
@@ -86,7 +86,7 @@ test.describe('Chat Flow', () => {
     await page.getByText(accountName).click();
     
     // 5. Cleanup Model
-    await expect(page.getByRole('heading', { name: 'Select Account to Add' })).toBeHidden({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: 'Select Account for Chat' })).toBeHidden({ timeout: 15000 });
     const openedUrl = await page.evaluate(() => window.__pw_lastOpenedUrl);
     expect(openedUrl).toMatch(new RegExp(`^https://t\\.me/${accountUsername}\\?start=`));
     

@@ -1,5 +1,6 @@
 <script>
-  import { signIn } from '../../proxy/auth.js';
+  import { onMount } from 'svelte';
+  import { signIn, signInWithGoogle } from '../../proxy/auth.js';
   import { validateEmail } from '../../utils.js';
   import Link from '../../components/InfoStack/Link.svelte';
   import AuthLayout from '../../components/AuthLayout.svelte';
@@ -7,11 +8,29 @@
   import InfoStackInput from '../../components/InfoStack/InfoStackInput.svelte';
   import InfoStackCheckbox from '../../components/InfoStack/InfoStackCheckbox.svelte';
   import Button from '../../components/Button/Button.svelte';
+  import { renderGoogleSignInButton } from '../../googleIdentity.js';
 
   let identifier = $state('');
   let password = $state('');
   let identifierError = $state('');
 
+  function navigateToModels() {
+    history.pushState(null, '', '/models');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }
+
+  /** @param {string} credential */
+  async function handleGoogleCredential(credential) {
+    const data = await signInWithGoogle(credential);
+
+    if (data.result === 0) {
+      navigateToModels();
+    } else {
+      identifierError = data.msg;
+    }
+  }
+
+  /** @param {SubmitEvent} e */
   async function handleSignIn(e) {
     e.preventDefault();
     identifierError = '';
@@ -26,12 +45,19 @@
     const data = await signIn(identifier, password);
     
     if (data.result === 0) {
-        history.pushState(null, '', '/models');
-        window.dispatchEvent(new PopStateEvent('popstate'));
+        navigateToModels();
     } else {
         identifierError = data.msg;
     }
   }
+
+  onMount(() => {
+    const googleContainer = document.getElementById('google-login-container');
+    renderGoogleSignInButton(googleContainer, handleGoogleCredential).catch((error) => {
+      console.error('Google sign-in initialization failed:', error);
+      identifierError = error?.message || 'Google sign-in is unavailable';
+    });
+  });
 </script>
 
 <AuthLayout title="Sign In with Password">
@@ -83,6 +109,8 @@
         >Enter</Button>
       </div>
     </form>
+
+    <div id="google-login-container" style="padding-top: 0.5rem; display: flex; justify-content: center; min-height: 44px;"></div>
     
     <div style="padding-top: 0.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
          <span style="flex: 1; border-bottom: 1px solid #e5e7eb;"></span>

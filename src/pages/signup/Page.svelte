@@ -1,10 +1,12 @@
-<script>
+<script lang="ts">
+  import { onMount } from 'svelte';
   import { validateEmail, validatePassword } from '../../utils.js';
   import { signUp, requestVerificationCode, checkUsername as checkUsernameApi } from '../../proxy/auth.js';
+  import { TURNSTILE_SITE_KEY } from '../../config.js';
+  import { renderTurnstile, resetTurnstile } from '../../turnstile.js';
   import Link from '../../components/InfoStack/Link.svelte';
   import { showAlert } from '../../components/Modal/state.svelte.js';
   import AuthLayout from '../../components/AuthLayout.svelte';
-  import InfoStack from '../../components/InfoStack/InfoStack.svelte';
   import InfoStackInput from '../../components/InfoStack/InfoStackInput.svelte';
   import InfoStackCheckbox from '../../components/InfoStack/InfoStackCheckbox.svelte';
   import Button from '../../components/Button/Button.svelte';
@@ -22,7 +24,52 @@
     password: ''
   });
   let countdown = $state(0);
-  let timer;
+  let timer: ReturnType<typeof setInterval> | undefined;
+  let turnstileContainer: HTMLDivElement | undefined;
+  let turnstileWidgetId: string | undefined;
+  let turnstileToken = $state('');
+  let turnstileError = $state('');
+  let turnstileLoaded = $state(false);
+
+  onMount(() => {
+    let disposed = false;
+
+    async function initTurnstile() {
+      try {
+        turnstileWidgetId = await renderTurnstile(turnstileContainer, {
+          sitekey: TURNSTILE_SITE_KEY,
+          callback: (token: string) => {
+            turnstileToken = token;
+            turnstileError = '';
+          },
+          'expired-callback': () => {
+            turnstileToken = '';
+            turnstileError = 'Please complete the verification challenge again';
+          },
+          'error-callback': () => {
+            turnstileToken = '';
+            turnstileError = 'Verification challenge failed to load';
+          }
+        });
+        if (!disposed) {
+          turnstileLoaded = true;
+        }
+      } catch (error) {
+        if (!disposed) {
+          turnstileError = 'Verification challenge failed to load';
+        }
+      }
+    }
+
+    void initTurnstile();
+
+    return () => {
+      disposed = true;
+      if (timer) {
+        clearInterval(timer);
+      }
+    };
+  });
 
   async function handleGetCode() {
     if (!validateEmail(email)) {
@@ -30,8 +77,16 @@
       return;
     }
     errors.email = '';
+    errors.code = '';
 
-    const result = await requestVerificationCode(email, 'sign_up');
+    if (!turnstileToken) {
+      turnstileError = 'Please complete the verification challenge';
+      return;
+    }
+
+    const result = await requestVerificationCode(email, 'sign_up', turnstileToken);
+    turnstileToken = '';
+    resetTurnstile(turnstileWidgetId);
     if (result === true || result.result === 0) {
       countdown = 60;
       timer = setInterval(() => {
@@ -56,7 +111,7 @@
     }
   }
 
-  async function handleSignUp(e) {
+  async function handleSignUp(e: Event) {
     e.preventDefault();
     errors = {
         email: '',
@@ -95,7 +150,7 @@
 {#snippet codeActions()}
     <Button 
         type="button"
-        disabled={countdown > 0}
+        disabled={countdown > 0 || !turnstileLoaded}
         onclick={handleGetCode}
         variant="text-button"
     >
@@ -120,6 +175,16 @@
           />
           {#if errors.email}
             <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #ef4444;">{errors.email}</p>
+          {/if}
+        </div>
+
+        <div style="padding-bottom: 0.5rem;">
+          <div bind:this={turnstileContainer}></div>
+          {#if !turnstileLoaded && !turnstileError}
+            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #6b7280;">Loading verification challenge...</p>
+          {/if}
+          {#if turnstileError}
+            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #ef4444;">{turnstileError}</p>
           {/if}
         </div>
         

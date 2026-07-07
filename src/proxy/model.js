@@ -1,6 +1,31 @@
 import { request, encryptWithPublicKeyToken } from '../utils.js';
 import { getMyConductorPublicKey } from './user.js';
 
+function normalizeModelAccount(account) {
+    return {
+        acct_id: account?.acct_id || '',
+        acct_username: account?.acct_username || '',
+        acct_type: account?.acct_type || null,
+        server: account?.server || null,
+        account_group: account?.account_group || null,
+        subscription_disabled: Boolean(account?.subscription_disabled),
+        is_last_used: Boolean(account?.is_last_used),
+    };
+}
+
+function normalizeModel(model) {
+    const accts = Array.isArray(model?.accts)
+        ? model.accts
+            .map(normalizeModelAccount)
+            .filter((account) => account.acct_id)
+        : [];
+
+    return {
+        ...model,
+        accts,
+    };
+}
+
 export async function addToMyModels(prototypeId, name = null) {
     const body = { prototype_id: parseInt(prototypeId) };
     if (name) {
@@ -39,7 +64,13 @@ export async function addToMyModels(prototypeId, name = null) {
 }
 
 export function getUserModelList() {
-    return request('/api/get_user_model_list');
+    return (async () => {
+        const res = await request('/api/get_user_model_list');
+        if (res?.result === 0 && Array.isArray(res?.data?.models)) {
+            res.data.models = res.data.models.map(normalizeModel);
+        }
+        return res;
+    })();
 }
 
 export function deleteModel(modelId) {
@@ -52,7 +83,7 @@ export async function fetchModel(modelId) {
     const data = await request('/api/get_model', {
         body: { model_id: modelId }
     });
-    return data.result === 0 ? data.data : null;
+    return data.result === 0 ? normalizeModel(data.data) : null;
 }
 
 export function removeModelFromUserModelList(modelId) {

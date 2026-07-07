@@ -8,7 +8,7 @@ export default defineConfig({
   workers: 2,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
-    baseURL: 'http://localhost:8880',
+    baseURL: 'http://localhost:28880',
     trace: 'on-first-retry',
   },
   projects: [

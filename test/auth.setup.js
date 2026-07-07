@@ -1,6 +1,7 @@
 import { test as setup, expect } from '@playwright/test';
 import { generateUser } from './utils';
 import { getVerificationCode, closePool } from './db';
+import { installTurnstileMock } from './turnstile';
 
 const authFile = 'playwright/.auth/user.json';
 
@@ -8,6 +9,7 @@ setup('authenticate', async ({ page }) => {
   const user = generateUser();
   console.log('Creating user:', user.email);
 
+  await installTurnstileMock(page);
   await page.goto('/signup');
   
   // Fill email

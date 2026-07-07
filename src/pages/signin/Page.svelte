@@ -1,12 +1,29 @@
 <script>
   import { onMount } from 'svelte';
-  import { signIn } from '../../proxy/auth.js';
+  import { signIn, signInWithGoogle } from '../../proxy/auth.js';
   import Link from '../../components/InfoStack/Link.svelte';
   import AuthLayout from '../../components/AuthLayout.svelte';
   import InfoStack from '../../components/InfoStack/InfoStack.svelte';
   import { TELEGRAM_LOGIN_USERNAME } from '../../config.js';
+  import { renderGoogleSignInButton } from '../../googleIdentity.js';
 
   let identifierError = $state('');
+
+  function navigateToModels() {
+    history.pushState(null, '', '/models');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }
+
+  /** @param {string} credential */
+  async function handleGoogleCredential(credential) {
+    const data = await signInWithGoogle(credential);
+
+    if (data.result === 0) {
+      navigateToModels();
+    } else {
+      identifierError = data.msg;
+    }
+  }
 
   onMount(() => {
     // @ts-ignore
@@ -14,8 +31,7 @@
         const data = await signIn(null, null, user);
         
         if (data.result === 0) {
-            history.pushState(null, '', '/models');
-            window.dispatchEvent(new PopStateEvent('popstate'));
+            navigateToModels();
         } else {
             identifierError = data.msg;
         }
@@ -35,6 +51,12 @@
             container.appendChild(script);
         }
     }
+
+    const googleContainer = document.getElementById('google-login-container');
+    renderGoogleSignInButton(googleContainer, handleGoogleCredential).catch((error) => {
+        console.error('Google sign-in initialization failed:', error);
+        identifierError = error?.message || 'Google sign-in is unavailable';
+    });
   });
 </script>
 
@@ -43,6 +65,14 @@
     {#if identifierError}
       <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #ef4444; text-align: center; padding-bottom: 1rem;">{identifierError}</p>
     {/if}
+
+    <div id="google-login-container" style="padding-top: 1rem; display: flex; justify-content: center; min-height: 44px;"></div>
+
+    <div style="padding-top: 1rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+         <span style="flex: 1; border-bottom: 1px solid #e5e7eb;"></span>
+         <span style="font-size: 0.75rem; text-align: center; color: #6b7280; text-transform: uppercase;">or</span>
+         <span style="flex: 1; border-bottom: 1px solid #e5e7eb;"></span>
+    </div>
 
     <div id="telegram-login-container" style="padding-top: 1rem; display: flex; justify-content: center; height: 40px;">
         <!-- Telegram button will be rendered here -->

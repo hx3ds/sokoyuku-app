@@ -40,9 +40,14 @@ test.describe('Local Conductor E2E', () => {
       has: page.getByRole('heading', { name: 'Local Conductor' }),
     });
     await expect(localConductorSection).toBeVisible({ timeout: 15000 });
-    await localConductorSection.getByRole('button', { name: 'Edit' }).click();
-    await localConductorSection.getByPlaceholder('lcpk1:...').fill(conductorPublicKey);
-    await localConductorSection.getByRole('button', { name: 'Save' }).click();
+    await localConductorSection.getByRole('button', { name: /Show Conductor Public Key|Set Conductor Public Key/ }).click();
+    const conductorPublicKeyModal = page.locator('.dialog-wrapper').filter({
+      has: page.getByPlaceholder('lcpk1:...'),
+    });
+    await expect(conductorPublicKeyModal).toBeVisible({ timeout: 15000 });
+    await conductorPublicKeyModal.getByPlaceholder('lcpk1:...').fill(conductorPublicKey);
+    await conductorPublicKeyModal.getByRole('button', { name: 'Save' }).click();
+    await expect(conductorPublicKeyModal).toBeHidden({ timeout: 15000 });
 
     await expect
       .poll(async () => {
@@ -90,7 +95,7 @@ test.describe('Local Conductor E2E', () => {
       )
       .toBeGreaterThan(0);
 
-    const modelDb = await expect
+    await expect
       .poll(async () => await getModelByUserAndName(userId, protoName), { timeout: 10000 })
       .toBeTruthy();
 

@@ -20,15 +20,21 @@ export async function signIn(identifier, password, telegramData) {
     return request('/api/sign_in', { body });
 }
 
+export function signInWithGoogle(credential) {
+    return request('/api/sign_in_google', {
+        body: { credential }
+    });
+}
+
 export function signUp({ email, code, full_name, username, password }) {
     return request('/api/sign_up', {
         body: { email, code, full_name, username, password }
     });
 }
 
-export function requestVerificationCode(email, status) {
+export function requestVerificationCode(email, status, captchaToken) {
     return request('/api/request_verification_code', {
-        body: { email, status }
+        body: { email, status, captcha_token: captchaToken }
     });
 }
 

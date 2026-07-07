@@ -3,12 +3,23 @@
     import Loading from '../../components/Loading.svelte';
     import NotFound from '../../components/NotFound.svelte';
     import InfoStack from '../../components/InfoStack/InfoStack.svelte';
+    import InfoStackItem from '../../components/InfoStack/InfoStackItem.svelte';
     import InfoStackInput from '../../components/InfoStack/InfoStackInput.svelte';
     import InfoStackTextarea from '../../components/InfoStack/InfoStackTextarea.svelte';
     import { fetchModel, updateModel } from '../../proxy/model.js';
     import { modelStore } from '../../store/models.svelte.js';
     import { showError } from '../../components/Modal/state.svelte.js';
     import PageContainer from '../../components/PageContainer.svelte';
+
+    type ModelAccount = {
+        acct_id: string;
+        acct_username: string;
+        acct_type?: string | null;
+        server?: string | null;
+        account_group?: string | null;
+        subscription_disabled?: boolean;
+        is_last_used?: boolean;
+    };
 
     type Model = {
         model_id: string;
@@ -23,8 +34,8 @@
         max_chats?: number | null;
         charge?: number | null;
         type?: string | null;
-        account_username?: string | null;
         is_local?: boolean | null;
+        accts?: ModelAccount[];
     };
 
     let { modelId = null } = $props() as { modelId?: string | null };
@@ -108,6 +119,15 @@
         const enc = s.__enc__;
         return typeof enc === 'string' ? enc : '';
     }
+
+    function getModelAccounts(value: Model | null | undefined): ModelAccount[] {
+        return Array.isArray(value?.accts) ? value.accts : [];
+    }
+
+    function getLastUsedModelAccount(value: Model | null | undefined): ModelAccount | null {
+        const accounts = getModelAccounts(value);
+        return accounts.find((account) => account.is_last_used) || null;
+    }
 </script>
 
 <PageContainer id="page-model">
@@ -151,7 +171,41 @@
             <InfoStackInput title="Charge" value={model!.charge || '0'} readonly />
             <InfoStackInput title="Available until" value={formatDate(model!.period)} readonly />
             <InfoStackInput title="Auto renew" value={model!.auto_renew} readonly />
-            <InfoStackInput title="Using" value={model!.account_username || 'Not specified'} readonly />
+            <InfoStackInput
+                title="Last Used Account"
+                value={getLastUsedModelAccount(model)?.acct_username ? `@${getLastUsedModelAccount(model)?.acct_username}` : 'Not specified'}
+                readonly
+            />
+            <InfoStackInput title="Assigned Accounts" value={getModelAccounts(model).length} readonly />
+        </InfoStack>
+
+        <InfoStack title="Assigned Accounts">
+            {#if getModelAccounts(model).length === 0}
+                <InfoStackItem>
+                    <div class="empty-accounts">No accounts assigned to this model.</div>
+                </InfoStackItem>
+            {:else}
+                {#each getModelAccounts(model) as account (account.acct_id)}
+                    <InfoStackItem
+                        title={`@${account.acct_username}`}
+                        description={account.server ? `${account.acct_type || 'account'} on ${account.server}` : (account.acct_type || 'account')}
+                    >
+                        {#snippet titleSuffix()}
+                            {#if account.is_last_used}
+                                <span class="last-used-badge">Last used</span>
+                            {/if}
+                        {/snippet}
+
+                        {#snippet meta()}
+                            <div class="account-meta">
+                                <span>ID: {account.acct_id}</span>
+                                <span>Group: {account.account_group || 'free'}</span>
+                                <span>Status: {account.subscription_disabled ? 'Disabled' : 'Active'}</span>
+                            </div>
+                        {/snippet}
+                    </InfoStackItem>
+                {/each}
+            {/if}
         </InfoStack>
 
         <!-- Model Settings -->
@@ -195,4 +249,33 @@
 </PageContainer>
 
 <style>
+    .empty-accounts {
+        color: #65676b;
+        padding: 0.5rem;
+        font-size: 0.875rem;
+        text-align: center;
+        width: 100%;
+    }
+
+    .account-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        font-size: 0.75rem;
+        color: var(--color-text-muted, #586069);
+        padding-top: 0.125rem;
+    }
+
+    .last-used-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.125rem 0.5rem;
+        border-radius: 999px;
+        background: #dcfce7;
+        color: #166534;
+        font-size: 0.75rem;
+        font-weight: 500;
+        white-space: nowrap;
+    }
 </style>

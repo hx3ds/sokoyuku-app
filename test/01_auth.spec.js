@@ -1,9 +1,13 @@
 import { test, expect } from '@playwright/test';
 import { generateUser } from './utils';
 import { getVerificationCode } from './db';
+import { installTurnstileMock } from './turnstile';
 
 test.describe('Authentication Flow', () => {
   // We can't reuse the setup user for signup tests, so we create a new one.
+  test.beforeEach(async ({ page }) => {
+    await installTurnstileMock(page);
+  });
   
   test('should fail with invalid email', async ({ page }) => {
     await page.goto('/signup');

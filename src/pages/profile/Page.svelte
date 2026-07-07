@@ -3,11 +3,13 @@
     import { fetchProfile, updateProfile, getMyConductorPublicKey, setMyConductorPublicKey } from '../../proxy/user.js';
     import { signOut } from '../../proxy/auth.js';
     import { getStripeConnectStatus, createStripeConnectOnboardingLink } from '../../proxy/payout.js';
+    import { fetchPlatformSubscription, fetchSubscriptionPlans, createPlatformSubscriptionCheckout } from '../../proxy/subscription.js';
     import { showError } from '../../components/Modal/state.svelte.js';
     
     import Loading from '../../components/Loading.svelte';
     import PageContainer from '../../components/PageContainer.svelte';
     import Button from '../../components/Button/Button.svelte';
+    import TokenModal from '../../components/Modal/TokenModal.svelte';
     import InfoStack from '../../components/InfoStack/InfoStack.svelte';
     import InfoStackItem from '../../components/InfoStack/InfoStackItem.svelte';
     import InfoStackInput from '../../components/InfoStack/InfoStackInput.svelte';
@@ -28,6 +30,27 @@
         payouts_enabled?: boolean;
     };
 
+    type PlatformPlan = {
+        plan_id: string;
+        name?: string | null;
+        description?: string | null;
+        price?: number | string | null;
+    };
+
+    type PlatformSubscription = {
+        status?: string | null;
+        current_period_start?: string | null;
+        current_period_end?: string | null;
+        cancel_at_period_end?: boolean | null;
+        plan?: {
+            name?: string | null;
+            description?: string | null;
+            price?: number | string | null;
+        } | null;
+    } | null;
+
+    const ACTIVE_PLATFORM_STATUSES = ['active', 'trialing', 'past_due'];
+
     let profile = $state<Profile | null>(null);
     let loading = $state(true);
     let editData = $state<Profile>({
@@ -44,14 +67,19 @@
     let connectStatus = $state<ConnectStatus | null>(null);
     let connectLoading = $state(false);
     let connectSubmitting = $state(false);
+    let platformSubscription = $state<PlatformSubscription>(null);
+    let platformPlans = $state<PlatformPlan[]>([]);
+    let platformSubscriptionSubmitting = $state(false);
 
     let conductorPublicKey = $state('');
     let conductorPublicKeyLoading = $state(false);
-    let conductorPublicKeyEditing = $state(false);
+    let showConductorPublicKeyModal = $state(false);
     let conductorPublicKeyDraft = $state('');
+    let conductorPublicKeySaving = $state(false);
 
     // List Items Configuration
     const devItems = [
+        { href: '/overview', title: 'Overview' },
         { href: '/my-prototypes', title: 'My Prototypes' },
         { href: '/notifications', title: 'Notifications' }
     ];
@@ -62,10 +90,15 @@
         { href: '/payment-history', title: 'Payment History' }
     ];
 
+    const payoutItems = [
+        { href: '/payout-details', title: 'Payout Details', description: 'Check payout details for each prototype' }
+    ];
+
     onMount(async () => {
         await loadProfile();
         await loadConnectStatus();
         await loadConductorPublicKey();
+        await loadPlatformSubscription();
     });
 
     async function loadProfile() {
@@ -103,14 +136,24 @@
         conductorPublicKeyLoading = false;
     }
 
-    function startEditConductorPublicKey() {
-        conductorPublicKeyDraft = conductorPublicKey;
-        conductorPublicKeyEditing = true;
+    async function loadPlatformSubscription() {
+        try {
+            const [subscriptionRes, plans] = await Promise.all([
+                fetchPlatformSubscription(),
+                fetchSubscriptionPlans()
+            ]);
+            platformSubscription = subscriptionRes?.result === 0 ? (subscriptionRes.data as PlatformSubscription) : null;
+            platformPlans = Array.isArray(plans) ? (plans as PlatformPlan[]) : [];
+        } catch (e) {
+            console.error('Error loading Sokoyuku subscription:', e);
+            platformSubscription = null;
+            platformPlans = [];
+        }
     }
 
-    function cancelEditConductorPublicKey() {
+    function openConductorPublicKeyModal() {
         conductorPublicKeyDraft = conductorPublicKey;
-        conductorPublicKeyEditing = false;
+        showConductorPublicKeyModal = true;
     }
 
     async function saveConductorPublicKey() {
@@ -119,23 +162,18 @@
             await showError('Invalid conductor public key token. It must start with "lcpk1:".');
             return;
         }
-        const res = await setMyConductorPublicKey(next);
-        if (res.result !== 0) {
-            await showError('Failed to update conductor public key: ' + res.msg);
-            return;
-        }
-        conductorPublicKey = String(res.data?.conductor_public_key || '');
-        conductorPublicKeyDraft = conductorPublicKey;
-        conductorPublicKeyEditing = false;
-    }
-
-    async function copyToClipboard(text: string) {
-        const val = String(text || '');
-        if (!val) return;
+        conductorPublicKeySaving = true;
         try {
-            await navigator.clipboard.writeText(val);
-        } catch {
-            prompt('Copy:', val);
+            const res = await setMyConductorPublicKey(next);
+            if (res.result !== 0) {
+                await showError('Failed to update conductor public key: ' + res.msg);
+                return;
+            }
+            conductorPublicKey = String(res.data?.conductor_public_key || '');
+            conductorPublicKeyDraft = conductorPublicKey;
+            showConductorPublicKeyModal = false;
+        } finally {
+            conductorPublicKeySaving = false;
         }
     }
 
@@ -153,6 +191,32 @@
         const url = res.data?.url;
         if (url) {
             window.location.href = url;
+        }
+    }
+
+    async function handlePlatformSubscriptionCheckout() {
+        const selectedPlanId = String(platformPlans?.[0]?.plan_id || '').trim();
+        if (!selectedPlanId) {
+            await showError('No Sokoyuku subscription plan is available right now.');
+            return;
+        }
+
+        platformSubscriptionSubmitting = true;
+        try {
+            const res = await createPlatformSubscriptionCheckout({
+                plan_id: selectedPlanId,
+                success_url: `${window.location.origin}/profile?subscription_success=1`,
+                cancel_url: `${window.location.origin}/profile?subscription_cancel=1`
+            });
+            if (res.result !== 0) {
+                await showError('Failed to start Sokoyuku subscription checkout: ' + res.msg);
+                return;
+            }
+            if (res.data?.url) {
+                window.location.href = res.data.url;
+            }
+        } finally {
+            platformSubscriptionSubmitting = false;
         }
     }
 
@@ -194,6 +258,32 @@
     async function handleSignOut() {
         await signOut();
     }
+
+    function formatDate(dateString?: string | null) {
+        if (!dateString) return '';
+        return new Date(dateString).toLocaleDateString(undefined, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    }
+
+    const isPlatformSubscriptionActive = $derived(
+        ACTIVE_PLATFORM_STATUSES.includes(String(platformSubscription?.status || '').toLowerCase())
+    );
+
+    const hasPlatformSubscriptionHistory = $derived(Boolean(platformSubscription));
+
+    const subscriptionStatusLabel = $derived.by(() => {
+        if (!isPlatformSubscriptionActive) return 'Free';
+        const periodEnd = formatDate(platformSubscription?.current_period_end);
+        return periodEnd ? `Pro until ${periodEnd}` : 'Pro';
+    });
+
+    const subscriptionActionLabel = $derived(hasPlatformSubscriptionHistory ? 'Renew' : 'Upgrade');
+    const showPlatformSubscriptionAction = $derived(
+        !isPlatformSubscriptionActive || Boolean(platformSubscription?.cancel_at_period_end)
+    );
 </script>
 
 <PageContainer id="page-profile">
@@ -230,6 +320,21 @@
             <InfoStackInput title="Username" value={editData.username} readonly />
 
             <InfoStackTextarea id="profileDescription" title="Description" bind:value={editData.description} readonly={!isEditing} placeholder="Tell us about yourself" />
+
+            <InfoStackInput title="Sokoyuku Subscription" value={subscriptionStatusLabel} readonly>
+                {#snippet end()}
+                    {#if showPlatformSubscriptionAction}
+                        <Button
+                            variant="text-button"
+                            padding="0.25rem 0.75rem"
+                            onclick={handlePlatformSubscriptionCheckout}
+                            loading={platformSubscriptionSubmitting}
+                        >
+                            {subscriptionActionLabel}
+                        </Button>
+                    {/if}
+                {/snippet}
+            </InfoStackInput>
         </InfoStack>
 
         <!-- Development -->
@@ -246,71 +351,51 @@
             {/each}
         </InfoStack>
 
-        <InfoStack title="Payout" showTitle={false}>
-            <InfoStackItem
+        <InfoStack title="Payout">
+            <InfoStackInput
                 title="Stripe Connect"
-                description={connectLoading ? 'Checking status...' : (connectStatus?.connected ? `Connected${connectStatus?.payouts_enabled ? ' · Payouts enabled' : ''}` : 'Not connected')}
+                value={connectLoading ? 'Checking status...' : (connectStatus?.connected ? `Connected${connectStatus?.payouts_enabled ? ' · Payouts enabled' : ''}` : 'Not connected')}
+                readonly
             >
-                {#snippet actions()}
+                {#snippet end()}
                     <Button
                         variant="text-button"
+                        padding="0.25rem 0.75rem"
                         onclick={handleStripeConnect}
                         loading={connectSubmitting}
                     >
                         {connectStatus?.connected ? 'Update' : 'Connect'}
                     </Button>
                 {/snippet}
-            </InfoStackItem>
+            </InfoStackInput>
+
+            {#each payoutItems as item}
+                <InfoStackItem {...item} />
+            {/each}
         </InfoStack>
 
         <InfoStack
             title="Local Conductor"
             loading={conductorPublicKeyLoading}
-            editable={true}
-            isEditing={conductorPublicKeyEditing}
-            onedit={startEditConductorPublicKey}
-            oncancel={cancelEditConductorPublicKey}
-            onsave={saveConductorPublicKey}
         >
-            {#if conductorPublicKeyEditing}
-                <InfoStackInput
-                    title="Conductor Public Key"
-                    type="text"
-                    bind:value={conductorPublicKeyDraft}
-                    placeholder="lcpk1:..."
-                >
-                    {#snippet end()}
-                        <Button
-                            variant="icon-button"
-                            onclick={() => copyToClipboard(conductorPublicKeyDraft)}
-                            aria-label="Copy"
-                        >
-                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.981-2.192l.516-.043a48.666 48.666 0 0 1 6.504 0l.516.043c1.136.094 1.98 1.057 1.98 2.192V7.5M8.25 7.5H6.108c-1.135 0-2.098.845-2.192 1.981l-.043.516a48.666 48.666 0 0 0 0 6.504l.043.516c.094 1.136 1.057 1.98 2.192 1.98H8.25m0-11.25h7.5m0 0h2.142c1.135 0 2.098.845 2.192 1.981l.043.516a48.666 48.666 0 0 1 0 6.504l-.043.516c-.094 1.136-1.057 1.98-2.192 1.98H15.75m-7.5 0h7.5m-7.5 0v-2.25m7.5 2.25v-2.25m0-9V6.108" />
-                            </svg>
-                        </Button>
-                    {/snippet}
-                </InfoStackInput>
-            {:else}
-                <InfoStackInput
-                    title="Conductor Public Key"
-                    type="password"
-                    value={conductorPublicKey}
-                    readonly
-                >
-                    {#snippet end()}
-                        <Button
-                            variant="icon-button"
-                            onclick={() => copyToClipboard(conductorPublicKey)}
-                            aria-label="Copy"
-                        >
-                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 7.5V6.108c0-1.135.845-2.098 1.981-2.192l.516-.043a48.666 48.666 0 0 1 6.504 0l.516.043c1.136.094 1.98 1.057 1.98 2.192V7.5M8.25 7.5H6.108c-1.135 0-2.098.845-2.192 1.981l-.043.516a48.666 48.666 0 0 0 0 6.504l.043.516c.094 1.136 1.057 1.98 2.192 1.98H8.25m0-11.25h7.5m0 0h2.142c1.135 0 2.098.845 2.192 1.981l.043.516a48.666 48.666 0 0 1 0 6.504l-.043.516c-.094 1.136-1.057 1.98-2.192 1.98H15.75m-7.5 0h7.5m-7.5 0v-2.25m7.5 2.25v-2.25m0-9V6.108" />
-                            </svg>
-                        </Button>
-                    {/snippet}
-                </InfoStackInput>
-            {/if}
+            <InfoStackInput
+                title="Conductor Public Key"
+                value={conductorPublicKey ? '••••••••••' : 'Not set'}
+                readonly
+            >
+                {#snippet end()}
+                    <Button
+                        variant="icon-button"
+                        onclick={openConductorPublicKeyModal}
+                        aria-label={conductorPublicKey ? 'Show Conductor Public Key' : 'Set Conductor Public Key'}
+                    >
+                        <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                    </Button>
+                {/snippet}
+            </InfoStackInput>
         </InfoStack>
 
         <!-- Sign Out -->
@@ -329,3 +414,18 @@
         <div style="color: #ff3b30; text-align: center; padding: 2rem;">Failed to load profile.</div>
     {/if}
 </PageContainer>
+
+<TokenModal
+    bind:show={showConductorPublicKeyModal}
+    bind:token={conductorPublicKeyDraft}
+    loading={conductorPublicKeyLoading}
+    saving={conductorPublicKeySaving}
+    title="Conductor Public Key"
+    fieldTitle="Conductor Public Key"
+    editable={true}
+    placeholder="lcpk1:..."
+    copyButtonAriaLabel="Copy Conductor Public Key"
+    copySuccessMessage="Conductor public key copied to clipboard"
+    copyErrorMessage="Failed to copy conductor public key"
+    onSave={saveConductorPublicKey}
+/>

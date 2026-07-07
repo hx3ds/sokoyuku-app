@@ -22,4 +22,13 @@ test.describe('Miscellaneous Pages', () => {
     await expect.poll(async () => (await empty.count()) + (await items.count())).toBeGreaterThan(0);
   });
 
+  test('should display Payout Details page', async ({ page }) => {
+    await page.goto('/payout-details');
+    await expect(page).toHaveURL(/\/payout-details/);
+    await expect(page.getByRole('heading', { name: 'Payout Details' })).toBeVisible();
+    const empty = page.locator('.not-found-text', { hasText: "You haven't created any prototypes yet." });
+    const items = page.locator('#page-payout-details .list-item');
+    await expect.poll(async () => (await empty.count()) + (await items.count())).toBeGreaterThan(0);
+  });
+
 });

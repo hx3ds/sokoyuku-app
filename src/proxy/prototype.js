@@ -91,6 +91,11 @@ export async function fetchMyPrototypes() {
     return data.result === 0 ? data.data.prototypes : [];
 }
 
+export async function fetchMyPrototypePayoutDetails() {
+    const data = await request('/api/get_my_prototype_payout_details');
+    return data.result === 0 ? data.data.prototypes : [];
+}
+
 export async function fetchUserPrototypes(username) {
     const data = await request('/api/get_user_prototype_list', {
         body: { username }

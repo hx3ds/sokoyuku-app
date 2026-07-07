@@ -8,12 +8,14 @@
   import Layout from './pages/Layout.svelte';
   import Explore from './pages/explore/Page.svelte';
   import Models from './pages/models/Page.svelte';
+  import Overview from './pages/overview/Page.svelte';
   import Profile from './pages/profile/Page.svelte';
   import MyPrototypes from './pages/my_prototypes/Page.svelte';
   import MySubscriptions from './pages/my_subscriptions/Page.svelte';
   import Notifications from './pages/notifications/Page.svelte';
   import PaymentHistory from './pages/payment_history/Page.svelte';
   import ChatHistory from './pages/chat_history/Page.svelte';
+  import PayoutDetails from './pages/payout_details/Page.svelte';
   import User from './pages/user/Page.svelte';
   import Credits from './pages/credits/Page.svelte';
   import Model from './pages/model/Page.svelte';
@@ -22,12 +24,25 @@
   import NotFound from './pages/not_found/Page.svelte';
   import Modal from './components/Modal/Modal.svelte';
 
+  /**
+   * @typedef {object} Route
+   * @property {string} path
+   * @property {any} component
+   * @property {boolean=} public
+   * @property {boolean=} noLayout
+   * @property {boolean=} prefix
+   */
+
+  /** @type {Route | null} */
   let activeRoute = null;
+  /** @type {Set<Route>} */
   let visitedRoutes = new Set();
+  /** @type {Map<Route, Record<string, string>>} */
   let routeParamsMap = new Map();
   let isAuthLayout = false;
   let isAuthenticated = false;
 
+  /** @type {Route[]} */
   const routes = [
     { path: '/signin', component: SignIn, public: true, noLayout: true },
     { path: '/signin-password', component: SignInPassword, public: true, noLayout: true },
@@ -35,12 +50,14 @@
     { path: '/change-password', component: ChangePassword, public: true, noLayout: true },
     { path: '/explore', component: Explore },
     { path: '/models', component: Models },
+    { path: '/overview', component: Overview },
     { path: '/profile', component: Profile },
     { path: '/my-prototypes', component: MyPrototypes },
     { path: '/my-subscriptions', component: MySubscriptions },
     { path: '/notifications', component: Notifications },
     { path: '/payment-history', component: PaymentHistory },
     { path: '/chat-history', component: ChatHistory },
+    { path: '/payout-details', component: PayoutDetails },
     { path: '/user/:username', component: User },
     { path: '/model/:modelId', component: Model },
     { path: '/prototypes/:username', component: Prototypes },
@@ -48,15 +65,19 @@
     { path: '/credits', component: Credits }
   ];
 
-  const notFoundRoute = { component: NotFound, noLayout: true };
+  /** @type {Route} */
+  const notFoundRoute = { path: '*', component: NotFound, noLayout: true };
 
+  /** @param {string} path */
   async function navigate(path) {
     if (!path || path === '/') {
          path = '/explore';
          history.replaceState(null, '', '/explore');
     }
     
+    /** @type {Record<string, string>} */
     let params = {};
+    /** @type {Route | null} */
     let match = null;
 
     for (const route of routes) {
@@ -65,6 +86,7 @@
         const pathSegments = path.split('/').filter(Boolean);
 
         if (routeSegments.length === pathSegments.length) {
+          /** @type {Record<string, string>} */
           const p = {};
           let isMatch = true;
           
@@ -105,11 +127,11 @@
                     isAuthenticated = true;
                 } else {
                     history.replaceState(null, '', '/signin');
-                    match = routes.find(r => r.path === '/signin');
+                    match = routes.find(r => r.path === '/signin') || null;
                 }
             } catch (e) {
                  history.replaceState(null, '', '/signin');
-                 match = routes.find(r => r.path === '/signin');
+                 match = routes.find(r => r.path === '/signin') || null;
             }
         }
     }
