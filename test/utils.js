@@ -1,3 +1,4 @@
+import { expect } from '@playwright/test';
 import { v4 as uuidv4 } from 'uuid';
 
 export function generateUser() {
@@ -8,6 +9,17 @@ export function generateUser() {
     fullName: `Test User ${id}`,
     password: 'Password123!',
   };
+}
+
+export async function clickAppNav(page, path) {
+  const nav = page.locator(`a.sidebar-link[href="${path}"], a.bottom-link[href="${path}"]`).filter({ visible: true });
+  await expect(nav).toHaveCount(1);
+  await nav.click();
+}
+
+export function isWideDesktop(page) {
+  const viewport = page.viewportSize();
+  return !!viewport && viewport.width >= 1280;
 }
 
 export function uniqueSuffix() {

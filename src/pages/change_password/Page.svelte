@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { validateEmail, validatePassword } from '../../utils.js';
+  import { validateEmail, validatePassword, showFieldHint } from '../../utils.js';
   import { changePassword, requestVerificationCode } from '../../proxy/auth.js';
   import { TURNSTILE_SITE_KEY } from '../../config.js';
   import { renderTurnstile, resetTurnstile } from '../../turnstile.js';
@@ -68,15 +68,18 @@
   });
 
   async function handleGetCode() {
+    if (!showFieldHint('changePasswordEmail')) {
+        return;
+    }
     if (!validateEmail(email)) {
-        errors.email = 'Please enter a valid email address';
+        showFieldHint('changePasswordEmail', 'Please enter a valid email address');
         return;
     }
     errors.email = '';
     errors.code = '';
 
     if (!turnstileToken) {
-        turnstileError = 'Please complete the verification challenge';
+        showFieldHint('changePasswordTurnstileGate');
         return;
     }
 
@@ -104,6 +107,12 @@
         code: '',
         newPassword: ''
     };
+    turnstileError = '';
+
+    const form = e.currentTarget as HTMLFormElement;
+    if (!form.reportValidity()) {
+        return;
+    }
     
     if (!validatePassword(newPassword)) {
         // optional check
@@ -115,6 +124,8 @@
         history.pushState(null, '', '/signin');
         window.dispatchEvent(new PopStateEvent('popstate'));
     } else {
+        turnstileToken = '';
+        resetTurnstile(turnstileWidgetId);
         if (data.msg) {
             if (data.msg.toLowerCase().includes('code')) errors.code = data.msg;
             else errors.email = data.msg;
@@ -157,16 +168,6 @@
         </div>
 
         <div style="padding-bottom: 0.5rem;">
-          <div bind:this={turnstileContainer}></div>
-          {#if !turnstileLoaded && !turnstileError}
-            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #6b7280;">Loading verification challenge...</p>
-          {/if}
-          {#if turnstileError}
-            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #ef4444;">{turnstileError}</p>
-          {/if}
-        </div>
-        
-        <div style="padding-bottom: 0.5rem;">
             <InfoStackInput 
                 id="changePasswordVerificationCode" 
                 title="Verification Code"
@@ -177,14 +178,14 @@
                 style={errors.code ? 'border-color: #ef4444;' : ''}
                 actions={codeActions}
                 inputClass="boxed-input"
-                className="clean-item"
+                className="clean-item code-with-action"
             />
             {#if errors.code}
                 <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #ef4444;">{errors.code}</p>
             {/if}
         </div>
 
-        <div style="padding-bottom: 2rem;">
+        <div style="padding-bottom: 0.5rem;">
           <InfoStackInput
             id="changePasswordNew"
             title="New Password"
@@ -198,6 +199,26 @@
           />
           {#if errors.newPassword}
             <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #ef4444;">{errors.newPassword}</p>
+          {/if}
+        </div>
+
+        <div class="turnstile-wrap">
+          <div class="turnstile-relative">
+            <input
+              id="changePasswordTurnstileGate"
+              class="validity-anchor"
+              value={turnstileToken}
+              required
+              tabindex="-1"
+              aria-label="Verification challenge"
+            />
+            <div bind:this={turnstileContainer}></div>
+          </div>
+          {#if !turnstileLoaded && !turnstileError}
+            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #6b7280;">Loading verification challenge...</p>
+          {/if}
+          {#if turnstileError}
+            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #ef4444;">{turnstileError}</p>
           {/if}
         </div>
         
@@ -229,5 +250,39 @@
     }
     :global(.clean-item .input-wrapper) {
         padding-top: 0.25rem !important;
+    }
+    :global(.code-with-action) {
+        align-items: flex-end !important;
+        gap: 0.5rem !important;
+    }
+    :global(.code-with-action .content-block) {
+        padding-bottom: 0 !important;
+        padding-right: 0 !important;
+    }
+    :global(.code-with-action .actions) {
+        padding: 0 !important;
+        height: auto !important;
+        align-self: flex-end;
+    }
+    .turnstile-wrap {
+        padding-bottom: 0.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+    .turnstile-relative {
+        position: relative;
+    }
+    .validity-anchor {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 1px;
+        height: 1px;
+        margin: 0;
+        padding: 0;
+        border: none;
+        opacity: 0;
+        pointer-events: none;
     }
 </style>

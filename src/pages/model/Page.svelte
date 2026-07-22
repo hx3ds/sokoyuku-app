@@ -124,6 +124,12 @@
         return Array.isArray(value?.accts) ? value.accts : [];
     }
 
+    function formatAccountLabel(account: ModelAccount | null | undefined): string {
+        if (!account?.acct_username) return 'Not specified';
+        if (account.acct_type === 'discord') return account.acct_username;
+        return `@${account.acct_username}`;
+    }
+
     function getLastUsedModelAccount(value: Model | null | undefined): ModelAccount | null {
         const accounts = getModelAccounts(value);
         return accounts.find((account) => account.is_last_used) || null;
@@ -173,7 +179,7 @@
             <InfoStackInput title="Auto renew" value={model!.auto_renew} readonly />
             <InfoStackInput
                 title="Last Used Account"
-                value={getLastUsedModelAccount(model)?.acct_username ? `@${getLastUsedModelAccount(model)?.acct_username}` : 'Not specified'}
+                value={formatAccountLabel(getLastUsedModelAccount(model))}
                 readonly
             />
             <InfoStackInput title="Assigned Accounts" value={getModelAccounts(model).length} readonly />
@@ -187,8 +193,8 @@
             {:else}
                 {#each getModelAccounts(model) as account (account.acct_id)}
                     <InfoStackItem
-                        title={`@${account.acct_username}`}
-                        description={account.server ? `${account.acct_type || 'account'} on ${account.server}` : (account.acct_type || 'account')}
+                        title={formatAccountLabel(account)}
+                        description={account.acct_type === 'matrix' && account.server ? `${account.acct_type} on ${account.server}` : (account.acct_type || 'account')}
                     >
                         {#snippet titleSuffix()}
                             {#if account.is_last_used}

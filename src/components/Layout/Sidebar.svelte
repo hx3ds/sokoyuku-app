@@ -96,10 +96,12 @@
         border-left: 3px solid transparent;
         font-weight: 500;
     }
-    :global(.sidebar-link:hover) {
-        background-color: var(--color-bg-hover);
-        color: var(--color-text-main);
-        text-decoration: none;
+    @media (hover: hover) and (pointer: fine) {
+        :global(.sidebar-link:hover) {
+            background-color: var(--color-bg-hover);
+            color: var(--color-text-main);
+            text-decoration: none;
+        }
     }
     
     /* Active state styling */

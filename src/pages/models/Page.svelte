@@ -151,6 +151,10 @@
         return String(id || '').replace(/-/g, '');
     }
 
+    function buildStartCommand(modelId: string, otp: string | number | null | undefined) {
+        return `/start ${normalizeId(modelId)}${String(otp ?? '')}`;
+    }
+
     function buildTelegramStartLink(accountUsername: string | null | undefined, modelId: string, otp: string | number | null | undefined) {
         const username = String(accountUsername || '').replace(/^@/, '').trim();
         if (!username) return null;
@@ -158,13 +162,26 @@
         return `https://t.me/${username}?start=${start}`;
     }
 
-    function getModelAccounts(model: Model | null | undefined): ModelAccount[] {
-        return Array.isArray(model?.accts) ? model.accts : [];
+    function buildDiscordInviteLink(accountUsername: string | null | undefined) {
+        const clientId = String(accountUsername || '').trim();
+        if (!clientId) return null;
+        return `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(clientId)}&permissions=110230338919168&integration_type=0&scope=bot`;
     }
 
-    function getLastUsedModelAccount(model: Model | null | undefined): ModelAccount | null {
-        const accounts = getModelAccounts(model);
-        return accounts.find((account) => account.is_last_used) || null;
+    function buildOpenChatLink(account: Account, modelId: string, otp: string | number | null | undefined, apiLink: string | null | undefined = null) {
+        const type = account?.type || 'telegram';
+        if (type === 'discord') {
+            if (!String(account?.account_username || '').trim()) return null;
+            return apiLink || buildDiscordInviteLink(account.account_username);
+        }
+        if (type === 'telegram') {
+            return apiLink || buildTelegramStartLink(account.account_username, modelId, otp);
+        }
+        return null;
+    }
+
+    function getModelAccounts(model: Model | null | undefined): ModelAccount[] {
+        return Array.isArray(model?.accts) ? model.accts : [];
     }
 
     function getAssignedAccountCount(model: Model | null | undefined): number {
@@ -233,24 +250,6 @@
         return `In ${assignedModels[0].name} +${assignedModels.length - 1}`;
     }
 
-    function formatModelAccounts(model: Model | null | undefined): string {
-        const accounts = getModelAccounts(model);
-        if (accounts.length === 0) {
-            return 'No accounts assigned';
-        }
-
-        const usernames = accounts
-            .slice(0, 3)
-            .map((account) => `@${account.acct_username}`)
-            .join(', ');
-
-        if (accounts.length <= 3) {
-            return usernames;
-        }
-
-        return `${usernames} +${accounts.length - 3} more`;
-    }
-
     async function copyTextToClipboard(text: string) {
         try {
             await navigator.clipboard.writeText(text);
@@ -287,7 +286,7 @@
             return;
         }
 
-        const link = res.data?.link || buildTelegramStartLink(account.account_username, model.model_id, res.data?.otp);
+        const link = buildOpenChatLink(account, model.model_id, res.data?.otp, res.data?.link);
         if (link) {
             window.open(link, '_blank');
             closeModal();
@@ -296,11 +295,12 @@
         }
 
         if (res.data?.otp) {
-            const copied = await copyTextToClipboard(String(res.data.otp));
+            const startCmd = buildStartCommand(model.model_id, res.data.otp);
+            const copied = await copyTextToClipboard(startCmd);
             if (!copied) {
-                prompt('Copy OTP:', String(res.data.otp));
+                prompt('Copy start command:', startCmd);
             } else {
-                showSuccess('OTP copied!');
+                showSuccess('Start command copied!');
             }
             closeModal();
             await loadData();
@@ -320,7 +320,7 @@
             return;
         }
 
-        const link = res.data?.link || buildTelegramStartLink(account.account_username, model.model_id, res.data?.otp);
+        const link = buildOpenChatLink(account, model.model_id, res.data?.otp, res.data?.link);
         if (link) {
             const copied = await copyTextToClipboard(link);
             if (!copied) {
@@ -334,12 +334,12 @@
         }
 
         if (res.data?.otp) {
-            const otp = String(res.data.otp);
-            const copied = await copyTextToClipboard(otp);
+            const startCmd = buildStartCommand(model.model_id, res.data.otp);
+            const copied = await copyTextToClipboard(startCmd);
             if (!copied) {
-                prompt('Copy OTP:', otp);
+                prompt('Copy start command:', startCmd);
             } else {
-                showSuccess('OTP copied!');
+                showSuccess('Start command copied!');
             }
             closeModal();
             await loadData();
@@ -392,17 +392,23 @@
     async function loadChats(modelId: string) {
         modalLoading = true;
         const res = await ChatAPI.getModelChats(modelId);
-        managedChats = res.result === 0 ? (res.data.chats || []) : [];
+        managedChats = res.result === 0
+            ? (res.data.chats || []).map((c) => ({
+                ...c,
+                id: c.chat_id,
+                title: c.chat_id,
+            }))
+            : [];
         modalLoading = false;
     }
 
-    async function handleRemoveChat(chatId: string) {
+    async function handleRemoveChat(chat: any) {
         const model = modalData as Model | null;
-        if (!model) return;
+        if (!model || !chat?.chat_id || !chat?.account_id) return;
         
         if (!await showConfirm('Remove this chat?')) return;
         
-        const res = await ChatAPI.removeChatFromModel(model.model_id, chatId);
+        const res = await ChatAPI.removeChatFromModel(model.model_id, chat.chat_id, chat.account_id);
         if (res.result === 0) {
             showSuccess('Chat removed');
             await loadChats(model.model_id);
@@ -500,19 +506,6 @@
                     </span>
                 {/snippet}
 
-                {#snippet meta()}
-                    {@const lastUsedAccount = getLastUsedModelAccount(model)}
-                    <div class="model-account-meta">
-                        <span>
-                            Last used: {lastUsedAccount ? `@${lastUsedAccount.acct_username}` : 'Not set'}
-                        </span>
-                        <span>
-                            Assigned: {formatModelAccounts(model)}
-                        </span>
-                    </div>
-                {/snippet}
-
-                
                 {#snippet actions()}
                     <OpenChatButton onclick={(e: MouseEvent) => { e.stopPropagation(); openModal('accountSelect', model); }} />
                     
@@ -585,7 +578,7 @@
 
                 {#snippet meta()}
                     <div style="color: #586069; font-size: 0.875rem;">
-                        <span>@{account.account_username} · Group: {account.account_group || 'free'}</span>
+                        <span>{account.type === 'discord' ? account.account_username : `@${account.account_username}`} · Group: {account.account_group || 'free'}</span>
                     </div>
                 {/snippet}
 
@@ -661,15 +654,6 @@
 </PageContainer>
 
 <style>
-    .model-account-meta {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        font-size: 0.75rem;
-        color: var(--color-text-muted, #586069);
-        padding-top: 0.125rem;
-    }
-
     .account-count-badge {
         display: inline-flex;
         align-items: center;

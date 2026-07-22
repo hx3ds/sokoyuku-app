@@ -9,6 +9,40 @@ export function validateEmail(email) {
     return re.test(email);
 }
 
+/**
+ * @param {string} id
+ * @param {string} [message]
+ */
+export function showFieldHint(id, message) {
+    const el = document.getElementById(id);
+    if (!el || typeof el.reportValidity !== 'function') {
+        return false;
+    }
+    if (
+        !message &&
+        el instanceof HTMLInputElement &&
+        el.type === 'checkbox' &&
+        el.required &&
+        !el.checked
+    ) {
+        message = 'Please check this box if you want to proceed.';
+    }
+    if (typeof el.focus === 'function') {
+        el.focus({ preventScroll: true });
+    }
+    if (typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+    if (message) {
+        el.setCustomValidity(message);
+    }
+    const ok = el.reportValidity();
+    if (message) {
+        el.setCustomValidity('');
+    }
+    return ok;
+}
+
 export function validatePassword(password) {
     // Password must be at least 8 characters long and contain at least one number
     const re = /^(?=.*\d).{8,}$/;

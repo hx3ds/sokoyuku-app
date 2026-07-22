@@ -1,6 +1,5 @@
 <script>
   import SignIn from './pages/signin/Page.svelte';
-  import SignInPassword from './pages/signin_password/Page.svelte';
   import SignUp from './pages/signup/Page.svelte';
   import ChangePassword from './pages/change_password/Page.svelte';
   import { fetchProfile } from './proxy/user.js';
@@ -45,7 +44,6 @@
   /** @type {Route[]} */
   const routes = [
     { path: '/signin', component: SignIn, public: true, noLayout: true },
-    { path: '/signin-password', component: SignInPassword, public: true, noLayout: true },
     { path: '/signup', component: SignUp, public: true, noLayout: true },
     { path: '/change-password', component: ChangePassword, public: true, noLayout: true },
     { path: '/explore', component: Explore },

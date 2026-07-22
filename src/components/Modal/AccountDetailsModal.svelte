@@ -4,7 +4,6 @@
     import InfoStackInput from '../InfoStack/InfoStackInput.svelte';
     import InfoStackSelect from '../InfoStack/InfoStackSelect.svelte';
     import InfoStackTextarea from '../InfoStack/InfoStackTextarea.svelte';
-    import InfoStackToggle from '../InfoStack/InfoStackToggle.svelte';
 
     /** @type {any} */
     let { 
@@ -72,7 +71,11 @@
             <InfoStackInput title="Name" value={account.name} readonly />
         {/if}
 
-        <InfoStackInput title="Username" value={`@${account.account_username}`} readonly />
+        {#if (account.type || 'telegram') === 'discord'}
+            <InfoStackInput title="Client ID" value={account.account_username || ''} readonly />
+        {:else}
+            <InfoStackInput title="Username" value={`@${account.account_username}`} readonly />
+        {/if}
 
         {#if isEditing}
             <InfoStackSelect title="Type" bind:value={editForm.type} required>
@@ -95,15 +98,7 @@
             {/if}
         {/if}
 
-        {#if isEditing}
-            <InfoStackToggle
-                title="Local Account"
-                description={editForm.is_local ? 'Token will be encrypted with your Conductor public key before upload' : 'Token will be stored normally'}
-                bind:checked={editForm.is_local}
-            />
-        {:else}
-            <InfoStackInput title="Local" value={account.is_local ? 'Yes' : 'No'} readonly />
-        {/if}
+        <InfoStackInput title="Local" value={account.is_local ? 'Yes' : 'No'} readonly />
 
         {#if isEditing}
             <InfoStackInput 

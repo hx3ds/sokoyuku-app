@@ -107,8 +107,10 @@
         transition: transform 0.2s;
     }
 
-    .color-btn:hover {
-        transform: scale(1.1);
+    @media (hover: hover) and (pointer: fine) {
+        .color-btn:hover {
+            transform: scale(1.1);
+        }
     }
 
     @keyframes slideDown {
@@ -134,9 +136,11 @@
         cursor: pointer;
         transition: all 0.2s;
     }
-    :global(.control-btn:hover) {
-        color: #0366d6;
-        background: #f6f8fa;
+    @media (hover: hover) and (pointer: fine) {
+        :global(.control-btn:hover) {
+            color: #0366d6;
+            background: #f6f8fa;
+        }
     }
     :global(.control-btn.active) {
          color: #0366d6;

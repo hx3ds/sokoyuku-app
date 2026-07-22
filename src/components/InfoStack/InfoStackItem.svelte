@@ -129,8 +129,10 @@
         align-items: center;
     }
 
-    .list-item.hoverable:hover {
-        background-color: #f6f8fa;
+    @media (hover: hover) and (pointer: fine) {
+        .list-item.hoverable:hover {
+            background-color: #f6f8fa;
+        }
     }
 
     .start-slot {
@@ -215,7 +217,9 @@
         cursor: pointer;
     }
 
-    .main-content-wrapper.hoverable:hover {
-        background-color: #f6f8fa;
+    @media (hover: hover) and (pointer: fine) {
+        .main-content-wrapper.hoverable:hover {
+            background-color: #f6f8fa;
+        }
     }
 </style>

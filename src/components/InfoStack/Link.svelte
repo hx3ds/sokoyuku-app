@@ -65,7 +65,9 @@
         transition: color 0.2s;
         border: 1px solid transparent;
     }
-    .link-block:hover {
-        color: var(--color-primary, #0088cc);
+    @media (hover: hover) and (pointer: fine) {
+        .link-block:hover {
+            color: var(--color-primary, #0088cc);
+        }
     }
 </style>

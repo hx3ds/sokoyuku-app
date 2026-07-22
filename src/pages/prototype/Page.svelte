@@ -34,7 +34,12 @@
         next_prototype_id?: number | null;
         is_author?: boolean;
         is_local?: boolean;
+        terms_of_use?: string | null;
+        privacy_policy?: string | null;
     };
+
+    const DEFAULT_TERMS_URL = 'https://sokoyuku.com/legal/creator-contract';
+    const DEFAULT_PRIVACY_URL = 'https://sokoyuku.com/legal/model-privacy';
 
     let { prototypeId = null } = $props() as { prototypeId?: string | number | null };
     let prototype = $state<Prototype | null>(null);
@@ -46,6 +51,11 @@
     let token = $state<string | null>(null);
     let showTokenModal = $state(false);
     let tokenLoading = $state(false);
+
+    const termsUrl = $derived((prototype?.terms_of_use || '').trim() || DEFAULT_TERMS_URL);
+    const privacyUrl = $derived((prototype?.privacy_policy || '').trim() || DEFAULT_PRIVACY_URL);
+    const termsLabel = $derived((prototype?.terms_of_use || '').trim() ? 'Custom Terms of Use' : 'Standard Contract');
+    const privacyLabel = $derived((prototype?.privacy_policy || '').trim() ? 'Custom Privacy Policy' : 'Standard Model Privacy Policy');
 
     $effect(() => {
         if (prototypeId) {
@@ -64,7 +74,12 @@
 
     async function loadPrototype() {
         loading = true;
-        prototype = await fetchPrototype(prototypeId);
+        const data = await fetchPrototype(prototypeId);
+        if (data) {
+            data.terms_of_use = data.terms_of_use ?? '';
+            data.privacy_policy = data.privacy_policy ?? '';
+        }
+        prototype = data;
         loading = false;
     }
 
@@ -98,6 +113,8 @@
                 : null,
             reply_window: Number.parseInt(String(prototype.reply_window ?? ''), 10) || 0,
             is_local: Boolean(prototype.is_local),
+            terms_of_use: (prototype.terms_of_use ?? '').trim(),
+            privacy_policy: (prototype.privacy_policy ?? '').trim(),
         };
 
         const res = await updatePrototype(data);
@@ -191,6 +208,22 @@
             <InfoStackInput title="Local" value={prototype!.is_local ? 'Yes' : 'No'} readonly />
 
             <InfoStackInput title="Access Point" id="accessPoint" bind:value={prototype!.access_point} readonly={!isEditing || Boolean(prototype!.is_local)} />
+
+            {#if isEditing}
+                <InfoStackInput title="Terms of Use URL" id="protoTermsOfUse" bind:value={prototype!.terms_of_use} placeholder="Leave empty for standard contract" />
+                <InfoStackInput title="Privacy Policy URL" id="protoPrivacyPolicy" bind:value={prototype!.privacy_policy} placeholder="Leave empty for standard model privacy" />
+            {:else}
+                <InfoStackItem title="Terms of Use">
+                    <a href={termsUrl} target="_blank" rel="noopener noreferrer" style="color: #0366d6; text-decoration: none; word-break: break-all;">
+                        {termsLabel}
+                    </a>
+                </InfoStackItem>
+                <InfoStackItem title="Privacy Policy">
+                    <a href={privacyUrl} target="_blank" rel="noopener noreferrer" style="color: #0366d6; text-decoration: none; word-break: break-all;">
+                        {privacyLabel}
+                    </a>
+                </InfoStackItem>
+            {/if}
             
             <InfoStackSelect title="Status" id="protoStatus" bind:value={prototype!.status} disabled={!isEditing}>
                 <option value="">Not Set</option>
@@ -200,7 +233,7 @@
             
             <InfoStackInput title="Max Chats" type="number" id="maxChats" bind:value={prototype!.max_chats} readonly={!isEditing} min="1" />
             
-            <InfoStackSelect title="Private" id="protoPrivate" bind:value={prototype!.private} disabled={!isEditing}>
+            <InfoStackSelect title="Private" id="protoPrivate" bind:value={prototype!.private} disabled={!isEditing || Boolean(prototype!.is_local)}>
                 <option value={false}>No</option>
                 <option value={true}>Yes</option>
             </InfoStackSelect>

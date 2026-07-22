@@ -63,7 +63,7 @@ test.describe('Local Conductor E2E', () => {
         access_point: accessPoint,
         path: 'prototypes.passive',
         status: 'active',
-        private: false,
+        private: true,
         max_chats: 1,
         charge: 100,
         type: 'token',

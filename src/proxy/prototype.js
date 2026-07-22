@@ -21,7 +21,12 @@ export async function fetchPrototype(id) {
 }
 
 export function createPrototype(data) {
-    return request('/api/add_prototype', { body: data });
+    const body = { ...(data || {}) };
+    if (Boolean(body.is_local)) {
+        body.is_local = true;
+        body.private = true;
+    }
+    return request('/api/add_prototype', { body });
 }
 
 export function deletePrototype(prototypeId) {
@@ -52,6 +57,8 @@ export async function updatePrototype(data) {
         'billing_interval',
         'reply_window',
         'is_local',
+        'terms_of_use',
+        'privacy_policy',
     ];
 
     const missingRequired = requiredKeys.some((key) => data?.[key] == null);
@@ -61,13 +68,14 @@ export async function updatePrototype(data) {
     if (!current) return { result: 1, msg: 'Prototype not found' };
 
     const body = { ...current, ...data };
+    const isLocal = Boolean(body.is_local);
     const normalized = {
         ...body,
         name: body.name ?? '',
         description: body.description ?? '',
         access_point: body.access_point ?? '',
         status: body.status ?? '',
-        private: body.private ?? false,
+        private: isLocal ? true : (body.private ?? false),
         max_chats: body.max_chats ?? 1,
         charge: body.charge ?? 0,
         type: body.type ?? 'token',
@@ -75,7 +83,9 @@ export async function updatePrototype(data) {
             ? (body.billing_interval ?? 'monthly')
             : null,
         reply_window: body.reply_window ?? 0,
-        is_local: Boolean(body.is_local),
+        is_local: isLocal,
+        terms_of_use: body.terms_of_use ?? '',
+        privacy_policy: body.privacy_policy ?? '',
     };
     return request('/api/change_prototype', { body: normalized });
 }

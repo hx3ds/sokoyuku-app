@@ -2,6 +2,7 @@
     import InfoStackItem from './InfoStackItem.svelte';
 
     let {
+        id = undefined,
         title = '',
         description = '',
         checked = $bindable(),
@@ -26,6 +27,7 @@
     {/if}
     {#snippet actions()}
         <input 
+            {id}
             type="checkbox" 
             {required} 
             bind:checked 

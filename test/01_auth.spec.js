@@ -11,22 +11,28 @@ test.describe('Authentication Flow', () => {
   
   test('should fail with invalid email', async ({ page }) => {
     await page.goto('/signup');
-    await page.getByPlaceholder('Enter your email').fill('invalid-email');
+    await page.locator('#signupEmail').fill('invalid-email');
     await page.getByRole('button', { name: 'Get Code' }).click();
-    await expect(page.getByText('Please enter a valid email address')).toBeVisible();
+    await expect.poll(async () => {
+      return page.locator('#signupEmail').evaluate((el) => {
+        if (!(el instanceof HTMLInputElement)) return '';
+        return el.validationMessage || (el.validity.valid ? '' : 'invalid');
+      });
+    }).not.toBe('');
+    await expect(page.getByRole('button', { name: 'Get Code' })).toBeVisible();
   });
 
   test('should reject invalid verification code', async ({ page }) => {
     const user = generateUser();
     await page.goto('/signup');
     
-    await page.getByPlaceholder('Enter your email').fill(user.email);
+    await page.locator('#signupEmail').fill(user.email);
     await page.getByRole('button', { name: 'Get Code' }).click();
     
-    await page.getByPlaceholder('Enter 6-digit code').fill('000000');
-    await page.getByPlaceholder('Enter your full name').fill(user.fullName);
-    await page.getByPlaceholder('Enter your username').fill(user.username);
-    await page.getByPlaceholder('Enter your password').fill(user.password);
+    await page.locator('#signupVerificationCode').fill('000000');
+    await page.locator('#signupFullName').fill(user.fullName);
+    await page.locator('#signupUsername').fill(user.username);
+    await page.locator('#signupPassword').fill(user.password);
     
     await page.locator('#signupTerms').check();
     await page.getByRole('button', { name: 'Sign Up' }).click();
@@ -38,7 +44,7 @@ test.describe('Authentication Flow', () => {
     const user = generateUser();
     await page.goto('/signup');
     
-    await page.getByPlaceholder('Enter your email').fill(user.email);
+    await page.locator('#signupEmail').fill(user.email);
     await page.getByRole('button', { name: 'Get Code' }).click();
     
     let code = null;
@@ -49,10 +55,10 @@ test.describe('Authentication Flow', () => {
     }
     expect(code).toBeTruthy();
     
-    await page.getByPlaceholder('Enter 6-digit code').fill(code);
-    await page.getByPlaceholder('Enter your full name').fill(user.fullName);
-    await page.getByPlaceholder('Enter your username').fill(user.username);
-    await page.getByPlaceholder('Enter your password').fill(user.password);
+    await page.locator('#signupVerificationCode').fill(code);
+    await page.locator('#signupFullName').fill(user.fullName);
+    await page.locator('#signupUsername').fill(user.username);
+    await page.locator('#signupPassword').fill(user.password);
     
     await page.locator('#signupTerms').check();
 
@@ -69,10 +75,10 @@ test.describe('Authentication Flow', () => {
       });
     });
 
-    await page.goto('/signin-password');
-    await page.getByPlaceholder('Enter your email or username').fill('bad@example.com');
-    await page.getByPlaceholder('Enter your password').fill('badpassword');
-    await page.getByRole('checkbox').check();
+    await page.goto('/signin');
+    await page.locator('#signinIdentifier').fill('bad@example.com');
+    await page.locator('#signinPassword').fill('badpassword');
+    await page.locator('#signinTerms').check();
     await page.getByRole('button', { name: 'Enter' }).click();
 
     await expect(page.getByText('Invalid credentials')).toBeVisible();

@@ -63,7 +63,7 @@ export async function renderGoogleSignInButton(container, onCredential) {
         theme: 'outline',
         size: 'large',
         text: 'signin_with',
-        shape: 'rectangular',
+        shape: 'pill',
         width: Math.max(container.clientWidth || 0, 240),
     });
     return true;

@@ -6,7 +6,7 @@
 
     /**
      * @typedef {{ model_id?: string, name?: string }} AccountModel
-     * @typedef {{ account_id?: string, account_username?: string, name?: string, models?: AccountModel[], assignedModelName?: string, assignedModelStatus?: 'current' | 'other' }} AccountOption
+     * @typedef {{ account_id?: string, account_username?: string, name?: string, type?: string, models?: AccountModel[], assignedModelName?: string, assignedModelStatus?: 'current' | 'other' }} AccountOption
      */
 
     let {
@@ -96,7 +96,7 @@
             <InfoStackItem 
                 onclick={() => { if (!loading) onselect(account); }}
                 title={account.name}
-                description={`@${account.account_username}`}
+                description={account.type === 'discord' ? account.account_username : `@${account.account_username}`}
             >
                 {#snippet titleSuffix()}
                     {#if assignedModelText}

@@ -46,12 +46,22 @@
         placeholder="Enter name"
         required
     />
+    <InfoStackSelect
+        id="type"
+        title="Type"
+        bind:value={form.type}
+        required
+    >
+        <option value="telegram">Telegram</option>
+        <option value="matrix">Matrix</option>
+        <option value="discord">Discord</option>
+    </InfoStackSelect>
     <InfoStackInput 
         id="account_username" 
         type="text" 
         bind:value={form.account_username} 
-        title="Account Username"
-        placeholder="Enter username"
+        title={form.type === 'discord' ? 'Client ID' : 'Account Username'}
+        placeholder={form.type === 'discord' ? 'Enter Discord application client ID' : 'Enter username'}
         required
     />
     <InfoStackInput 
@@ -67,16 +77,6 @@
         description={form.is_local ? 'Token will be encrypted with your Conductor public key before upload' : 'Token will be stored normally'}
         bind:checked={form.is_local}
     />
-    <InfoStackSelect
-        id="type"
-        title="Type"
-        bind:value={form.type}
-        required
-    >
-        <option value="telegram">Telegram</option>
-        <option value="matrix">Matrix</option>
-        <option value="discord">Discord</option>
-    </InfoStackSelect>
     {#if form.type === 'matrix'}
         <InfoStackInput 
             id="server" 

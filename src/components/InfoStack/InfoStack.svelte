@@ -158,8 +158,10 @@
         color: inherit;
     }
 
-    .header-button:hover {
-        background-color: var(--color-bg-subtle, #f6f8fa);
+    @media (hover: hover) and (pointer: fine) {
+        .header-button:hover {
+            background-color: var(--color-bg-subtle, #f6f8fa);
+        }
     }
 
     .header-static {

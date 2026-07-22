@@ -103,17 +103,19 @@
         padding: 0;
     }
 
-    .btn.icon-button:hover:not(:disabled) {
-        background-color: color-mix(in srgb, var(--color-primary), transparent 80%);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    @media (hover: hover) and (pointer: fine) {
+        .btn.icon-button:hover:not(:disabled) {
+            background-color: color-mix(in srgb, var(--color-primary), transparent 80%);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .btn.icon-button:hover:not(:disabled) :global(svg) {
+            color: var(--color-primary);
+        }
     }
     
     .btn.icon-button:active:not(:disabled) {
         box-shadow: none;
-    }
-
-    .btn.icon-button:hover:not(:disabled) :global(svg) {
-        color: var(--color-primary);
     }
     
     .btn.icon-button :global(svg) {
@@ -140,9 +142,11 @@
         user-select: none;
     }
 
-    .btn.text-button:hover:not(:disabled) {
-        filter: brightness(110%);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    @media (hover: hover) and (pointer: fine) {
+        .btn.text-button:hover:not(:disabled) {
+            filter: brightness(110%);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
     }
 
     .btn.text-button:active:not(:disabled) {

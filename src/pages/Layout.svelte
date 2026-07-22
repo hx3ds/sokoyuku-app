@@ -43,8 +43,10 @@
         display: flex;
         justify-content: center;
         min-height: 120vh;
-        padding-top: 64px; /* header height */
-        padding-bottom: 64px; /* bottom nav height */
+        padding-top: calc(64px + env(safe-area-inset-top, 0px));
+        padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+        padding-left: env(safe-area-inset-left, 0px);
+        padding-right: env(safe-area-inset-right, 0px);
     }
 
     .content-wrapper {

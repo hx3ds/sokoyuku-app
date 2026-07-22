@@ -84,9 +84,11 @@
         font-weight: 500;
         text-decoration: none;
     }
-    :global(.bottom-link:hover) {
-        color: var(--color-primary);
-        text-decoration: none;
+    @media (hover: hover) and (pointer: fine) {
+        :global(.bottom-link:hover) {
+            color: var(--color-primary);
+            text-decoration: none;
+        }
     }
 
     :global(.bottom-link[aria-current="page"]) {

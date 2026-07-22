@@ -21,8 +21,12 @@ export function getModelChats(modelId) {
     });
 }
 
-export function removeChatFromModel(modelId, chatId) {
+export function removeChatFromModel(modelId, chatId, accountId) {
     return request('/api/remove_chat_from_model', {
-        body: { model_id: modelId, chat_id: chatId }
+        body: {
+            model_id: modelId,
+            chat_id: chatId,
+            account_id: accountId,
+        },
     });
 }

@@ -28,13 +28,21 @@
         charge: 100,
         reply_window: 600,
         private: false,
-        is_local: false
+        is_local: false,
+        terms_of_use: '',
+        privacy_policy: ''
     });
 
     // Reset form when modal opens
     $effect(() => {
         if (show) {
             resetForm();
+        }
+    });
+
+    $effect(() => {
+        if (newPrototype.is_local) {
+            newPrototype.private = true;
         }
     });
 
@@ -50,7 +58,9 @@
             charge: 100,
             reply_window: 600,
             private: false,
-            is_local: false
+            is_local: false,
+            terms_of_use: '',
+            privacy_policy: ''
         };
         createError = '';
         creating = false;
@@ -62,7 +72,8 @@
 
         const payload = {
             ...newPrototype,
-            billing_interval: newPrototype.type === 'subscription' ? (newPrototype.billing_interval || 'monthly') : null
+            billing_interval: newPrototype.type === 'subscription' ? (newPrototype.billing_interval || 'monthly') : null,
+            private: newPrototype.is_local ? true : newPrototype.private
         };
         const res = await createPrototype(payload);
 
@@ -112,6 +123,16 @@
             rows={3} 
             placeholder="Describe what this prototype does..." 
         />
+        <InfoStackInput
+            title="Terms of Use URL"
+            bind:value={newPrototype.terms_of_use}
+            placeholder="Optional custom terms URL"
+        />
+        <InfoStackInput
+            title="Privacy Policy URL"
+            bind:value={newPrototype.privacy_policy}
+            placeholder="Optional custom privacy policy URL"
+        />
 
         <InfoStackItem>
             <h4 style="font-weight: 600; color: var(--color-dark);">Configuration</h4>
@@ -147,14 +168,18 @@
                 <option value="yearly">yearly</option>
             </InfoStackSelect>
         {/if}
-        <InfoStackToggle 
-            title="Private Visibility" 
-            description={newPrototype.private ? 'Only visible to you' : 'Visible to everyone'}
-            bind:checked={newPrototype.private} 
-        />
+        {#if newPrototype.is_local}
+            <InfoStackInput title="Private Visibility" value="Yes (required for local)" readonly />
+        {:else}
+            <InfoStackToggle 
+                title="Private Visibility" 
+                description={newPrototype.private ? 'Only visible to you' : 'Visible to everyone'}
+                bind:checked={newPrototype.private} 
+            />
+        {/if}
         <InfoStackToggle
             title="Local Prototype"
-            description={newPrototype.is_local ? 'Use a local Conductor access point' : 'Use a remote Station access point'}
+            description={newPrototype.is_local ? 'Private local Conductor access point' : 'Use a remote Station access point'}
             bind:checked={newPrototype.is_local}
         />
 

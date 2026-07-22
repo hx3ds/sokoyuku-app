@@ -10,7 +10,7 @@ test.describe('Billing & Credits', () => {
         body: JSON.stringify({
           result: 0,
           data: {
-            url: 'http://localhost:28880/mock_stripe_checkout'
+            url: 'http://localhost:8880/mock_stripe_checkout'
           }
         })
       });
@@ -36,7 +36,7 @@ test.describe('Billing & Credits', () => {
     // Expect redirection to mock stripe URL
     // We can check if the page url changes to the mocked one, but since it's a full redirect (window.location.href),
     // Playwright might wait for load.
-    // The mocked URL is on localhost:28880/mock_stripe_checkout, which doesn't exist, so it might 404.
+    // The mocked URL is on localhost:8880/mock_stripe_checkout, which doesn't exist, so it might 404.
     // That's fine, we just want to know it tried to go there.
     await expect(page).toHaveURL(/mock_stripe_checkout/);
   });

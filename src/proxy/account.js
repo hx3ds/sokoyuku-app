@@ -20,7 +20,7 @@ export function requestOtpForChat(accountId, modelId) {
 
 export function addAccount(accountData) {
     const type = accountData.type ?? 'telegram';
-    const is_local = Boolean(accountData.is_local ?? accountData.local ?? false);
+    const is_local = Boolean(accountData.is_local ?? false);
     const body = {
         account_username: accountData.account_username,
         account_token: accountData.account_token,
@@ -45,7 +45,7 @@ export function addAccount(accountData) {
 }
 
 export function changeAccount(accountData) {
-    const is_local = Boolean(accountData.is_local ?? accountData.local ?? false);
+    const is_local = Boolean(accountData.is_local ?? false);
     const body = {
         account_id: normalizeId(accountData.account_id),
         account_token: accountData.account_token,
