@@ -126,7 +126,7 @@
 
     function formatAccountLabel(account: ModelAccount | null | undefined): string {
         if (!account?.acct_username) return 'Not specified';
-        if (account.acct_type === 'discord') return account.acct_username;
+        if (account.acct_type === 'discord' || account.acct_type === 'whatsapp_cloud') return account.acct_username;
         return `@${account.acct_username}`;
     }
 

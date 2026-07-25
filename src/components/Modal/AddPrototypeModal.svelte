@@ -29,6 +29,7 @@
         reply_window: 600,
         private: false,
         is_local: false,
+        call_support: false,
         terms_of_use: '',
         privacy_policy: ''
     });
@@ -59,6 +60,7 @@
             reply_window: 600,
             private: false,
             is_local: false,
+            call_support: false,
             terms_of_use: '',
             privacy_policy: ''
         };
@@ -73,6 +75,7 @@
         const payload = {
             ...newPrototype,
             billing_interval: newPrototype.type === 'subscription' ? (newPrototype.billing_interval || 'monthly') : null,
+            call_support: newPrototype.type === 'subscription' ? Boolean(newPrototype.call_support) : false,
             private: newPrototype.is_local ? true : newPrototype.private
         };
         const res = await createPrototype(payload);
@@ -182,6 +185,13 @@
             description={newPrototype.is_local ? 'Private local Conductor access point' : 'Use a remote Station access point'}
             bind:checked={newPrototype.is_local}
         />
+        {#if newPrototype.type === 'subscription'}
+            <InfoStackToggle
+                title="Call Support"
+                description={newPrototype.call_support ? 'Voice calls enabled on all platforms' : 'Voice calls disabled'}
+                bind:checked={newPrototype.call_support}
+            />
+        {/if}
 
         <InfoStackItem>
             <h4 style="font-weight: 600; color: var(--color-dark);">Pricing</h4>

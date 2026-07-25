@@ -12,8 +12,12 @@
     } = $props();
     
     let isActive = $state(false);
+    let isExternal = $derived(
+        Boolean(rest.target === '_blank' || /^https?:\/\//i.test(href))
+    );
 
     function handleClick(e) {
+        if (isExternal) return;
         e.preventDefault();
         // Push state and dispatch a custom event that App.svelte listens to
         history.pushState(null, '', href);
@@ -21,7 +25,7 @@
     }
 
     function checkActive() {
-        if (typeof window === 'undefined') return;
+        if (typeof window === 'undefined' || isExternal) return;
         const currentPath = window.location.pathname;
         if (href === '/') {
             isActive = currentPath === '/';

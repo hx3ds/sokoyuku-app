@@ -96,7 +96,7 @@
             <InfoStackItem 
                 onclick={() => { if (!loading) onselect(account); }}
                 title={account.name}
-                description={account.type === 'discord' ? account.account_username : `@${account.account_username}`}
+                description={(account.type === 'discord' || account.type === 'whatsapp_cloud') ? account.account_username : `@${account.account_username}`}
             >
                 {#snippet titleSuffix()}
                     {#if assignedModelText}

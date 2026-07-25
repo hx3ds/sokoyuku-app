@@ -20,6 +20,7 @@
   import Model from './pages/model/Page.svelte';
   import Prototype from './pages/prototype/Page.svelte';
   import Prototypes from './pages/prototypes/Page.svelte';
+  import Call from './pages/call/Page.svelte';
   import NotFound from './pages/not_found/Page.svelte';
   import Modal from './components/Modal/Modal.svelte';
 
@@ -60,6 +61,7 @@
     { path: '/model/:modelId', component: Model },
     { path: '/prototypes/:username', component: Prototypes },
     { path: '/prototype/:prototypeId', component: Prototype },
+    { path: '/call/:modelId', component: Call },
     { path: '/credits', component: Credits }
   ];
 

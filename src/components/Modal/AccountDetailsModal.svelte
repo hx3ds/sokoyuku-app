@@ -14,15 +14,19 @@
     } = $props();
 
     let isEditing = $state(false);
-    let editForm = $state({ account_id: null, account_username: '', name: '', description: '', account_token: '', type: 'telegram', server: '', is_local: false });
-
-    $effect(() => {
-        if (account) {
-        }
+    let editForm = $state({
+        account_id: null,
+        account_username: '',
+        name: '',
+        description: '',
+        account_token: '',
+        type: 'telegram',
+        server: '',
+        is_local: false,
     });
 
     $effect(() => {
-        if (editForm.type !== 'matrix') {
+        if (editForm.type !== 'matrix' && editForm.type !== 'whatsapp_cloud') {
             editForm.server = '';
         }
     });
@@ -35,20 +39,47 @@
             description: account.description,
             account_token: '',
             type: account.type || 'telegram',
-            server: account.server || '',
-            is_local: Boolean(account.is_local)
+            server: '',
+            is_local: Boolean(account.is_local),
         };
         isEditing = true;
     }
 
     function handleCancel() {
         isEditing = false;
-        editForm = { account_id: null, account_username: '', name: '', description: '', account_token: '', type: 'telegram', server: '', is_local: false };
+        editForm = {
+            account_id: null,
+            account_username: '',
+            name: '',
+            description: '',
+            account_token: '',
+            type: 'telegram',
+            server: '',
+            is_local: false,
+        };
     }
 
     async function handleSave() {
         await onsave(editForm);
         isEditing = false;
+    }
+
+    function usernameLabel(type) {
+        if (type === 'discord') return 'Client ID';
+        if (type === 'whatsapp_cloud') return 'Phone Number ID';
+        return 'Username';
+    }
+
+    function usernameDisplay(account) {
+        const type = account?.type || 'telegram';
+        const value = account?.account_username || '';
+        if (type === 'discord' || type === 'whatsapp_cloud') return value;
+        return `@${value}`;
+    }
+
+    function tokenLabel(type) {
+        if (type === 'whatsapp_cloud') return 'Access Token';
+        return 'Token';
     }
 </script>
 
@@ -71,17 +102,14 @@
             <InfoStackInput title="Name" value={account.name} readonly />
         {/if}
 
-        {#if (account.type || 'telegram') === 'discord'}
-            <InfoStackInput title="Client ID" value={account.account_username || ''} readonly />
-        {:else}
-            <InfoStackInput title="Username" value={`@${account.account_username}`} readonly />
-        {/if}
+        <InfoStackInput title={usernameLabel(account.type || 'telegram')} value={usernameDisplay(account)} readonly />
 
         {#if isEditing}
             <InfoStackSelect title="Type" bind:value={editForm.type} required>
                 <option value="telegram">Telegram</option>
                 <option value="matrix">Matrix</option>
                 <option value="discord">Discord</option>
+                <option value="whatsapp_cloud">WhatsApp Business</option>
             </InfoStackSelect>
             {#if editForm.type === 'matrix'}
                 <InfoStackInput
@@ -89,6 +117,14 @@
                     bind:value={editForm.server}
                     placeholder="Enter Matrix homeserver URL"
                     required
+                />
+            {/if}
+            {#if editForm.type === 'whatsapp_cloud'}
+                <InfoStackInput
+                    title="App Secret"
+                    bind:value={editForm.server}
+                    type="password"
+                    placeholder="Enter new app secret to change"
                 />
             {/if}
         {:else}
@@ -102,13 +138,13 @@
 
         {#if isEditing}
             <InfoStackInput 
-                title="Token" 
+                title={tokenLabel(editForm.type)} 
                 bind:value={editForm.account_token} 
                 type="password" 
-                placeholder={editForm.is_local ? "Enter new token to encrypt" : "Enter new token to change"} 
+                placeholder={editForm.is_local ? "Enter new token to encrypt" : (editForm.type === 'whatsapp_cloud' ? "Enter new access token to change" : "Enter new token to change")} 
             />
         {:else}
-            <InfoStackInput title="Token" value="••••••••" readonly />
+            <InfoStackInput title={tokenLabel(account.type || 'telegram')} value="••••••••" readonly />
         {/if}
 
         {#if isEditing}

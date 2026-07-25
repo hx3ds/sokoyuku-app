@@ -59,6 +59,7 @@ export async function updatePrototype(data) {
         'is_local',
         'terms_of_use',
         'privacy_policy',
+        'call_support',
     ];
 
     const missingRequired = requiredKeys.some((key) => data?.[key] == null);
@@ -86,6 +87,7 @@ export async function updatePrototype(data) {
         is_local: isLocal,
         terms_of_use: body.terms_of_use ?? '',
         privacy_policy: body.privacy_policy ?? '',
+        call_support: Boolean(body.call_support) && (body.type ?? 'token') === 'subscription',
     };
     return request('/api/change_prototype', { body: normalized });
 }

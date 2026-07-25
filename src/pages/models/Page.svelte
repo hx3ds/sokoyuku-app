@@ -4,7 +4,8 @@
     import * as AccountAPI from '../../proxy/account.js';
     import * as SubAPI from '../../proxy/subscription.js';
     import * as ChatAPI from '../../proxy/chat.js';
-    import { showConfirm, showError, showSuccess } from '../../components/Modal/state.svelte.js';
+    import { listOpenCallSessions } from '../../proxy/call.js';
+    import { showConfirm, showError, showSuccess, showAlert } from '../../components/Modal/state.svelte.js';
     import { modelStore } from '../../store/models.svelte.js';
     import { accountStore } from '../../store/accounts.svelte.js';
 
@@ -37,6 +38,7 @@
         description?: string | null;
         status?: string | null;
         type?: string | null;
+        call_support?: boolean;
         period?: string | null;
         auto_renew?: boolean | null;
         stripe_subscription_id?: string | null;
@@ -74,13 +76,49 @@
     let isEditingAccount: boolean = $state(false);
     let managedChats: any[] = $state([]);
     let isAccountsSectionExpanded: boolean = $state(false);
+    let activeCallModelIds: Set<string> = $state(new Set());
+    let activeCallPoll: ReturnType<typeof setInterval> | null = null;
+
+    function normalizeModelId(id: string | null | undefined) {
+        return String(id || '').replace(/-/g, '').toLowerCase();
+    }
+
+    function modelHasActiveCall(model: Model) {
+        return activeCallModelIds.has(normalizeModelId(model.model_id));
+    }
+
+    async function refreshActiveCalls() {
+        try {
+            const res = await listOpenCallSessions();
+            if (res?.result !== 0) return;
+            const sessions = Array.isArray(res?.data?.sessions) ? res.data.sessions : [];
+            activeCallModelIds = new Set(
+                sessions.map((s: { model_id?: string }) => normalizeModelId(s.model_id)).filter(Boolean)
+            );
+        } catch (_) {}
+    }
 
     onMount(async () => {
         await loadData();
+        await refreshActiveCalls();
         document.addEventListener('click', closeMenu);
+        window.addEventListener('focus', refreshActiveCalls);
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        activeCallPoll = setInterval(() => {
+            if (document.visibilityState === 'visible') void refreshActiveCalls();
+        }, 8000);
     });
 
-    onDestroy(() => document.removeEventListener('click', closeMenu));
+    function onVisibilityChange() {
+        if (document.visibilityState === 'visible') void refreshActiveCalls();
+    }
+
+    onDestroy(() => {
+        document.removeEventListener('click', closeMenu);
+        window.removeEventListener('focus', refreshActiveCalls);
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+        if (activeCallPoll) clearInterval(activeCallPoll);
+    });
 
     const formatDate = (d: string | null | undefined) =>
         d ? new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '';
@@ -299,7 +337,19 @@
             const copied = await copyTextToClipboard(startCmd);
             if (!copied) {
                 prompt('Copy start command:', startCmd);
-            } else {
+            }
+            if ((account?.type || '') === 'whatsapp_cloud') {
+                const verifyToken = String(res.data?.verify_token || '').trim();
+                const webhookURL = String(res.data?.webhook_url || '').trim();
+                const lines = ['Start command copied!'];
+                lines.push('');
+                lines.push('Configure Meta WhatsApp webhook settings:');
+                if (verifyToken) lines.push(`Verify token: ${verifyToken}`);
+                if (webhookURL) lines.push(`Webhook URL: ${webhookURL}`);
+                lines.push('');
+                lines.push('Verify token is derived from this account id. Set both values in Meta before messaging.');
+                await showAlert(lines.join('\n'), 'WhatsApp Business', 'info');
+            } else if (copied) {
                 showSuccess('Start command copied!');
             }
             closeModal();
@@ -338,7 +388,19 @@
             const copied = await copyTextToClipboard(startCmd);
             if (!copied) {
                 prompt('Copy start command:', startCmd);
-            } else {
+            }
+            if ((account?.type || '') === 'whatsapp_cloud') {
+                const verifyToken = String(res.data?.verify_token || '').trim();
+                const webhookURL = String(res.data?.webhook_url || '').trim();
+                const lines = ['Start command copied!'];
+                lines.push('');
+                lines.push('Configure Meta WhatsApp webhook settings:');
+                if (verifyToken) lines.push(`Verify token: ${verifyToken}`);
+                if (webhookURL) lines.push(`Webhook URL: ${webhookURL}`);
+                lines.push('');
+                lines.push('Verify token is derived from this account id. Set both values in Meta before messaging.');
+                await showAlert(lines.join('\n'), 'WhatsApp Business', 'info');
+            } else if (copied) {
                 showSuccess('Start command copied!');
             }
             closeModal();
@@ -504,9 +566,28 @@
                     <span class="account-count-badge">
                         {getAssignedAccountCount(model)} {getAssignedAccountCount(model) === 1 ? 'account' : 'accounts'}
                     </span>
+                    {#if modelHasActiveCall(model)}
+                        <span class="in-call-badge" title="You have an active call with this model">In call</span>
+                    {/if}
                 {/snippet}
 
                 {#snippet actions()}
+                    {#if model.call_support && model.type === 'subscription'}
+                        <Button
+                            variant="icon-button"
+                            aria-label={modelHasActiveCall(model) ? 'Return to call' : 'Call'}
+                            className={modelHasActiveCall(model) ? 'call-active' : ''}
+                            onclick={(e: MouseEvent) => {
+                                e.stopPropagation();
+                                history.pushState(null, '', `/call/${model.model_id}`);
+                                window.dispatchEvent(new PopStateEvent('popstate'));
+                            }}
+                        >
+                            <svg style="width: 1.25rem; height: 1.25rem; {modelHasActiveCall(model) ? 'color: #059669;' : ''}" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
+                            </svg>
+                        </Button>
+                    {/if}
                     <OpenChatButton onclick={(e: MouseEvent) => { e.stopPropagation(); openModal('accountSelect', model); }} />
                     
                     <ActionMenu 
@@ -578,7 +659,7 @@
 
                 {#snippet meta()}
                     <div style="color: #586069; font-size: 0.875rem;">
-                        <span>{account.type === 'discord' ? account.account_username : `@${account.account_username}`} · Group: {account.account_group || 'free'}</span>
+                        <span>{(account.type === 'discord' || account.type === 'whatsapp_cloud') ? account.account_username : `@${account.account_username}`} · Group: {account.account_group || 'free'}</span>
                     </div>
                 {/snippet}
 
@@ -662,6 +743,19 @@
         border-radius: 999px;
         background: #eef2ff;
         color: #4338ca;
+        font-size: 0.75rem;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+
+    .in-call-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.125rem 0.5rem;
+        border-radius: 999px;
+        background: #ecfdf5;
+        color: #047857;
         font-size: 0.75rem;
         font-weight: 500;
         white-space: nowrap;

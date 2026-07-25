@@ -12,10 +12,18 @@
         onsubmit = () => {} 
     } = $props();
 
-    let form = $state({ name: '', account_username: '', description: '', account_token: '', type: 'telegram', server: '', is_local: false });
+    let form = $state({
+        name: '',
+        account_username: '',
+        description: '',
+        account_token: '',
+        type: 'telegram',
+        server: '',
+        is_local: false,
+    });
 
     $effect(() => {
-        if (form.type !== 'matrix') {
+        if (form.type !== 'matrix' && form.type !== 'whatsapp_cloud') {
             form.server = '';
         }
     });
@@ -25,6 +33,23 @@
         if (e.key === 'Enter') {
             onsubmit(form);
         }
+    }
+
+    function usernameTitle() {
+        if (form.type === 'discord') return 'Client ID';
+        if (form.type === 'whatsapp_cloud') return 'Phone Number ID';
+        return 'Account Username';
+    }
+
+    function usernamePlaceholder() {
+        if (form.type === 'discord') return 'Enter Discord application client ID';
+        if (form.type === 'whatsapp_cloud') return 'Enter Meta phone_number_id';
+        return 'Enter username';
+    }
+
+    function tokenTitle() {
+        if (form.type === 'whatsapp_cloud') return 'Access Token';
+        return 'Account Token';
     }
 </script>
 
@@ -55,23 +80,34 @@
         <option value="telegram">Telegram</option>
         <option value="matrix">Matrix</option>
         <option value="discord">Discord</option>
+        <option value="whatsapp_cloud">WhatsApp Business</option>
     </InfoStackSelect>
     <InfoStackInput 
         id="account_username" 
         type="text" 
         bind:value={form.account_username} 
-        title={form.type === 'discord' ? 'Client ID' : 'Account Username'}
-        placeholder={form.type === 'discord' ? 'Enter Discord application client ID' : 'Enter username'}
+        title={usernameTitle()}
+        placeholder={usernamePlaceholder()}
         required
     />
     <InfoStackInput 
         id="account_token" 
         type="password" 
         bind:value={form.account_token} 
-        title="Account Token"
-        placeholder="Enter token"
+        title={tokenTitle()}
+        placeholder={form.type === 'whatsapp_cloud' ? 'Enter access token' : 'Enter token'}
         required
     />
+    {#if form.type === 'whatsapp_cloud'}
+        <InfoStackInput
+            id="server"
+            type="password"
+            bind:value={form.server}
+            title="App Secret"
+            placeholder="Meta app secret"
+            required
+        />
+    {/if}
     <InfoStackToggle
         title="Local Account"
         description={form.is_local ? 'Token will be encrypted with your Conductor public key before upload' : 'Token will be stored normally'}

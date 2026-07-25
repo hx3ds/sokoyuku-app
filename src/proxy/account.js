@@ -29,7 +29,9 @@ export function addAccount(accountData) {
         type,
         is_local,
     };
-    if (accountData.server) {
+    if (type === 'matrix' || type === 'whatsapp_cloud') {
+        body.server = accountData.server;
+    } else if (accountData.server) {
         body.server = accountData.server;
     }
     return (async () => {
@@ -46,15 +48,18 @@ export function addAccount(accountData) {
 
 export function changeAccount(accountData) {
     const is_local = Boolean(accountData.is_local ?? false);
+    const type = accountData.type ?? 'telegram';
     const body = {
         account_id: normalizeId(accountData.account_id),
         account_token: accountData.account_token,
-        type: accountData.type ?? 'telegram',
+        type,
         name: accountData.name,
         description: accountData.description,
         is_local,
     };
-    if (accountData.server) {
+    if (type === 'matrix' || type === 'whatsapp_cloud') {
+        body.server = accountData.server;
+    } else if (accountData.server) {
         body.server = accountData.server;
     }
     return (async () => {

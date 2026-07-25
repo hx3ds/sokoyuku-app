@@ -7,6 +7,7 @@
     import InfoStackInput from '../../components/InfoStack/InfoStackInput.svelte';
     import InfoStackTextarea from '../../components/InfoStack/InfoStackTextarea.svelte';
     import InfoStackSelect from '../../components/InfoStack/InfoStackSelect.svelte';
+    import InfoStackToggle from '../../components/InfoStack/InfoStackToggle.svelte';
     import Button from '../../components/Button/Button.svelte';
     import AddToModelButton from '../../components/Button/AddToModelButton.svelte';
     import PageContainer from '../../components/PageContainer.svelte';
@@ -36,6 +37,7 @@
         is_local?: boolean;
         terms_of_use?: string | null;
         privacy_policy?: string | null;
+        call_support?: boolean;
     };
 
     const DEFAULT_TERMS_URL = 'https://sokoyuku.com/legal/creator-contract';
@@ -69,6 +71,7 @@
             if (!prototype.billing_interval) prototype.billing_interval = 'monthly';
         } else {
             if (prototype.billing_interval) prototype.billing_interval = null;
+            if (prototype.call_support) prototype.call_support = false;
         }
     });
 
@@ -113,6 +116,7 @@
                 : null,
             reply_window: Number.parseInt(String(prototype.reply_window ?? ''), 10) || 0,
             is_local: Boolean(prototype.is_local),
+            call_support: (prototype.type ?? 'token') === 'subscription' ? Boolean(prototype.call_support) : false,
             terms_of_use: (prototype.terms_of_use ?? '').trim(),
             privacy_policy: (prototype.privacy_policy ?? '').trim(),
         };
@@ -213,16 +217,24 @@
                 <InfoStackInput title="Terms of Use URL" id="protoTermsOfUse" bind:value={prototype!.terms_of_use} placeholder="Leave empty for standard contract" />
                 <InfoStackInput title="Privacy Policy URL" id="protoPrivacyPolicy" bind:value={prototype!.privacy_policy} placeholder="Leave empty for standard model privacy" />
             {:else}
-                <InfoStackItem title="Terms of Use">
-                    <a href={termsUrl} target="_blank" rel="noopener noreferrer" style="color: #0366d6; text-decoration: none; word-break: break-all;">
-                        {termsLabel}
-                    </a>
-                </InfoStackItem>
-                <InfoStackItem title="Privacy Policy">
-                    <a href={privacyUrl} target="_blank" rel="noopener noreferrer" style="color: #0366d6; text-decoration: none; word-break: break-all;">
-                        {privacyLabel}
-                    </a>
-                </InfoStackItem>
+                <InfoStackInput title="Terms of Use" value={termsLabel} readonly>
+                    {#snippet end()}
+                        <Link href={termsUrl} target="_blank" rel="noopener noreferrer" aria-label="Open Terms of Use">
+                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            </svg>
+                        </Link>
+                    {/snippet}
+                </InfoStackInput>
+                <InfoStackInput title="Privacy Policy" value={privacyLabel} readonly>
+                    {#snippet end()}
+                        <Link href={privacyUrl} target="_blank" rel="noopener noreferrer" aria-label="Open Privacy Policy">
+                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            </svg>
+                        </Link>
+                    {/snippet}
+                </InfoStackInput>
             {/if}
             
             <InfoStackSelect title="Status" id="protoStatus" bind:value={prototype!.status} disabled={!isEditing}>
@@ -250,6 +262,15 @@
                     <option value="monthly">Monthly</option>
                     <option value="yearly">Yearly</option>
                 </InfoStackSelect>
+                {#if isEditing}
+                    <InfoStackToggle
+                        title="Call Support"
+                        description={prototype!.call_support ? 'Voice calls enabled on all platforms' : 'Voice calls disabled'}
+                        bind:checked={prototype!.call_support}
+                    />
+                {:else}
+                    <InfoStackInput title="Call Support" value={prototype!.call_support ? 'Yes' : 'No'} readonly />
+                {/if}
             {/if}
             
             <InfoStackInput title="Charge" type="number" id="protoCharge" bind:value={prototype!.charge} readonly={!isEditing} step="0.01" min="0" />
