@@ -6,11 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
+    "preview": "npm run build && wrangler dev",
     "check": "svelte-check --tsconfig ./jsconfig.json",
-    "test": "bash -c 'set -euo pipefail; ROOT=\"$(cd .. && pwd)\"; have_cmd(){ command -v \"$1\" >/dev/null 2>&1; }; kill_listen_port(){ port=\"$1\"; pids=\"\"; if have_cmd lsof; then pids=\"$(lsof -nP -iTCP:\"$port\" -sTCP:LISTEN -t 2>/dev/null | sort -u || true)\"; elif have_cmd ss; then pids=\"$(ss -ltnp 2>/dev/null | grep -E \"LISTEN.*[:.]${port}\\\\b\" | grep -oE \"pid=[0-9]+\" | cut -d= -f2 | sort -u || true)\"; fi; if [ -n \"${pids}\" ]; then echo \"Port ${port} is in use (pids: ${pids}). Killing...\"; for pid in ${pids}; do kill -TERM \"${pid}\" 2>/dev/null || true; done; fi; }; cd \"$ROOT\"; bash start_consul.sh local & STACK_PID=$!; cleanup_stack(){ kill -TERM \"$STACK_PID\" 2>/dev/null || true; wait \"$STACK_PID\" 2>/dev/null || true; }; trap cleanup_stack EXIT; consul_ok=0; for _ in {1..240}; do if curl --noproxy \"*\" -fsS --connect-timeout 0.25 --max-time 1 http://localhost:9000/healthz >/dev/null 2>&1; then consul_ok=1; break; fi; sleep 0.25; done; if [ \"$consul_ok\" != \"1\" ]; then echo \"Consul did not become ready at http://localhost:9000/healthz\"; exit 1; fi; kill_listen_port 8880; cd \"$ROOT/sokoyuku-app\"; npm run dev & VITE_PID=$!; cleanup_all(){ kill -TERM \"$VITE_PID\" 2>/dev/null || true; wait \"$VITE_PID\" 2>/dev/null || true; cleanup_stack; }; trap cleanup_all EXIT; app_ok=0; for _ in {1..120}; do if curl --noproxy \"*\" -fsS --connect-timeout 0.25 --max-time 1 http://localhost:8880/ >/dev/null 2>&1; then app_ok=1; break; fi; sleep 0.25; done; if [ \"$app_ok\" != \"1\" ]; then echo \"App did not become ready at http://localhost:8880/\"; exit 1; fi; playwright test --reporter=list \"$@\"' --"
+    "test": "bash -c 'set -euo pipefail; ROOT=\"$(cd .. && pwd)\"; have_cmd(){ command -v \"$1\" >/dev/null 2>&1; }; kill_listen_port(){ port=\"$1\"; pids=\"\"; if have_cmd lsof; then pids=\"$(lsof -nP -iTCP:\"$port\" -sTCP:LISTEN -t 2>/dev/null | sort -u || true)\"; elif have_cmd ss; then pids=\"$(ss -ltnp 2>/dev/null | grep -E \"LISTEN.*[:.]${port}\\\\b\" | grep -oE \"pid=[0-9]+\" | cut -d= -f2 | sort -u || true)\"; fi; if [ -n \"${pids}\" ]; then echo \"Port ${port} is in use (pids: ${pids}). Killing...\"; for pid in ${pids}; do kill -TERM \"${pid}\" 2>/dev/null || true; done; fi; }; cd \"$ROOT\"; bash start_consul.sh local & STACK_PID=$!; cleanup_stack(){ kill -TERM \"$STACK_PID\" 2>/dev/null || true; wait \"$STACK_PID\" 2>/dev/null || true; }; trap cleanup_stack EXIT; consul_ok=0; for _ in {1..240}; do if curl --noproxy \"*\" -fsS --connect-timeout 0.25 --max-time 1 http://localhost:9000/healthz >/dev/null 2>&1; then consul_ok=1; break; fi; sleep 0.25; done; if [ \"$consul_ok\" != \"1\" ]; then echo \"Consul did not become ready at http://localhost:9000/healthz\"; exit 1; fi; kill_listen_port 8880; cd \"$ROOT/sokoyuku-app\"; npm run dev & VITE_PID=$!; cleanup_all(){ kill -TERM \"$VITE_PID\" 2>/dev/null || true; wait \"$VITE_PID\" 2>/dev/null || true; cleanup_stack; }; trap cleanup_all EXIT; app_ok=0; for _ in {1..120}; do if curl --noproxy \"*\" -fsS --connect-timeout 0.25 --max-time 1 http://localhost:8880/ >/dev/null 2>&1; then app_ok=1; break; fi; sleep 0.25; done; if [ \"$app_ok\" != \"1\" ]; then echo \"App did not become ready at http://localhost:8880/\"; exit 1; fi; playwright test --reporter=list \"$@\"' --",
+    "deploy": "npm run build && wrangler deploy"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.47.0",
     "@playwright/test": "^1.57.0",
     "@sveltejs/vite-plugin-svelte": "^6.2.1",
     "pg": "^8.16.3",
@@ -18,6 +20,7 @@
     "svelte": "^5.43.8",
     "svelte-check": "^4.3.4",
     "uuid": "^13.0.0",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "wrangler": "^4.114.0"
   }
 }
