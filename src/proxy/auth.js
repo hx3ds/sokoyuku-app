@@ -11,41 +11,67 @@ export async function signOut() {
 
 export async function signIn(identifier, password, telegramData) {
     const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
-    const body = telegramData 
-        ? { telegram_data: telegramData }
-        : {
-            [isEmail ? 'email' : 'username']: identifier,
-            password: password
-        };
+    const body = {
+        telegram_data: telegramData || {},
+        username: '',
+        email: '',
+        password: password ?? '',
+    };
+    if (telegramData) {
+        // telegram path: unused strings stay empty
+    } else if (isEmail) {
+        body.email = identifier ?? '';
+    } else {
+        body.username = identifier ?? '';
+    }
     return request('/api/sign_in', { body });
 }
 
 export function signInWithGoogle(credential) {
     return request('/api/sign_in_google', {
-        body: { credential }
+        body: {
+            credential: credential ?? '',
+            email: '',
+            google_sub: '',
+            full_name: '',
+        }
     });
 }
 
 export function signUp({ email, code, full_name, username, password }) {
     return request('/api/sign_up', {
-        body: { email, code, full_name, username, password }
+        body: {
+            email: email ?? '',
+            code: code ?? '',
+            full_name: full_name ?? '',
+            username: username ?? '',
+            password: password ?? '',
+        }
     });
 }
 
 export function requestVerificationCode(email, status, captchaToken) {
     return request('/api/request_verification_code', {
-        body: { email, status, captcha_token: captchaToken }
+        body: {
+            email: email ?? '',
+            status: status ?? '',
+            captcha_token: captchaToken ?? '',
+        }
     });
 }
 
 export function checkUsername(username) {
     return request('/api/check_username', {
-        body: { username }
+        body: { username: username ?? '' }
     });
 }
 
 export function changePassword(email, code, newPassword) {
     return request('/api/change_password', {
-        body: { email, code, new_password: newPassword }
+        body: {
+            email: email ?? '',
+            code: code ?? '',
+            new_password: newPassword ?? '',
+        }
     });
 }

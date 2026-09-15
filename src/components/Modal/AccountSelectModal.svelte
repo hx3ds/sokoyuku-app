@@ -3,6 +3,7 @@
     import Loading from '../Loading.svelte';
     import InfoStackInput from '../InfoStack/InfoStackInput.svelte';
     import InfoStackItem from '../InfoStack/InfoStackItem.svelte';
+    import InfoStackDivider from '../InfoStack/InfoStackDivider.svelte';
 
     /**
      * @typedef {{ model_id?: string, name?: string }} AccountModel
@@ -26,6 +27,12 @@
         a.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
         a.account_username.toLowerCase().includes(searchQuery.toLowerCase())
     ));
+    let assignedAccounts = $derived(
+        filteredAccounts.filter((account) => account?.assignedModelStatus === 'current')
+    );
+    let otherAccounts = $derived(
+        filteredAccounts.filter((account) => account?.assignedModelStatus !== 'current')
+    );
 
     /** @param {AccountOption} account */
     function getAssignedModelText(account) {
@@ -69,6 +76,20 @@
 {#snippet openingChatLoading()}
         <Loading text="Opening chat..." />
     {/snippet}
+{#snippet accountRow(account)}
+    {@const assignedModelText = getAssignedModelText(account)}
+    <InfoStackItem 
+        onclick={() => { if (!loading) onselect(account); }}
+        title={account.name}
+        description={account.account_username}
+    >
+        {#snippet titleSuffix()}
+            {#if assignedModelText}
+                <span class={getAssignedModelBadgeClass(account)}>{assignedModelText}</span>
+            {/if}
+        {/snippet}
+    </InfoStackItem>
+{/snippet}
     <Dialog 
         {title}
         onclose={() => onclose()}
@@ -91,19 +112,14 @@
             </div>
         </InfoStackItem>
     {:else}
-        {#each filteredAccounts as account (account.account_id ?? account.account_username)}
-            {@const assignedModelText = getAssignedModelText(account)}
-            <InfoStackItem 
-                onclick={() => { if (!loading) onselect(account); }}
-                title={account.name}
-                description={(account.type === 'discord' || account.type === 'whatsapp_cloud') ? account.account_username : `@${account.account_username}`}
-            >
-                {#snippet titleSuffix()}
-                    {#if assignedModelText}
-                        <span class={getAssignedModelBadgeClass(account)}>{assignedModelText}</span>
-                    {/if}
-                {/snippet}
-            </InfoStackItem>
+        {#each assignedAccounts as account (account.account_id ?? account.account_username)}
+            {@render accountRow(account)}
+        {/each}
+        {#if assignedAccounts.length > 0 && otherAccounts.length > 0}
+            <InfoStackDivider label="Assignable accounts" />
+        {/if}
+        {#each otherAccounts as account (account.account_id ?? account.account_username)}
+            {@render accountRow(account)}
         {/each}
     {/if}
 </Dialog>

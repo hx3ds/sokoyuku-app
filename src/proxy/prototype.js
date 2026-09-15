@@ -1,16 +1,67 @@
 import { request } from '../utils.js';
 
+function normalizeBillingInterval(type, billingInterval) {
+    if (type === 'subscription') {
+        return billingInterval || 'monthly';
+    }
+    return '';
+}
+
+function normalizePrototypeFields(data = {}) {
+    const type = data.type ?? 'token';
+    const isLocal = Boolean(data.is_local);
+    const charge = isLocal ? 0 : (type === 'subscription' ? (data.charge ?? 0) : 0);
+    const maxTierCharge = isLocal ? 0 : (type === 'subscription' ? (data.max_tier_charge ?? 0) : 0);
+    let hasFreeTier = Boolean(data.has_free_tier);
+    if (type !== 'subscription') {
+        hasFreeTier = false;
+    } else if (isLocal) {
+        hasFreeTier = true;
+    } else if (Number(charge) === 0 && Number(maxTierCharge) === 0 && data.has_free_tier == null) {
+        hasFreeTier = true;
+    }
+    return {
+        name: data.name ?? '',
+        description: data.description ?? '',
+        access_point: data.access_point ?? '',
+        path: data.path ?? '',
+        status: data.status ?? '',
+        private: isLocal ? true : Boolean(data.private),
+        max_chats: data.max_chats ?? 1,
+        charge,
+        has_free_tier: hasFreeTier,
+        max_tier_charge: maxTierCharge,
+        max_charge_per_message: isLocal ? 0 : (data.max_charge_per_message ?? 0),
+        type,
+        billing_interval: normalizeBillingInterval(type, data.billing_interval),
+        reply_window: data.reply_window ?? 0,
+        is_local: isLocal,
+        qr_platforms: Array.isArray(data.qr_platforms) ? data.qr_platforms : [],
+        terms_of_use: data.terms_of_use ?? '',
+        privacy_policy: data.privacy_policy ?? '',
+        call_support: type === 'subscription' ? Boolean(data.call_support) : false,
+    };
+}
+
 export function fetchPrototypes(params = {}) {
-    const defaultParams = {
+    const body = {
         query: '',
         offset: 0,
         limit: 20,
+        username: '',
         certified_only: false,
+        types: [],
         include_private: false,
+        ...params,
     };
-    return request('/api/search_prototypes', {
-        body: { ...defaultParams, ...params }
-    });
+    if (body.username == null) body.username = '';
+    if (!Array.isArray(body.types)) body.types = [];
+    if (body.certified_only == null) body.certified_only = false;
+    if (body.include_private == null) body.include_private = false;
+    if (body.query == null) body.query = '';
+    if (body.offset == null) body.offset = 0;
+    if (body.limit == null) body.limit = 20;
+    return request('/api/search_prototypes', { body });
 }
 
 export async function fetchPrototype(id) {
@@ -21,12 +72,7 @@ export async function fetchPrototype(id) {
 }
 
 export function createPrototype(data) {
-    const body = { ...(data || {}) };
-    if (Boolean(body.is_local)) {
-        body.is_local = true;
-        body.private = true;
-    }
-    return request('/api/add_prototype', { body });
+    return request('/api/add_prototype', { body: normalizePrototypeFields(data) });
 }
 
 export function deletePrototype(prototypeId) {
@@ -43,51 +89,45 @@ export function refreshPrototypeToken(prototypeId) {
 
 export async function updatePrototype(data) {
     const prototypeId = data?.prototype_id;
-    if (!prototypeId) return request('/api/change_prototype', { body: data });
+    if (!prototypeId) {
+        return request('/api/change_prototype', {
+            body: {
+                prototype_id: data?.prototype_id ?? 0,
+                ...normalizePrototypeFields(data),
+            },
+        });
+    }
 
     const requiredKeys = [
         'name',
         'description',
         'access_point',
+        'path',
         'status',
         'private',
         'max_chats',
         'charge',
+        'max_charge_per_message',
         'type',
         'billing_interval',
         'reply_window',
-        'is_local',
+        'qr_platforms',
         'terms_of_use',
         'privacy_policy',
         'call_support',
     ];
 
+    let source = data;
     const missingRequired = requiredKeys.some((key) => data?.[key] == null);
-    if (!missingRequired) return request('/api/change_prototype', { body: data });
+    if (missingRequired) {
+        const current = await fetchPrototype(prototypeId);
+        if (!current) return { result: 1, msg: 'Prototype not found' };
+        source = { ...current, ...data };
+    }
 
-    const current = await fetchPrototype(prototypeId);
-    if (!current) return { result: 1, msg: 'Prototype not found' };
-
-    const body = { ...current, ...data };
-    const isLocal = Boolean(body.is_local);
     const normalized = {
-        ...body,
-        name: body.name ?? '',
-        description: body.description ?? '',
-        access_point: body.access_point ?? '',
-        status: body.status ?? '',
-        private: isLocal ? true : (body.private ?? false),
-        max_chats: body.max_chats ?? 1,
-        charge: body.charge ?? 0,
-        type: body.type ?? 'token',
-        billing_interval: (body.type ?? 'token') === 'subscription'
-            ? (body.billing_interval ?? 'monthly')
-            : null,
-        reply_window: body.reply_window ?? 0,
-        is_local: isLocal,
-        terms_of_use: body.terms_of_use ?? '',
-        privacy_policy: body.privacy_policy ?? '',
-        call_support: Boolean(body.call_support) && (body.type ?? 'token') === 'subscription',
+        prototype_id: prototypeId,
+        ...normalizePrototypeFields(source),
     };
     return request('/api/change_prototype', { body: normalized });
 }
@@ -110,7 +150,7 @@ export async function fetchMyPrototypePayoutDetails() {
 
 export async function fetchUserPrototypes(username) {
     const data = await request('/api/get_user_prototype_list', {
-        body: { username }
+        body: { username: username ?? '' }
     });
     return data.result === 0 ? data.data.prototypes : [];
 }

@@ -4,7 +4,7 @@
     import { signOut } from '../../proxy/auth.js';
     import { getStripeConnectStatus, createStripeConnectOnboardingLink } from '../../proxy/payout.js';
     import { fetchPlatformSubscription, fetchSubscriptionPlans, createPlatformSubscriptionCheckout } from '../../proxy/subscription.js';
-    import { showError } from '../../components/Modal/state.svelte.js';
+    import { showConfirm, showError } from '../../components/Modal/state.svelte.js';
     
     import Loading from '../../components/Loading.svelte';
     import PageContainer from '../../components/PageContainer.svelte';
@@ -24,6 +24,7 @@
 
     type ConnectStatus = {
         connected: boolean;
+        invalid_account?: boolean;
         account_id?: string;
         details_submitted?: boolean;
         charges_enabled?: boolean;
@@ -177,20 +178,49 @@
         }
     }
 
-    async function handleStripeConnect() {
-        connectSubmitting = true;
+    function connectStatusLabel(status: ConnectStatus | null, loading: boolean) {
+        if (loading) return 'Checking status...';
+        if (status?.connected) {
+            return `Connected${status?.payouts_enabled ? ' · Payouts enabled' : ''}`;
+        }
+        if (status?.invalid_account) return 'Not connected · Setup needed';
+        return 'Not connected';
+    }
+
+    async function startStripeConnectOnboarding(forceRecreate = false) {
         const res = await createStripeConnectOnboardingLink({
             returnUrl: `${window.location.origin}/profile`,
-            refreshUrl: `${window.location.origin}/profile`
+            refreshUrl: `${window.location.origin}/profile`,
+            forceRecreate
         });
-        connectSubmitting = false;
         if (res.result !== 0) {
-            await showError('Failed to start Stripe Connect setup: ' + res.msg);
+            await showError('Failed to start Stripe Connect setup: ' + (res.msg || 'unknown error'));
+            return;
+        }
+        if (res.data?.needs_recreate && !forceRecreate) {
+            const confirmed = await showConfirm(
+                res.data?.msg ||
+                    'Stored Stripe Connect account was not found. Create a new Connect account?',
+                'Recreate Stripe Connect'
+            );
+            if (!confirmed) return;
+            await startStripeConnectOnboarding(true);
             return;
         }
         const url = res.data?.url;
         if (url) {
             window.location.href = url;
+            return;
+        }
+        await showError('Failed to start Stripe Connect setup: missing onboarding URL');
+    }
+
+    async function handleStripeConnect() {
+        connectSubmitting = true;
+        try {
+            await startStripeConnectOnboarding(false);
+        } finally {
+            connectSubmitting = false;
         }
     }
 
@@ -354,7 +384,7 @@
         <InfoStack title="Payout">
             <InfoStackInput
                 title="Stripe Connect"
-                value={connectLoading ? 'Checking status...' : (connectStatus?.connected ? `Connected${connectStatus?.payouts_enabled ? ' · Payouts enabled' : ''}` : 'Not connected')}
+                value={connectStatusLabel(connectStatus, connectLoading)}
                 readonly
             >
                 {#snippet end()}

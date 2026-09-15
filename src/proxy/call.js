@@ -14,8 +14,8 @@ export function listOpenCallSessions() {
 export function closeCallSession({ sessionId, sessionKey } = {}) {
     return request('/api/call/close_session', {
         body: {
-            session_id: sessionId || undefined,
-            session_key: sessionKey || undefined,
+            session_id: sessionId || '',
+            session_key: sessionKey || '',
         },
         headers: sessionKey ? { 'X-Call-Session-Key': sessionKey } : {},
     });
@@ -23,7 +23,7 @@ export function closeCallSession({ sessionId, sessionKey } = {}) {
 
 export function mintCallTurn(sessionKey) {
     return request('/api/call/mint_turn', {
-        body: { session_key: sessionKey },
+        body: { session_key: sessionKey || '' },
         headers: { 'X-Call-Session-Key': sessionKey },
     });
 }
@@ -31,8 +31,8 @@ export function mintCallTurn(sessionKey) {
 export function signalCall(sessionKey, type, content) {
     return request('/api/call/signal', {
         body: {
-            session_key: sessionKey,
-            type,
+            session_key: sessionKey || '',
+            type: type || '',
             content: content || {},
         },
         headers: { 'X-Call-Session-Key': sessionKey },

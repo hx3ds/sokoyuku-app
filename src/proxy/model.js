@@ -5,9 +5,9 @@ function normalizeModelAccount(account) {
     return {
         acct_id: account?.acct_id || '',
         acct_username: account?.acct_username || '',
-        acct_type: account?.acct_type || null,
-        server: account?.server || null,
-        account_group: account?.account_group || null,
+        acct_type: account?.acct_type || '',
+        server: account?.server || '',
+        account_group: account?.account_group || 'free',
         subscription_disabled: Boolean(account?.subscription_disabled),
         is_last_used: Boolean(account?.is_last_used),
     };
@@ -27,10 +27,11 @@ function normalizeModel(model) {
 }
 
 export async function addToMyModels(prototypeId, name = null) {
-    const body = { prototype_id: parseInt(prototypeId) };
-    if (name) {
-        body.name = name;
-    }
+    const body = {
+        prototype_id: parseInt(prototypeId, 10) || 0,
+        name: name == null ? '' : String(name),
+        description: '',
+    };
     const maxAttempts = 10;
     let last = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -95,9 +96,10 @@ export function removeModelFromUserModelList(modelId) {
 export function updateModel(data) {
     return (async () => {
         const body = {
-            model_id: data?.model_id,
-            name: data?.name,
-            description: data?.description,
+            model_id: data?.model_id ?? '',
+            name: data?.name ?? '',
+            description: data?.description ?? '',
+            settings: {},
         };
 
         const isLocal = Boolean(data?.is_local);
@@ -117,7 +119,7 @@ export function updateModel(data) {
             if (!key) return { result: 1, msg: 'conductor_public_key is required for local model settings' };
             const enc = await encryptWithPublicKeyToken(key, JSON.stringify(parsed));
             body.settings = { __enc__: enc };
-        } else if (data?.settings !== undefined) {
+        } else if (data?.settings != null) {
             if (!isLocal) {
                 body.settings = data.settings;
             }

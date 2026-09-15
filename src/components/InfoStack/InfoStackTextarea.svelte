@@ -22,6 +22,7 @@
     } = $props();
 
     let textarea;
+    const restOnInput = rest.oninput;
 
     const resize = async () => {
         if (textarea && autosize) {
@@ -30,6 +31,13 @@
             textarea.style.height = `${textarea.scrollHeight}px`;
         }
     };
+
+    function handleInput(event) {
+        resize();
+        if (typeof restOnInput === 'function') {
+            restOnInput(event);
+        }
+    }
 
     onMount(() => {
         if (autosize) resize();
@@ -56,7 +64,7 @@
             class:editing={!readonly && !disabled}
             style:max-height={maxHeight}
             {...rest}
-            oninput={resize}
+            oninput={handleInput}
         ></textarea>
     {/snippet}
 </InfoStackItem>

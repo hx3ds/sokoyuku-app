@@ -41,6 +41,7 @@
             type: account.type || 'telegram',
             server: '',
             is_local: Boolean(account.is_local),
+            account_group: account.account_group || 'free',
         };
         isEditing = true;
     }
@@ -56,11 +57,16 @@
             type: 'telegram',
             server: '',
             is_local: false,
+            account_group: 'free',
         };
     }
 
     async function handleSave() {
-        await onsave(editForm);
+        const requiresPro = !editForm.is_local && editForm.type !== 'telegram' && editForm.type !== 'whatsapp_cloud';
+        await onsave({
+            ...editForm,
+            account_group: requiresPro ? 'pro' : (editForm.account_group || account?.account_group || 'free'),
+        });
         isEditing = false;
     }
 
@@ -71,10 +77,7 @@
     }
 
     function usernameDisplay(account) {
-        const type = account?.type || 'telegram';
-        const value = account?.account_username || '';
-        if (type === 'discord' || type === 'whatsapp_cloud') return value;
-        return `@${value}`;
+        return account?.account_username || '';
     }
 
     function tokenLabel(type) {
@@ -130,7 +133,11 @@
         {:else}
             <InfoStackInput title="Type" value={account.type || 'telegram'} readonly />
             {#if (account.type || 'telegram') === 'matrix'}
-                <InfoStackInput title="Server" value={account.server || ''} readonly />
+                <InfoStackInput
+                    title="Server"
+                    value={account.is_local ? '••••••••' : (account.server || '')}
+                    readonly
+                />
             {/if}
         {/if}
 

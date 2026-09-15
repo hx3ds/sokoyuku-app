@@ -99,7 +99,7 @@
     @media (hover: hover) and (pointer: fine) {
         :global(.sidebar-link:hover) {
             background-color: var(--color-bg-hover);
-            color: var(--color-text-main);
+            color: var(--color-primary);
             text-decoration: none;
         }
     }

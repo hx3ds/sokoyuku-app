@@ -1,21 +1,22 @@
-import { test, expect } from '@playwright/test';
-import { generateUser } from './utils';
+import { test, expect } from './fixtures.js';
+import { prepareTrackedUser } from './utils';
 import { getVerificationCode } from './db';
 import { installTurnstileMock } from './turnstile';
 
 test.describe('Password Reset Flow', () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
+
   test.beforeEach(async ({ page }) => {
     await installTurnstileMock(page);
   });
 
   test('should allow full signup and then password reset', async ({ page }) => {
-    // 1. Sign Up a new user
-    const user = generateUser();
+    const user = await prepareTrackedUser();
     await page.goto('/signup');
-    
+
     await page.locator('#signupEmail').fill(user.email);
     await page.getByRole('button', { name: 'Get Code' }).click();
-    
+
     let code = null;
     for (let i = 0; i < 20; i++) {
       await page.waitForTimeout(500);
@@ -23,12 +24,12 @@ test.describe('Password Reset Flow', () => {
       if (code) break;
     }
     expect(code).toBeTruthy();
-    
+
     await page.locator('#signupVerificationCode').fill(code);
     await page.locator('#signupFullName').fill(user.fullName);
     await page.locator('#signupUsername').fill(user.username);
     await page.locator('#signupPassword').fill(user.password);
-    
+
     await page.locator('#signupTerms').check();
     await page.getByRole('button', { name: 'Sign Up' }).click();
     await expect(page).toHaveURL(/\/signin/);
@@ -54,16 +55,16 @@ test.describe('Password Reset Flow', () => {
     const newPassword = 'NewPassword789!';
     await page.locator('#changePasswordVerificationCode').fill(newCode);
     await page.locator('#changePasswordNew').fill(newPassword);
-    
+
     await page.getByRole('button', { name: 'Reset Password' }).click();
 
     await expect(page).toHaveURL(/\/signin/);
-    
+
     await page.goto('/signin');
     await page.locator('#signinIdentifier').fill(user.email);
     await page.locator('#signinPassword').fill(newPassword);
     await page.locator('#signinTerms').check();
-    
+
     await page.getByRole('button', { name: 'Enter' }).click();
     await expect(page).toHaveURL(/\/models/);
   });

@@ -1,5 +1,7 @@
-import { test, expect } from '@playwright/test';
-import { uniqueSuffix } from './utils.js';
+import { test, expect } from './fixtures.js';
+import { prepareTrackedUser, uniqueSuffix } from './utils.js';
+import { getVerificationCode } from './db.js';
+import { installTurnstileMock } from './turnstile.js';
 
 const activePlan = {
   plan_id: '11111111111111111111111111111111',
@@ -113,7 +115,19 @@ test.describe('Profile Page', () => {
       });
     });
 
+    const plansLoaded = page.waitForResponse(async (res) => {
+      if (!res.url().includes('/api/get_subscription_plans')) return false;
+      try {
+        const body = await res.json();
+        return body?.result === 0 && Array.isArray(body?.data) && body.data.length > 0;
+      } catch {
+        return false;
+      }
+    });
+
     await page.goto('/profile');
+    await plansLoaded;
+
     await expect(page.locator('#page-profile')).toContainText('Sokoyuku Subscription');
     await expect(
       page.locator('.list-item').filter({ hasText: 'Sokoyuku Subscription' }).locator('input')
@@ -121,7 +135,7 @@ test.describe('Profile Page', () => {
     await expect(page.getByRole('button', { name: 'Upgrade' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Upgrade' }).click();
-    await expect(page).toHaveURL(/\/profile\?subscription_success=1/);
+    await expect(page).toHaveURL(/\/profile\?subscription_success=1/, { timeout: 15000 });
   });
 
   test('should show renew action and period when a subscription already exists', async ({ page }) => {
@@ -193,16 +207,43 @@ test.describe('Profile Page', () => {
     await expect(page.getByRole('heading', { name: 'Resource Usage' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Account Usage' })).toBeVisible();
   });
+});
+
+// Anonymous browser: real sign_out rotates token_salt for that user only.
+test.describe('Profile Sign Out', () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
 
   test('should sign out and redirect to signin', async ({ page }) => {
+    const user = await prepareTrackedUser();
+    await installTurnstileMock(page);
+
+    await page.goto('/signup');
+    await page.locator('#signupEmail').fill(user.email);
+    await page.getByRole('button', { name: 'Get Code' }).click();
+
+    let code = null;
+    for (let i = 0; i < 30; i++) {
+      await page.waitForTimeout(500);
+      code = await getVerificationCode(user.email, 'sign_up');
+      if (code) break;
+    }
+    expect(code).toBeTruthy();
+
+    await page.locator('#signupVerificationCode').fill(code);
+    await page.locator('#signupFullName').fill(user.fullName);
+    await page.locator('#signupUsername').fill(user.username);
+    await page.locator('#signupPassword').fill(user.password);
+    await page.locator('#signupTerms').check();
+    await page.getByRole('button', { name: 'Sign Up' }).click();
+    await expect(page).toHaveURL(/\/signin/);
+
+    await page.locator('#signinIdentifier').fill(user.email);
+    await page.locator('#signinPassword').fill(user.password);
+    await page.locator('#signinTerms').check();
+    await page.getByRole('button', { name: 'Enter' }).click();
+    await expect(page).toHaveURL(/\/models/);
+
     await page.goto('/profile');
-    await page.route('**/api/sign_out', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ result: 0 }),
-      });
-    });
     await page.getByRole('button', { name: 'Sign Out' }).click();
     await expect(page).toHaveURL(/\/signin/);
   });

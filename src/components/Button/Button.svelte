@@ -50,6 +50,7 @@
         class="btn {variant} {className}" 
         style="{padding ? `padding: ${padding} !important;` : ''}{iconSize ? ` --icon-size: ${iconSize};` : ''}{$$restProps.style ? ` ${$$restProps.style}` : ''}"
         disabled={disabled || loading}
+        aria-busy={loading}
         aria-expanded={menuOpen}
         on:click={handleClick}
         {...$$restProps}
@@ -57,10 +58,10 @@
         {#if loading}
             <svg 
                 class="spinner" 
-                style="color: currentColor;" 
                 xmlns="http://www.w3.org/2000/svg" 
                 fill="none" 
                 viewBox="0 0 24 24"
+                aria-hidden="true"
             >
                 <circle class="spinner-track" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -118,7 +119,9 @@
         box-shadow: none;
     }
     
-    .btn.icon-button :global(svg) {
+    .btn.icon-button :global(svg),
+    .btn.primary :global(svg),
+    .btn.secondary :global(svg) {
         width: var(--icon-size, 1.25em);
         height: var(--icon-size, 1.25em);
         flex-shrink: 0;
@@ -159,9 +162,18 @@
         cursor: not-allowed;
     }
 
-    /* Spinner styles */
+    /* Spinner styles — explicit size so text-button loading stays visible in end slots */
     .spinner {
+        width: var(--icon-size, 1.25em);
+        height: var(--icon-size, 1.25em);
+        flex-shrink: 0;
+        color: currentColor;
         animation: spin 1s linear infinite;
+    }
+
+    .btn.text-button .spinner {
+        width: 1.125rem;
+        height: 1.125rem;
     }
 
     @keyframes spin {

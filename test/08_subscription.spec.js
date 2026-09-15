@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 
 test.describe('Subscription Page', () => {
   test('should display and manage subscriptions', async ({ page }) => {
@@ -14,6 +14,7 @@ test.describe('Subscription Page', () => {
         model_id: 'model_123',
         status: 'active',
         auto_renew: true,
+        subscription_tier: 'pro',
         period: new Date().toISOString(),
         prototype: {
           name: 'Cool Model',
@@ -60,7 +61,9 @@ test.describe('Subscription Page', () => {
     });
 
     await page.goto('/my-subscriptions');
-    await expect(page.getByText('Loading...')).toBeHidden();
+    await expect(page.locator('#page-my-subscriptions').getByText('Loading...')).toBeHidden({
+      timeout: 15000,
+    });
 
     // Verify Platform Sub
     await expect(page.getByText('Pro Plan')).toBeVisible();

@@ -30,6 +30,11 @@
         private?: boolean;
         max_chats?: number | string | null;
         charge?: number | string | null;
+        has_free_tier?: boolean;
+        max_tier_charge?: number | string | null;
+        max_charge_per_message?: number | string | null;
+        subscription_tiers?: Array<{ name: string; charge: number }>;
+        has_active_models?: boolean;
         reply_window?: number | string | null;
         certified?: boolean;
         next_prototype_id?: number | null;
@@ -38,6 +43,7 @@
         terms_of_use?: string | null;
         privacy_policy?: string | null;
         call_support?: boolean;
+        qr_platforms?: string[];
     };
 
     const DEFAULT_TERMS_URL = 'https://sokoyuku.com/legal/creator-contract';
@@ -54,6 +60,13 @@
     let showTokenModal = $state(false);
     let tokenLoading = $state(false);
 
+    const hasActiveModels = $derived(Boolean(prototype?.has_active_models));
+    const isFreePrototype = $derived(
+        prototype?.type === 'subscription'
+            ? Number(prototype?.charge || 0) === 0 && Number(prototype?.max_tier_charge || 0) === 0
+            : Number(prototype?.max_charge_per_message || 0) === 0
+    );
+    const lockTiers = $derived(hasActiveModels || (prototype?.type === 'subscription' && isFreePrototype));
     const termsUrl = $derived((prototype?.terms_of_use || '').trim() || DEFAULT_TERMS_URL);
     const privacyUrl = $derived((prototype?.privacy_policy || '').trim() || DEFAULT_PRIVACY_URL);
     const termsLabel = $derived((prototype?.terms_of_use || '').trim() ? 'Custom Terms of Use' : 'Standard Contract');
@@ -69,9 +82,14 @@
         if (!prototype) return;
         if (prototype.type === 'subscription') {
             if (!prototype.billing_interval) prototype.billing_interval = 'monthly';
+            if (prototype.has_free_tier == null) prototype.has_free_tier = Number(prototype.charge || 0) === 0 && Number(prototype.max_tier_charge || 0) === 0;
+            if (prototype.max_tier_charge == null) prototype.max_tier_charge = 0;
         } else {
-            if (prototype.billing_interval) prototype.billing_interval = null;
+            if (prototype.billing_interval) prototype.billing_interval = '';
             if (prototype.call_support) prototype.call_support = false;
+            if (prototype.charge) prototype.charge = 0;
+            if (prototype.max_tier_charge) prototype.max_tier_charge = 0;
+            if (prototype.has_free_tier) prototype.has_free_tier = false;
         }
     });
 
@@ -81,6 +99,8 @@
         if (data) {
             data.terms_of_use = data.terms_of_use ?? '';
             data.privacy_policy = data.privacy_policy ?? '';
+            data.has_free_tier = Boolean(data.has_free_tier);
+            data.max_tier_charge = data.max_tier_charge ?? 0;
         }
         prototype = data;
         loading = false;
@@ -105,17 +125,29 @@
             name: prototype.name ?? '',
             description: prototype.description ?? '',
             max_chats: Number.parseInt(String(prototype.max_chats ?? ''), 10) || 1,
-            charge: Number.parseFloat(String(prototype.charge ?? '')) || 0,
+            charge: Boolean(prototype.is_local)
+                ? 0
+                : ((prototype.type ?? 'token') === 'subscription' ? (Number.parseFloat(String(prototype.charge ?? '')) || 0) : 0),
+            has_free_tier: (prototype.type ?? 'token') === 'subscription'
+                ? (Boolean(prototype.is_local) ? true : Boolean(prototype.has_free_tier))
+                : false,
+            max_tier_charge: Boolean(prototype.is_local)
+                ? 0
+                : ((prototype.type ?? 'token') === 'subscription' ? (Number.parseFloat(String(prototype.max_tier_charge ?? '')) || 0) : 0),
+            max_charge_per_message: Boolean(prototype.is_local)
+                ? 0
+                : (Number.parseFloat(String(prototype.max_charge_per_message ?? '')) || 0),
             private: prototype.private ?? false,
             access_point: prototype.access_point ?? '',
-            path: prototype.path ?? null,
+            path: prototype.path ?? '',
             status: prototype.status ?? '',
             type: prototype.type ?? 'token',
             billing_interval: (prototype.type ?? 'token') === 'subscription'
                 ? (prototype.billing_interval ?? 'monthly')
-                : null,
+                : '',
             reply_window: Number.parseInt(String(prototype.reply_window ?? ''), 10) || 0,
             is_local: Boolean(prototype.is_local),
+            qr_platforms: Array.isArray(prototype.qr_platforms) ? prototype.qr_platforms : [],
             call_support: (prototype.type ?? 'token') === 'subscription' ? Boolean(prototype.call_support) : false,
             terms_of_use: (prototype.terms_of_use ?? '').trim(),
             privacy_policy: (prototype.privacy_policy ?? '').trim(),
@@ -245,18 +277,18 @@
             
             <InfoStackInput title="Max Chats" type="number" id="maxChats" bind:value={prototype!.max_chats} readonly={!isEditing} min="1" />
             
-            <InfoStackSelect title="Private" id="protoPrivate" bind:value={prototype!.private} disabled={!isEditing || Boolean(prototype!.is_local)}>
+            <InfoStackSelect title="Private" id="protoPrivate" bind:value={prototype!.private} disabled={!isEditing || Boolean(prototype!.is_local) || hasActiveModels}>
                 <option value={false}>No</option>
                 <option value={true}>Yes</option>
             </InfoStackSelect>
             
-            <InfoStackSelect title="Type" id="protoType" bind:value={prototype!.type} disabled={!isEditing}>
+            <InfoStackSelect title="Type" id="protoType" bind:value={prototype!.type} disabled={!isEditing || hasActiveModels}>
                 <option value="token">Token</option>
                 <option value="subscription">Subscription</option>
             </InfoStackSelect>
 
             {#if prototype!.type === 'subscription'}
-                <InfoStackSelect title="Billing Interval" id="protoBillingInterval" bind:value={prototype!.billing_interval} disabled={!isEditing}>
+                <InfoStackSelect title="Billing Interval" id="protoBillingInterval" bind:value={prototype!.billing_interval} disabled={!isEditing || hasActiveModels}>
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
                     <option value="monthly">Monthly</option>
@@ -273,7 +305,24 @@
                 {/if}
             {/if}
             
-            <InfoStackInput title="Charge" type="number" id="protoCharge" bind:value={prototype!.charge} readonly={!isEditing} step="0.01" min="0" />
+            {#if Boolean(prototype!.is_local)}
+                <InfoStackInput title="Pricing" value="Free (required for local)" readonly />
+            {:else if prototype!.type === 'subscription'}
+                {#if isEditing && !lockTiers}
+                    <InfoStackToggle
+                        title="Free Tier"
+                        description={prototype!.has_free_tier ? 'Optional free tier enabled' : 'No free tier'}
+                        bind:checked={prototype!.has_free_tier}
+                    />
+                {:else}
+                    <InfoStackInput title="Free Tier" value={prototype!.has_free_tier ? 'Yes' : 'No'} readonly />
+                {/if}
+                <InfoStackInput title="Pro Charge" type="number" id="protoCharge" bind:value={prototype!.charge} readonly={!isEditing || lockTiers} step="0.01" min="0" />
+                <InfoStackInput title="Max Tier Charge" type="number" id="protoMaxTierCharge" bind:value={prototype!.max_tier_charge} readonly={!isEditing || lockTiers} step="0.01" min="0" />
+                <InfoStackInput title="Max Charge Per Message" type="number" id="protoMaxCharge" bind:value={prototype!.max_charge_per_message} readonly={!isEditing || hasActiveModels} step="0.01" min="0" />
+            {:else}
+                <InfoStackInput title="Max Charge Per Message" type="number" id="protoMaxCharge" bind:value={prototype!.max_charge_per_message} readonly={!isEditing || hasActiveModels || isFreePrototype} step="0.01" min="0" />
+            {/if}
             
             <InfoStackInput title="Reply Window (sec)" type="number" id="replyWindow" bind:value={prototype!.reply_window} readonly={!isEditing} min="0" />
 

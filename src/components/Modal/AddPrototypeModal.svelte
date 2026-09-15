@@ -25,7 +25,10 @@
         max_chats: 1,
         type: 'token',
         billing_interval: 'monthly',
-        charge: 100,
+        charge: 0,
+        has_free_tier: false,
+        max_tier_charge: 0,
+        max_charge_per_message: 0,
         reply_window: 600,
         private: false,
         is_local: false,
@@ -44,6 +47,12 @@
     $effect(() => {
         if (newPrototype.is_local) {
             newPrototype.private = true;
+            newPrototype.charge = 0;
+            newPrototype.max_tier_charge = 0;
+            newPrototype.max_charge_per_message = 0;
+            if (newPrototype.type === 'subscription') {
+                newPrototype.has_free_tier = true;
+            }
         }
     });
 
@@ -56,7 +65,10 @@
             max_chats: 1,
             type: 'token',
             billing_interval: 'monthly',
-            charge: 100,
+            charge: 0,
+            has_free_tier: false,
+            max_tier_charge: 0,
+            max_charge_per_message: 0,
             reply_window: 600,
             private: false,
             is_local: false,
@@ -74,8 +86,16 @@
 
         const payload = {
             ...newPrototype,
-            billing_interval: newPrototype.type === 'subscription' ? (newPrototype.billing_interval || 'monthly') : null,
+            status: newPrototype.status || 'active',
+            qr_platforms: Array.isArray(newPrototype.qr_platforms) ? newPrototype.qr_platforms : [],
+            billing_interval: newPrototype.type === 'subscription' ? (newPrototype.billing_interval || 'monthly') : '',
             call_support: newPrototype.type === 'subscription' ? Boolean(newPrototype.call_support) : false,
+            charge: newPrototype.is_local ? 0 : (newPrototype.type === 'subscription' ? (Number(newPrototype.charge) || 0) : 0),
+            has_free_tier: newPrototype.type === 'subscription'
+                ? (newPrototype.is_local ? true : Boolean(newPrototype.has_free_tier))
+                : false,
+            max_tier_charge: newPrototype.is_local ? 0 : (newPrototype.type === 'subscription' ? (Number(newPrototype.max_tier_charge) || 0) : 0),
+            max_charge_per_message: newPrototype.is_local ? 0 : (Number(newPrototype.max_charge_per_message) || 0),
             private: newPrototype.is_local ? true : newPrototype.private
         };
         const res = await createPrototype(payload);
@@ -197,13 +217,44 @@
             <h4 style="font-weight: 600; color: var(--color-dark);">Pricing</h4>
         </InfoStackItem>
 
-        <InfoStackInput 
-            type="number" 
-            title="Charge (Credits)" 
-            bind:value={newPrototype.charge} 
-            min="0" 
-            step="0.01" 
-        />
+        {#if newPrototype.is_local}
+            <InfoStackInput title="Pricing" value="Free (required for local)" readonly />
+        {:else if newPrototype.type === 'subscription'}
+            <InfoStackToggle
+                title="Free Tier"
+                description={newPrototype.has_free_tier ? 'Optional free tier enabled' : 'No free tier'}
+                bind:checked={newPrototype.has_free_tier}
+            />
+            <InfoStackInput 
+                type="number" 
+                title="Pro Charge" 
+                bind:value={newPrototype.charge} 
+                min="0" 
+                step="0.01" 
+            />
+            <InfoStackInput 
+                type="number" 
+                title="Max Tier Charge" 
+                bind:value={newPrototype.max_tier_charge} 
+                min="0" 
+                step="0.01" 
+            />
+            <InfoStackInput 
+                type="number" 
+                title="Max Charge Per Message" 
+                bind:value={newPrototype.max_charge_per_message} 
+                min="0" 
+                step="0.01" 
+            />
+        {:else}
+            <InfoStackInput 
+                type="number" 
+                title="Max Charge Per Message" 
+                bind:value={newPrototype.max_charge_per_message} 
+                min="0" 
+                step="0.01" 
+            />
+        {/if}
         
         {#if createError}
             <InfoStackItem>

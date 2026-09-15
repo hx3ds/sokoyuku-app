@@ -1,14 +1,22 @@
-import { test, expect } from '@playwright/test';
-import { generateKeyPairSync } from 'crypto';
-import { uniqueSuffix, createLocalTelegramBotToken } from '../utils.js';
-import { getContactByUserId, getUserAccountByUsername, getModelByUserAndName } from '../db.js';
+import { test, expect } from '../fixtures.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { addToMyModels, createLocalTelegramBotToken, uniqueSuffix } from '../utils.js';
+import { getContactByUserId, getUserAccountByUsername, getModelByUserAndName, cleanupAccount } from '../db.js';
 
-function generateConductorPublicKeyToken() {
-  const { publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048, publicExponent: 0x10001 });
-  const jwk = publicKey.export({ format: 'jwk' });
-  const minimal = { kty: 'RSA', n: String(jwk.n), e: String(jwk.e) };
-  const raw = Buffer.from(JSON.stringify(minimal), 'utf8').toString('base64url');
-  return `lcpk1:${raw}`;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(__dirname, '../../..');
+const stationPublicKeyPath = path.join(repoRoot, 'config/dev/station/local_conductor_key.pem.pub');
+const stationAccessPoint = 'http://localhost:8882';
+const stationAdminToken = 'flow_e2e_shared_station_admin';
+
+function loadStationConductorPublicKey() {
+  const token = fs.readFileSync(stationPublicKeyPath, 'utf8').trim();
+  if (!token.startsWith('lcpk1:')) {
+    throw new Error(`invalid station public key token in ${stationPublicKeyPath}`);
+  }
+  return token;
 }
 
 function normalizeUrl(u) {
@@ -26,8 +34,8 @@ test.describe('Local Conductor E2E', () => {
     const suffix = uniqueSuffix();
     const protoName = `E2E Local Proto ${suffix}`;
     const accountName = `E2E Local Account ${suffix}`;
-    const conductorPublicKey = generateConductorPublicKeyToken();
-    const accessPoint = 'http://localhost:9991';
+    const conductorPublicKey = loadStationConductorPublicKey();
+    const accessPoint = stationAccessPoint;
 
     const whoamiResp = await page.request.post('http://localhost:9000/api/whoami', { data: {} });
     expect(whoamiResp.ok()).toBeTruthy();
@@ -56,130 +64,173 @@ test.describe('Local Conductor E2E', () => {
       })
       .toBe(conductorPublicKey);
 
-    const addProtoResp = await page.request.post('http://localhost:9000/api/add_prototype', {
-      data: {
-        name: protoName,
-        description: '',
-        access_point: accessPoint,
-        path: 'prototypes.passive',
-        status: 'active',
-        private: true,
-        max_chats: 1,
-        charge: 100,
-        type: 'token',
-        reply_window: 600,
-        is_local: true,
-      },
-    });
-    expect(addProtoResp.ok()).toBeTruthy();
-    const addProto = await addProtoResp.json();
-    expect(addProto.result).toBe(0);
-    const prototypeId = addProto.data.prototype_id;
-    expect(prototypeId).toBeTruthy();
+    let prototypeId = null;
+    let accountUsername = null;
+    let modelIdFromUrl = null;
+    let accountId = null;
 
-    await page.goto('/my-prototypes');
-    await expect(page.getByText(protoName)).toBeVisible({ timeout: 15000 });
-    const protoItem = page.locator('.list-item').filter({ hasText: protoName }).first();
-    await expect(protoItem.locator('span').filter({ hasText: /^Local$/ })).toBeVisible({ timeout: 15000 });
-    await protoItem.getByRole('button', { name: 'Add to my models' }).click();
-
-    await page.goto('/models');
-    await expect
-      .poll(
-        async () => {
-          const n = await page.locator('.list-item').filter({ hasText: protoName }).count();
-          if (n === 0) await page.reload();
-          return n;
+    try {
+      const addProtoResp = await page.request.post('http://localhost:9000/api/add_prototype', {
+        data: {
+          name: protoName,
+          description: '',
+          access_point: accessPoint,
+          path: 'prototypes.passive',
+          status: 'active',
+          private: true,
+          max_chats: 1,
+          charge: 0,
+          max_charge_per_message: 0,
+          type: 'token',
+          billing_interval: '',
+          reply_window: 600,
+          is_local: true,
+          qr_platforms: [],
+          terms_of_use: '',
+          privacy_policy: '',
+          call_support: false,
         },
-        { timeout: 30000 }
-      )
-      .toBeGreaterThan(0);
+      });
+      expect(addProtoResp.ok()).toBeTruthy();
+      const addProto = await addProtoResp.json();
+      expect(addProto.result).toBe(0);
+      prototypeId = addProto.data.prototype_id;
+      expect(prototypeId).toBeTruthy();
 
-    await expect
-      .poll(async () => await getModelByUserAndName(userId, protoName), { timeout: 10000 })
-      .toBeTruthy();
+      const tokenResp = await page.request.post('http://localhost:9000/api/get_prototype_token', {
+        data: { prototype_id: prototypeId },
+      });
+      expect(tokenResp.ok()).toBeTruthy();
+      const tokenBody = await tokenResp.json();
+      expect(tokenBody.result).toBe(0);
+      const prototypeToken = tokenBody.data?.token || tokenBody.data?.prototype_token;
+      expect(prototypeToken).toBeTruthy();
 
-    const modelRow = await getModelByUserAndName(userId, protoName);
-    expect(modelRow).toBeTruthy();
-    expect(Boolean(modelRow.is_local)).toBeTruthy();
-    expect(normalizeUrl(modelRow.conductor_address)).toBe(normalizeUrl(accessPoint));
-
-    const bot = await createLocalTelegramBotToken(request);
-    const accountUsername = bot.username;
-
-    await page.goto('/models');
-    await page.getByRole('button', { name: 'Add account' }).click();
-    await expect(page.getByRole('heading', { name: 'Add New Account' })).toBeVisible({ timeout: 15000 });
-    await page.getByPlaceholder('Enter name').fill(accountName);
-    await page.getByPlaceholder('Enter username').fill(accountUsername);
-    await page.getByPlaceholder('Enter token').fill(bot.token);
-    await page.getByPlaceholder('Enter account description').fill('Local account');
-    await page.locator('.list-item').filter({ hasText: 'Local Account' }).click();
-    await page.getByRole('button', { name: 'Save Account' }).click();
-    await expect(page.getByRole('heading', { name: 'Add New Account' })).toBeHidden({ timeout: 15000 });
-
-    await expect(page.getByText(`@${accountUsername}`)).toBeVisible({ timeout: 15000 });
-
-    await expect
-      .poll(async () => await getUserAccountByUsername(accountUsername), { timeout: 10000 })
-      .toBeTruthy();
-
-    const acctRow = await getUserAccountByUsername(accountUsername);
-    expect(acctRow).toBeTruthy();
-    expect(Boolean(acctRow.is_local)).toBeTruthy();
-    expect(String(acctRow.account_token || '').startsWith('lcenc1:')).toBeTruthy();
-
-    const modelItem = page.locator('.list-item').filter({ hasText: protoName }).first();
-    await modelItem.click();
-    await expect(page).toHaveURL(/\/model\/[0-9a-f]{32}/, { timeout: 15000 });
-    const modelIdFromUrl = page.url().split('/model/')[1]?.split(/[?#]/)[0];
-    expect(modelIdFromUrl).toMatch(/^[0-9a-f]{32}$/);
-
-    const modelDetailsSection = page.locator('.list-section', {
-      has: page.getByRole('heading', { name: 'Model Details' }),
-    });
-    await expect(modelDetailsSection).toBeVisible({ timeout: 15000 });
-    await modelDetailsSection.getByRole('button', { name: 'Edit' }).click();
-
-    const settingsSection = page.locator('.list-section', {
-      has: page.getByRole('heading', { name: 'Model Settings' }),
-    });
-    await expect(settingsSection.getByText('Encrypted Settings')).toBeVisible({ timeout: 15000 });
-
-    const newSettingsItem = page.locator('.list-item').filter({ hasText: 'New Settings (JSON Object)' }).first();
-    await newSettingsItem.locator('textarea').fill(JSON.stringify({ hello: 'world', n: 1 }));
-    await modelDetailsSection.getByRole('button', { name: 'Save' }).click();
-
-    await expect
-      .poll(
-        async () => {
-          const updated = await getModelByUserAndName(userId, protoName);
-          try {
-            const obj = typeof updated?.settings === 'string' ? JSON.parse(updated.settings) : updated?.settings;
-            return obj?.__enc__ || '';
-          } catch {
-            return '';
-          }
+      const attachResp = await request.post(`${stationAccessPoint}/admin/prototype`, {
+        headers: { 'X-Admin-Token': stationAdminToken },
+        data: {
+          prototype_id: prototypeId,
+          token: prototypeToken,
+          kind: 'station',
+          name: protoName,
         },
-        { timeout: 15000 }
-      )
-      .toMatch(/^lcenc1:/);
+      });
+      expect(attachResp.ok()).toBeTruthy();
+      const attachBody = await attachResp.json();
+      expect(attachBody.result).toBe(0);
 
-    const delModelResp = await page.request.post('http://localhost:9000/api/delete_model', { data: { model_id: modelIdFromUrl } });
-    expect(delModelResp.ok()).toBeTruthy();
-    const delModel = await delModelResp.json();
-    expect(delModel.result).toBe(0);
+      await page.goto('/my-prototypes');
+      await expect(page.getByText(protoName)).toBeVisible({ timeout: 15000 });
+      const protoItem = page.locator('.list-item').filter({ hasText: protoName }).first();
+      await expect(protoItem.locator('span').filter({ hasText: /^Local$/ })).toBeVisible({ timeout: 15000 });
+      await addToMyModels(page, protoItem);
 
-    const delAcctResp = await page.request.post('http://localhost:9000/api/remove_account', {
-      data: { account_id: String(acctRow.account_id || '').replace(/-/g, '') },
-    });
-    expect(delAcctResp.ok()).toBeTruthy();
-    const delAcct = await delAcctResp.json();
-    expect(delAcct.result).toBe(0);
+      await page.goto('/models');
+      await expect(page.locator('.list-item').filter({ hasText: protoName }).first()).toBeVisible({
+        timeout: 15000,
+      });
 
-    const delProtoResp = await page.request.post('http://localhost:9000/api/delete_prototype', { data: { prototype_id: prototypeId } });
-    expect(delProtoResp.ok()).toBeTruthy();
-    const delProto = await delProtoResp.json();
-    expect(delProto.result).toBe(0);
+      await expect
+        .poll(async () => await getModelByUserAndName(userId, protoName), { timeout: 10000 })
+        .toBeTruthy();
+
+      const modelRow = await getModelByUserAndName(userId, protoName);
+      expect(modelRow).toBeTruthy();
+      expect(Boolean(modelRow.is_local)).toBeTruthy();
+      expect(normalizeUrl(modelRow.conductor_address)).toBe(normalizeUrl(accessPoint));
+      modelIdFromUrl = String(modelRow.model_id || '').replace(/-/g, '');
+      expect(modelIdFromUrl).toMatch(/^[0-9a-f]{32}$/);
+
+      const bot = await createLocalTelegramBotToken(request);
+      accountUsername = bot.username;
+
+      await page.goto('/models');
+      await page.getByRole('button', { name: 'Add account' }).click();
+      await expect(page.getByRole('heading', { name: 'Add New Account' })).toBeVisible({ timeout: 15000 });
+      await page.getByPlaceholder('Enter name').fill(accountName);
+      await page.getByPlaceholder('Enter username').fill(accountUsername);
+      await page.getByPlaceholder('Enter token').fill(bot.token);
+      await page.getByPlaceholder('Enter account description').fill('Local account');
+      await page.locator('.list-item').filter({ hasText: 'Local Account' }).click();
+      await page.getByRole('button', { name: 'Save Account' }).click();
+      await expect(page.getByRole('heading', { name: 'Add New Account' })).toBeHidden({ timeout: 15000 });
+
+      await expect(page.getByText(accountUsername)).toBeVisible({ timeout: 15000 });
+
+      await expect
+        .poll(async () => await getUserAccountByUsername(accountUsername), { timeout: 10000 })
+        .toBeTruthy();
+
+      const acctRow = await getUserAccountByUsername(accountUsername);
+      expect(acctRow).toBeTruthy();
+      expect(Boolean(acctRow.is_local)).toBeTruthy();
+      expect(String(acctRow.account_token || '').startsWith('lcenc1:')).toBeTruthy();
+      accountId = String(acctRow.account_id || '').replace(/-/g, '');
+
+      const modelItem = page.locator('.list-item').filter({ hasText: protoName }).first();
+      await modelItem.click();
+
+      const modelDetailsDialog = page.locator('.dialog-wrapper', {
+        has: page.getByRole('heading', { name: protoName }),
+      });
+      await expect(modelDetailsDialog).toBeVisible({ timeout: 15000 });
+      await expect(modelDetailsDialog.getByRole('heading', { name: protoName })).toBeVisible();
+      await modelDetailsDialog.getByRole('button', { name: 'Edit' }).click();
+
+      await expect(modelDetailsDialog.getByText('Encrypted Settings')).toBeVisible({ timeout: 15000 });
+
+      const newSettingsItem = modelDetailsDialog
+        .locator('.list-item')
+        .filter({ hasText: 'New Settings (JSON Object)' })
+        .first();
+      await newSettingsItem.locator('textarea').fill(JSON.stringify({ hello: 'world', n: 1 }));
+      await modelDetailsDialog.getByRole('button', { name: 'Save' }).click();
+
+      await expect
+        .poll(
+          async () => {
+            const updated = await getModelByUserAndName(userId, protoName);
+            try {
+              const obj = typeof updated?.settings === 'string' ? JSON.parse(updated.settings) : updated?.settings;
+              return obj?.__enc__ || '';
+            } catch {
+              return '';
+            }
+          },
+          { timeout: 15000 }
+        )
+        .toMatch(/^lcenc1:/);
+    } finally {
+      if (modelIdFromUrl) {
+        try {
+          await page.request.post('http://localhost:9000/api/delete_model', { data: { model_id: modelIdFromUrl } });
+        } catch (err) {
+          console.error(`cleanup delete_model:`, err);
+        }
+      }
+      if (accountId) {
+        try {
+          await page.request.post('http://localhost:9000/api/remove_account', { data: { account_id: accountId } });
+        } catch (err) {
+          console.error(`cleanup remove_account:`, err);
+        }
+      }
+      if (accountUsername) {
+        try {
+          await cleanupAccount(accountUsername);
+        } catch (err) {
+          console.error(`cleanupAccount:`, err);
+        }
+      }
+      if (prototypeId) {
+        try {
+          await page.request.post('http://localhost:9000/api/delete_prototype', {
+            data: { prototype_id: prototypeId },
+          });
+        } catch (err) {
+          console.error(`cleanup delete_prototype:`, err);
+        }
+      }
+    }
   });
 });

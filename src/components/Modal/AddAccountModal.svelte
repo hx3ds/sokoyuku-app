@@ -28,10 +28,12 @@
         }
     });
 
+    const requiresPro = $derived(!form.is_local && form.type !== 'telegram' && form.type !== 'whatsapp_cloud');
+
     /** @param {KeyboardEvent} e */
     function handleKeydown(e) {
         if (e.key === 'Enter') {
-            onsubmit(form);
+            onsubmit({ ...form, account_group: requiresPro ? 'pro' : 'free' });
         }
     }
 
@@ -110,9 +112,14 @@
     {/if}
     <InfoStackToggle
         title="Local Account"
-        description={form.is_local ? 'Token will be encrypted with your Conductor public key before upload' : 'Token will be stored normally'}
+        description={form.is_local ? 'Token and server will be encrypted with your Conductor public key before upload' : 'Credentials will be stored normally'}
         bind:checked={form.is_local}
     />
+    {#if requiresPro}
+        <InfoStackItem>
+            <p class="text-sm" style="color: var(--color-text-secondary); margin: 0;">Requires an active Pro subscription.</p>
+        </InfoStackItem>
+    {/if}
     {#if form.type === 'matrix'}
         <InfoStackInput 
             id="server" 
@@ -136,7 +143,7 @@
                 <CommonButton variant="icon-button" onclick={() => onclose()} aria-label="Cancel">
                     <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12" /></svg>
                 </CommonButton>
-                <CommonButton variant="icon-button" onclick={() => onsubmit(form)} aria-label="Save Account">
+                <CommonButton variant="icon-button" onclick={() => onsubmit({ ...form, account_group: requiresPro ? 'pro' : 'free' })} aria-label="Save Account">
                     <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.5 12.75l6 6 9-13.5" /></svg>
                 </CommonButton>
             </div>

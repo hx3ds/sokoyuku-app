@@ -7,13 +7,15 @@ export function getStripeConnectStatus() {
 export function createStripeConnectOnboardingLink({
     returnUrl,
     refreshUrl = returnUrl,
-    country = 'US'
+    country = 'US',
+    forceRecreate = false
 }) {
     return request('/api/stripe/connect/onboarding_link', {
         body: {
             return_url: returnUrl,
             refresh_url: refreshUrl,
-            country
+            country,
+            force_recreate: Boolean(forceRecreate)
         }
     });
 }

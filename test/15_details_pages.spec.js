@@ -1,14 +1,16 @@
-import { test, expect } from '@playwright/test';
-import { uniqueSuffix } from './utils.js';
+import { test, expect, authStatePath } from './fixtures.js';
+import { addToMyModels, normalizeModelId, uniqueSuffix } from './utils.js';
 
 test.describe.serial('Details Pages', () => {
-  const authFile = 'playwright/.auth/user.json';
   let protoId = null;
   let modelId = null;
   let username = null;
   let protoName = null;
+  let authFile = null;
 
-  test.beforeAll(async ({ browser }) => {
+  test.beforeAll(async ({ browser }, testInfo) => {
+    test.setTimeout(120000);
+    authFile = authStatePath(testInfo.parallelIndex);
     const suffix = uniqueSuffix();
     protoName = `E2E Details ${suffix}`;
     const protoDesc = `Details description ${suffix}`;
@@ -17,6 +19,7 @@ test.describe.serial('Details Pages', () => {
     const page = await context.newPage();
 
     await page.goto('/my-prototypes');
+    await expect(page).toHaveURL(/\/my-prototypes/, { timeout: 15000 });
     await page.locator('#page-my-prototypes').getByRole('button', { name: 'Create Prototype' }).click();
     await expect(page.getByRole('heading', { name: 'Create New Prototype' })).toBeVisible();
     await page.getByPlaceholder('e.g. my-awesome-account').fill(protoName);
@@ -49,49 +52,59 @@ test.describe.serial('Details Pages', () => {
     await page.getByPlaceholder('Search prototypes...').fill(protoName);
     const exploreItem = page.locator('.list-item').filter({ hasText: protoName }).first();
     await expect(exploreItem).toBeVisible({ timeout: 15000 });
-    await exploreItem.locator('.actions').getByRole('button', { name: 'Add to my models' }).click();
-
-    await page.goto('/models');
-    const modelItem = page.locator('.list-item').filter({ hasText: protoName }).first();
-    await expect(modelItem).toBeVisible({ timeout: 15000 });
-    await modelItem.click();
-    await expect(page).toHaveURL(/\/model\/[0-9a-f]{32}/, { timeout: 15000 });
-    {
-      const m = page.url().match(/\/model\/([0-9a-f]{32})/);
-      modelId = m ? m[1] : null;
-    }
-    if (!modelId) {
-      throw new Error(`Failed to resolve modelId from URL: ${page.url()}`);
+    const addResult = await addToMyModels(page, exploreItem.locator('.actions'));
+    modelId = normalizeModelId(addResult?.data?.model_id);
+    if (!modelId || !/^[0-9a-f]{32}$/.test(modelId)) {
+      throw new Error(`Failed to resolve modelId from add_prototype_to_user_model_list: ${JSON.stringify(addResult)}`);
     }
 
     await page.close();
     await context.close();
   });
 
-  test.afterAll(async ({ browser }) => {
-    const context = await browser.newContext({ storageState: authFile });
+  test.afterAll(async ({ browser }, testInfo) => {
+    const state = authFile || authStatePath(testInfo.parallelIndex);
+    const context = await browser.newContext({ storageState: state });
     const page = await context.newPage();
 
-    if (protoName) {
-      await page.goto('/models');
-      const modelItem = page.locator('.list-item').filter({ hasText: protoName }).first();
-      if (await modelItem.count()) {
-        await modelItem.getByRole('button', { name: 'Options' }).click();
-        await page.getByText('Delete').click();
-        await page.getByRole('button', { name: 'OK' }).click();
+    try {
+      if (modelId) {
+        try {
+          await page.request.post('http://localhost:9000/api/delete_model', { data: { model_id: modelId } });
+        } catch (err) {
+          console.error(`afterAll delete_model(${modelId}):`, err);
+        }
       }
+      if (protoId) {
+        try {
+          await page.request.post('http://localhost:9000/api/delete_prototype', {
+            data: { prototype_id: Number(protoId) },
+          });
+        } catch (err) {
+          console.error(`afterAll delete_prototype(${protoId}):`, err);
+        }
+      }
+      if (protoName) {
+        await page.goto('/models');
+        const modelItem = page.locator('.list-item').filter({ hasText: protoName }).first();
+        if (await modelItem.count()) {
+          await modelItem.getByRole('button', { name: 'Options' }).click();
+          await page.getByText('Delete').click();
+          await page.getByRole('button', { name: 'OK' }).click();
+        }
 
-      await page.goto('/my-prototypes');
-      const protoItem = page.locator('.list-item').filter({ hasText: protoName }).first();
-      if (await protoItem.count()) {
-        await protoItem.getByRole('button', { name: 'Options' }).click();
-        await page.getByText('Delete').click();
-        await page.getByRole('button', { name: 'OK' }).click();
+        await page.goto('/my-prototypes');
+        const protoItem = page.locator('.list-item').filter({ hasText: protoName }).first();
+        if (await protoItem.count()) {
+          await protoItem.getByRole('button', { name: 'Options' }).click();
+          await page.getByText('Delete').click();
+          await page.getByRole('button', { name: 'OK' }).click();
+        }
       }
+    } finally {
+      await page.close();
+      await context.close();
     }
-
-    await page.close();
-    await context.close();
   });
 
   test('should display Model Details page', async ({ page }) => {

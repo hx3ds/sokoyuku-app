@@ -12,14 +12,17 @@
     import PageContainer from '../../components/PageContainer.svelte';
     import InfoStack from '../../components/InfoStack/InfoStack.svelte';
     import InfoStackItem from '../../components/InfoStack/InfoStackItem.svelte';
+    import InfoStackDivider from '../../components/InfoStack/InfoStackDivider.svelte';
     import ActionMenu from '../../components/Button/ActionMenu.svelte';
     import MenuItem from '../../components/Button/MenuItem.svelte';
     import Button from '../../components/Button/Button.svelte';
     import OpenChatButton from '../../components/Button/OpenChatButton.svelte';
+    import CallButton from '../../components/Button/CallButton.svelte';
     import AccountSelectModal from '../../components/Modal/AccountSelectModal.svelte';
     import ChatManagementModal from '../../components/Modal/ChatManagementModal.svelte';
     import AddAccountModal from '../../components/Modal/AddAccountModal.svelte';
     import AccountDetailsModal from '../../components/Modal/AccountDetailsModal.svelte';
+    import ModelDetailsModal from '../../components/Modal/ModelDetailsModal.svelte';
 
     type ModelAccount = {
         acct_id: string;
@@ -43,6 +46,11 @@
         auto_renew?: boolean | null;
         stripe_subscription_id?: string | null;
         subscription_status?: string | null;
+        subscription_tier?: string | null;
+        charge?: number | null;
+        has_free_tier?: boolean | null;
+        max_tier_charge?: number | null;
+        max_charge_per_message?: number | null;
         is_local?: boolean;
         accts?: ModelAccount[];
     };
@@ -61,7 +69,7 @@
         assignedModelStatus?: 'current' | 'other';
     };
 
-    type ModalType = 'accountSelect' | 'shareAccountSelect' | 'chatManage' | 'addAccount' | 'accountDetails' | null;
+    type ModalType = 'accountSelect' | 'shareAccountSelect' | 'chatManage' | 'addAccount' | 'accountDetails' | 'modelDetails' | null;
 
     const modelStoreAny = modelStore as any;
     const accountStoreAny = accountStore as any;
@@ -253,7 +261,10 @@
     }
 
     function getAccountSelectOptions(model: Model | null | undefined): Account[] {
-        return (accountStoreAny.accounts as Account[]).map((account) => {
+        const modelIsLocal = Boolean(model?.is_local);
+        return (accountStoreAny.accounts as Account[])
+            .filter((account) => Boolean(account.is_local) === modelIsLocal)
+            .map((account) => {
             const currentModelUsesAccount = Boolean(
                 model?.model_id && getModelAccounts(model).some((item) => item.acct_id === account.account_id)
             );
@@ -427,6 +438,10 @@
             success_url: `${window.location.origin}/models?subscription=success`,
             cancel_url: `${window.location.origin}/models?subscription=cancelled`
         });
+        if (res.result === 0 && (res.data?.subscribed || res.data?.reactivated)) {
+            await loadData();
+            return;
+        }
         if (res.result === 0 && res.data?.url) window.location.href = res.data.url;
         else showError(res.msg || 'Checkout failed');
     }
@@ -536,11 +551,50 @@
         return res;
     }, accountId, 'Remove this account?');
     
-    function navigateToModel(id: string) {
-        history.pushState(null, '', `/model/${id}`);
-        window.dispatchEvent(new PopStateEvent('popstate'));
+    function openModelDetails(id: string) {
+        openModal('modelDetails', { model_id: id });
     }
+
+    function saveModelChanges(data: any) {
+        modelStore.update(data);
+    }
+
+    let normalAccounts = $derived((accountStoreAny.accounts as Account[]).filter((account) => !account.is_local));
+    let localAccounts = $derived((accountStoreAny.accounts as Account[]).filter((account) => Boolean(account.is_local)));
 </script>
+
+{#snippet accountRow(account: Account)}
+    {@const assignedModelBadgeText = getAccountAssignedModelBadgeText(account)}
+    <InfoStackItem 
+        title={account.name}
+        description={account.description || 'No description'}
+        onclick={() => openModal('accountDetails', { ...account })}
+    >
+        {#snippet titleSuffix()}
+            {#if assignedModelBadgeText}
+                <span class="account-count-badge">{assignedModelBadgeText}</span>
+            {/if}
+        {/snippet}
+
+        {#snippet meta()}
+            <div style="color: #586069; font-size: 0.875rem;">
+                <span>{account.account_username} · Group: {account.account_group || 'free'}</span>
+            </div>
+        {/snippet}
+
+        {#snippet actions()}
+            <ActionMenu
+                iconSize="1.25rem" padding="0.25rem"
+                isOpen={activeMenu === (account.account_id ?? account.account_username)} 
+                width="8rem"
+                onclick={(e: MouseEvent) => handleToggleMenu({ detail: { id: account.account_id ?? account.account_username, event: e } })}
+            >
+                <MenuItem onclick={() => openModal('accountDetails', { ...account })}>Edit</MenuItem>
+                <MenuItem onclick={() => handleRemoveAccount(account.account_id)}>Delete</MenuItem>
+            </ActionMenu>
+        {/snippet}
+    </InfoStackItem>
+{/snippet}
 
 <PageContainer id="page-models">
     <!-- Models List -->
@@ -560,9 +614,12 @@
             <InfoStackItem 
                 title={model.name}
                 description={model.description || 'No description'}
-                onclick={() => navigateToModel(model.model_id)}
+                onclick={() => openModelDetails(model.model_id)}
             >
                 {#snippet titleSuffix()}
+                    {#if model.is_local}
+                        <span style="padding: 0.125rem 0.375rem; font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.05em; border-radius: 0.125rem; background-color: rgba(56, 189, 248, 0.15); color: rgba(3, 105, 161, 0.9);">Local</span>
+                    {/if}
                     <span class="account-count-badge">
                         {getAssignedAccountCount(model)} {getAssignedAccountCount(model) === 1 ? 'account' : 'accounts'}
                     </span>
@@ -573,20 +630,14 @@
 
                 {#snippet actions()}
                     {#if model.call_support && model.type === 'subscription'}
-                        <Button
-                            variant="icon-button"
-                            aria-label={modelHasActiveCall(model) ? 'Return to call' : 'Call'}
-                            className={modelHasActiveCall(model) ? 'call-active' : ''}
+                        <CallButton
+                            active={modelHasActiveCall(model)}
                             onclick={(e: MouseEvent) => {
                                 e.stopPropagation();
                                 history.pushState(null, '', `/call/${model.model_id}`);
                                 window.dispatchEvent(new PopStateEvent('popstate'));
                             }}
-                        >
-                            <svg style="width: 1.25rem; height: 1.25rem; {modelHasActiveCall(model) ? 'color: #059669;' : ''}" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
-                            </svg>
-                        </Button>
+                        />
                     {/if}
                     <OpenChatButton onclick={(e: MouseEvent) => { e.stopPropagation(); openModal('accountSelect', model); }} />
                     
@@ -608,12 +659,13 @@
                         <MenuItem onclick={() => openModal('chatManage', model)}>Manage Chats</MenuItem>
                                 
                         {#if model.type !== 'token'}
-                            {#if !model.stripe_subscription_id || ['canceled', 'incomplete_expired', 'unpaid', 'paused'].includes(model.subscription_status)}
-                                <MenuItem onclick={() => handleSubscriptionCheckout(model.model_id)}>Subscribe</MenuItem>
-                            {:else if model.auto_renew}
+                            {@const periodActive = Boolean(model.period && new Date(model.period) > new Date())}
+                            {#if periodActive && model.auto_renew}
                                 <MenuItem onclick={() => handleUnsubscribe(model.model_id)}>Unsubscribe</MenuItem>
-                            {:else}
+                            {:else if periodActive}
                                 <MenuItem onclick={() => handleSubscriptionCheckout(model.model_id)}>Resubscribe</MenuItem>
+                            {:else}
+                                <MenuItem onclick={() => handleSubscriptionCheckout(model.model_id)}>Subscribe</MenuItem>
                             {/if}
                         {/if}
                         <MenuItem onclick={() => handleShare(model.model_id)}>Share</MenuItem>
@@ -644,48 +696,28 @@
             </Button>
         {/snippet}
         
-        {#each accountStore.accounts as account (account.account_id ?? account.account_username)}
-            {@const assignedModelBadgeText = getAccountAssignedModelBadgeText(account)}
-            <InfoStackItem 
-                title={account.name}
-                description={account.description || 'No description'}
-                onclick={() => openModal('accountDetails', { ...account })}
-            >
-                {#snippet titleSuffix()}
-                    {#if assignedModelBadgeText}
-                        <span class="account-count-badge">{assignedModelBadgeText}</span>
-                    {/if}
-                {/snippet}
-
-                {#snippet meta()}
-                    <div style="color: #586069; font-size: 0.875rem;">
-                        <span>{(account.type === 'discord' || account.type === 'whatsapp_cloud') ? account.account_username : `@${account.account_username}`} · Group: {account.account_group || 'free'}</span>
-                    </div>
-                {/snippet}
-
-                {#snippet actions()}
-                    <ActionMenu
-                        iconSize="1.25rem" padding="0.25rem"
-                        isOpen={activeMenu === (account.account_id ?? account.account_username)} 
-                        width="8rem"
-                        onclick={(e: MouseEvent) => handleToggleMenu({ detail: { id: account.account_id ?? account.account_username, event: e } })}
-                    >
-                        <MenuItem onclick={() => openModal('accountDetails', { ...account })}>Edit</MenuItem>
-                        <MenuItem onclick={() => handleRemoveAccount(account.account_id)}>Delete</MenuItem>
-                    </ActionMenu>
-                {/snippet}
-            </InfoStackItem>
+        {#each normalAccounts as account (account.account_id ?? account.account_username)}
+            {@render accountRow(account)}
+        {/each}
+        {#if normalAccounts.length > 0 && localAccounts.length > 0}
+            <InfoStackDivider label="Local" ariaLabel="Local accounts" />
+        {/if}
+        {#each localAccounts as account (account.account_id ?? account.account_username)}
+            {@render accountRow(account)}
         {/each}
     </InfoStack>
 
     {#if activeModal === 'accountSelect'}
+        {@const selectModel = modalData as Model | null}
         <AccountSelectModal 
-            accounts={getAccountSelectOptions(modalData as Model | null)}
+            accounts={getAccountSelectOptions(selectModel)}
             loading={modalLoading}
             busyAccountId={modalBusyAccountId}
             title="Select Account for Chat"
             emptyText="No accounts found"
-            emptyDescription="Create an account first to assign it to this model"
+            emptyDescription={selectModel?.is_local
+                ? 'Create a local account first to assign it to this model'
+                : 'Create a normal account first to assign it to this model'}
             showAssignedModel={true}
             onclose={closeModal}
             onselect={handleStartChat}
@@ -729,7 +761,15 @@
             ontoggleEdit={() => isEditingAccount = !isEditingAccount}
             onclose={closeModal}
             onsave={saveAccountChanges}
-            onnavigate={navigateToModel}
+            onnavigate={openModelDetails}
+        />
+    {/if}
+
+    {#if activeModal === 'modelDetails'}
+        <ModelDetailsModal
+            modelId={(modalData as Model | null)?.model_id}
+            onclose={closeModal}
+            onupdated={saveModelChanges}
         />
     {/if}
 </PageContainer>
@@ -760,4 +800,5 @@
         font-weight: 500;
         white-space: nowrap;
     }
+
 </style>

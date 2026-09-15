@@ -24,6 +24,7 @@
     password: ''
   });
   let countdown = $state(0);
+  let codeSubmitting = $state(false);
   let timer: ReturnType<typeof setInterval> | undefined;
   let turnstileContainer: HTMLDivElement | undefined;
   let turnstileWidgetId: string | undefined;
@@ -87,20 +88,25 @@
       return;
     }
 
-    const result = await requestVerificationCode(email, 'sign_up', turnstileToken);
-    turnstileToken = '';
-    resetTurnstile(turnstileWidgetId);
-    if (result === true || result.result === 0) {
-      countdown = 60;
-      timer = setInterval(() => {
-        countdown--;
-        if (countdown < 0) {
-          clearInterval(timer);
-          countdown = 0;
-        }
-      }, 1000);
-    } else {
-      errors.code = result.msg || 'Failed to send code';
+    codeSubmitting = true;
+    try {
+      const result = await requestVerificationCode(email, 'sign_up', turnstileToken);
+      turnstileToken = '';
+      resetTurnstile(turnstileWidgetId);
+      if (result === true || result.result === 0) {
+        countdown = 60;
+        timer = setInterval(() => {
+          countdown--;
+          if (countdown < 0) {
+            clearInterval(timer);
+            countdown = 0;
+          }
+        }, 1000);
+      } else {
+        errors.code = result.msg || 'Failed to send code';
+      }
+    } finally {
+      codeSubmitting = false;
     }
   }
 
@@ -161,9 +167,10 @@
 {#snippet codeActions()}
     <Button 
         type="button"
-        disabled={countdown > 0 || !turnstileLoaded}
+        disabled={countdown > 0 || !turnstileLoaded || codeSubmitting}
         onclick={handleGetCode}
         variant="text-button"
+        loading={codeSubmitting}
     >
         {countdown > 0 ? `${countdown}s` : 'Get Code'}
     </Button>

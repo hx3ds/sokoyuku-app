@@ -85,6 +85,7 @@
         bottom: 0;
         display: flex;
         align-items: center;
+        z-index: 1;
     }
 
     .start-slot {
@@ -95,6 +96,12 @@
 
     .end-slot {
         right: 0;
+        padding-left: 0.25rem;
+        background: linear-gradient(
+            to right,
+            transparent,
+            var(--color-bg-surface, #fff) 0.35rem
+        );
     }
 
     .input-field {
@@ -108,6 +115,17 @@
         font-size: 14px;
         color: var(--color-text-main);
         transition: color 0.15s, border-color 0.15s, box-shadow 0.15s;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .input-field.pl-10 {
+        padding-left: 2.5rem;
+    }
+
+    .input-field.pr-10 {
+        padding-right: 2.75rem;
     }
 
     .input-field:focus {

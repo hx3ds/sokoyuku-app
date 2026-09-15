@@ -35,6 +35,7 @@
         period?: string | null;
         auto_renew?: boolean;
         status?: string;
+        subscription_tier?: string | null;
         prototype: ModelPrototype;
     };
 
@@ -177,6 +178,10 @@
                     href="/model/{sub.model_id}"
                 >
                     <div style="padding-top: 0.25rem; font-size: 0.875rem; color: var(--color-text-secondary);">
+                        {#if sub.subscription_tier}
+                            <span style="font-weight: 500;">Tier:</span> {sub.subscription_tier}
+                            <span style="padding-left: 0.5rem; padding-right: 0.5rem;">•</span>
+                        {/if}
                         <span style="font-weight: 500;">Price:</span> {formatCurrency(sub.prototype.interval_charge)}/{sub.prototype.billing_interval || 'monthly'}
                         <span style="padding-left: 0.5rem; padding-right: 0.5rem;">•</span>
                         <span style="font-weight: 500;">Available Until:</span> {formatDate(sub.period)}

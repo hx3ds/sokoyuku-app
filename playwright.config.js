@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { WORKER_COUNT } from './test/constants.js';
 
 const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -32,21 +33,16 @@ if (!webkitReady && process.env.TEST_WORKER_INDEX === undefined) {
   );
 }
 
+// storageState comes from test/fixtures.js (per-worker user-${parallelIndex}.json)
 const browserProjects = [
   {
     name: 'chromium',
-    use: {
-      ...devices['Desktop Chrome'],
-      storageState: 'playwright/.auth/user.json',
-    },
+    use: { ...devices['Desktop Chrome'] },
     dependencies: ['setup'],
   },
   {
     name: 'Mobile Chrome',
-    use: {
-      ...devices['Pixel 7'],
-      storageState: 'playwright/.auth/user.json',
-    },
+    use: { ...devices['Pixel 7'] },
     dependencies: ['setup'],
   },
 ];
@@ -54,10 +50,7 @@ const browserProjects = [
 if (webkitReady) {
   browserProjects.push({
     name: 'Mobile Safari',
-    use: {
-      ...devices['iPhone 13'],
-      storageState: 'playwright/.auth/user.json',
-    },
+    use: { ...devices['iPhone 13'] },
     dependencies: ['setup'],
   });
 }
@@ -67,7 +60,7 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 2,
+  workers: WORKER_COUNT,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: 'http://localhost:8880',
@@ -77,7 +70,10 @@ export default defineConfig({
     {
       name: 'setup',
       testMatch: /.*\.setup\.js/,
+      // Same-file setup tests parallelize (global fullyParallel is false).
+      fullyParallel: true,
     },
     ...browserProjects,
   ],
+  globalTeardown: './test/global.teardown.js',
 });

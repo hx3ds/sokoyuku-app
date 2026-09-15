@@ -10,12 +10,13 @@ function resolveTomlPaths() {
   const configCandidates = [
     process.env.CONSUL_CONFIG_TOML_PATH,
     process.env.CONSUL_TOML_PATH,
-    path.resolve(__dirname, '../../config/consul/consul_config.toml'),
+    path.resolve(__dirname, '../../config/dev/consul/consul_config_local.toml'),
+    path.resolve(__dirname, '../../config/dev/consul/consul_config.toml'),
   ].filter(Boolean);
 
   const secretCandidates = [
     process.env.CONSUL_SECRET_TOML_PATH,
-    path.resolve(__dirname, '../../config/consul/consul_secret.toml'),
+    path.resolve(__dirname, '../../config/dev/consul/consul_secret.toml'),
   ].filter(Boolean);
 
   const pickFirstExisting = (candidates, fallback) => {
@@ -30,8 +31,8 @@ function resolveTomlPaths() {
   };
 
   return {
-    configPath: pickFirstExisting(configCandidates, path.resolve(__dirname, '../../config/consul/consul_config.toml')),
-    secretPath: pickFirstExisting(secretCandidates, path.resolve(__dirname, '../../config/consul/consul_secret.toml')),
+    configPath: pickFirstExisting(configCandidates, path.resolve(__dirname, '../../config/dev/consul/consul_config.toml')),
+    secretPath: pickFirstExisting(secretCandidates, path.resolve(__dirname, '../../config/dev/consul/consul_secret.toml')),
   };
 }
 
@@ -189,4 +190,199 @@ export async function getModelByUserAndName(userId, name) {
     [userId, name]
   );
   return res.rows[0] || null;
+}
+
+export async function getModelByName(name) {
+  const res = await dbQuery(
+    `SELECT model_id::text AS model_id, user_id::text AS user_id, prototype_id, name
+     FROM model
+     WHERE name = $1
+     ORDER BY model_id DESC
+     LIMIT 1`,
+    [name]
+  );
+  return res.rows[0] || null;
+}
+
+export async function getPrototypeByName(name) {
+  const res = await dbQuery(
+    `SELECT prototype_id, name, username
+     FROM prototype
+     WHERE name = $1
+     ORDER BY prototype_id DESC
+     LIMIT 1`,
+    [name]
+  );
+  return res.rows[0] || null;
+}
+
+/**
+ * Mirrors control/tool.CleanupUserViaDB: remove a test contact and related rows
+ * (desired_state, error events, models, verification codes, then contact cascade).
+ */
+export async function cleanupUserViaDB(email) {
+  email = String(email || '').trim();
+  if (!email) {
+    throw new Error('CleanupUserViaDB: empty email');
+  }
+  const lookup = await getPool().query(`SELECT user_id::text AS user_id FROM contact WHERE email = $1`, [email]);
+  if (lookup.rowCount === 0) {
+    await getPool().query(`DELETE FROM app_verification_code WHERE email = $1`, [email]);
+    return;
+  }
+  await cleanupUserByUserID(lookup.rows[0].user_id, email);
+}
+
+/**
+ * Mirrors control/tool.CleanupUserByUserID.
+ */
+export async function cleanupUserByUserID(userID, email = '') {
+  userID = String(userID || '').trim();
+  if (!userID) {
+    throw new Error('CleanupUserByUserID: empty user_id');
+  }
+  if (!email) {
+    const lookup = await getPool().query(`SELECT email FROM contact WHERE user_id = $1::uuid`, [userID]);
+    if (lookup.rowCount === 0) {
+      return;
+    }
+    email = lookup.rows[0].email || '';
+  }
+
+  const client = await getPool().connect();
+  try {
+    await client.query('BEGIN');
+
+    const modelsRes = await client.query(
+      `SELECT m.model_id::text AS model_id
+       FROM model m
+       WHERE m.user_id = $1::uuid
+          OR m.prototype_id IN (
+            SELECT p.prototype_id
+            FROM prototype p
+            JOIN contact c ON c.username = p.username
+            WHERE c.user_id = $1::uuid
+          )`,
+      [userID]
+    );
+    const modelIDs = modelsRes.rows.map((r) => r.model_id);
+
+    const accountsRes = await client.query(
+      `SELECT account_id::text AS account_id FROM user_account WHERE user_id = $1::uuid`,
+      [userID]
+    );
+    const accountIDs = accountsRes.rows.map((r) => r.account_id);
+
+    const chatsRes = await client.query(
+      `SELECT REPLACE(c.account_id::text, '-', '') || ':' || c.chat_type || ':' || c.chat_id AS entity_id
+       FROM chat c
+       WHERE c.model_id IN (
+         SELECT m.model_id
+         FROM model m
+         WHERE m.user_id = $1::uuid
+            OR m.prototype_id IN (
+              SELECT p.prototype_id
+              FROM prototype p
+              JOIN contact ct ON ct.username = p.username
+              WHERE ct.user_id = $1::uuid
+            )
+       )
+       OR c.account_id IN (
+         SELECT account_id FROM user_account WHERE user_id = $1::uuid
+       )`,
+      [userID]
+    );
+    const chatEntityIDs = chatsRes.rows.map((r) => r.entity_id);
+
+    const modelEntityIDs = [];
+    for (const id of modelIDs) {
+      modelEntityIDs.push(id, String(id).replace(/-/g, ''));
+    }
+    const accountEntityIDs = [];
+    for (const id of accountIDs) {
+      accountEntityIDs.push(id, String(id).replace(/-/g, ''));
+    }
+
+    await client.query(
+      `DELETE FROM desired_state
+       WHERE (entity_type = 'model' AND entity_id = ANY($1::text[]))
+          OR (entity_type = 'account' AND entity_id = ANY($2::text[]))
+          OR (entity_type = 'chat' AND entity_id = ANY($3::text[]))`,
+      [modelEntityIDs, accountEntityIDs, chatEntityIDs]
+    );
+
+    await client.query(
+      `DELETE FROM account_traffic_error_event
+       WHERE acct_id IN (SELECT account_id FROM user_account WHERE user_id = $1::uuid)
+          OR model_id IN (
+            SELECT m.model_id
+            FROM model m
+            WHERE m.user_id = $1::uuid
+               OR m.prototype_id IN (
+                 SELECT p.prototype_id
+                 FROM prototype p
+                 JOIN contact c ON c.username = p.username
+                 WHERE c.user_id = $1::uuid
+               )
+          )
+          OR prototype_id IN (
+            SELECT p.prototype_id
+            FROM prototype p
+            JOIN contact c ON c.username = p.username
+            WHERE c.user_id = $1::uuid
+          )`,
+      [userID]
+    );
+
+    await client.query(
+      `DELETE FROM station_error_event
+       WHERE model_id IN (
+         SELECT m.model_id
+         FROM model m
+         WHERE m.user_id = $1::uuid
+            OR m.prototype_id IN (
+              SELECT p.prototype_id
+              FROM prototype p
+              JOIN contact c ON c.username = p.username
+              WHERE c.user_id = $1::uuid
+            )
+       )
+          OR prototype_id IN (
+            SELECT p.prototype_id
+            FROM prototype p
+            JOIN contact c ON c.username = p.username
+            WHERE c.user_id = $1::uuid
+          )`,
+      [userID]
+    );
+
+    // Remove models before contact so prototype RESTRICT FKs cannot block cascade.
+    await client.query(
+      `DELETE FROM model
+       WHERE user_id = $1::uuid
+          OR prototype_id IN (
+            SELECT p.prototype_id
+            FROM prototype p
+            JOIN contact c ON c.username = p.username
+            WHERE c.user_id = $1::uuid
+          )`,
+      [userID]
+    );
+
+    if (email) {
+      await client.query(`DELETE FROM app_verification_code WHERE email = $1`, [email]);
+    }
+
+    await client.query(`DELETE FROM contact WHERE user_id = $1::uuid`, [userID]);
+    await client.query('COMMIT');
+  } catch (err) {
+    try {
+      await client.query('ROLLBACK');
+    } catch {
+      // ignore
+    }
+    throw err;
+  } finally {
+    client.release();
+  }
 }

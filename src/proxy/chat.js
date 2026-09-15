@@ -11,22 +11,22 @@ export function getUserActiveChats() {
 
 export function removeChatFromUserModels(chatId) {
     return request('/api/remove_chat_from_user_models', {
-        body: { chat_id: chatId }
+        body: { chat_id: chatId ?? '' }
     });
 }
 
 export function getModelChats(modelId) {
     return request('/api/get_model_chats', {
-        body: { model_id: modelId }
+        body: { model_id: modelId ?? '' }
     });
 }
 
 export function removeChatFromModel(modelId, chatId, accountId) {
     return request('/api/remove_chat_from_model', {
         body: {
-            model_id: modelId,
-            chat_id: chatId,
-            account_id: accountId,
+            model_id: modelId ?? '',
+            chat_id: chatId ?? '',
+            account_id: accountId ?? '',
         },
     });
 }

@@ -33,6 +33,10 @@
         access_point?: string | null;
         max_chats?: number | null;
         charge?: number | null;
+        has_free_tier?: boolean | null;
+        max_tier_charge?: number | null;
+        max_charge_per_message?: number | null;
+        subscription_tier?: string | null;
         type?: string | null;
         is_local?: boolean | null;
         accts?: ModelAccount[];
@@ -126,8 +130,7 @@
 
     function formatAccountLabel(account: ModelAccount | null | undefined): string {
         if (!account?.acct_username) return 'Not specified';
-        if (account.acct_type === 'discord' || account.acct_type === 'whatsapp_cloud') return account.acct_username;
-        return `@${account.acct_username}`;
+        return account.acct_username;
     }
 
     function getLastUsedModelAccount(value: Model | null | undefined): ModelAccount | null {
@@ -174,7 +177,18 @@
             <InfoStackInput title="Max Chats" value={model!.max_chats} readonly />
             <InfoStackInput title="Access Point" value={model!.access_point} readonly />
             <InfoStackInput title="Type" value={model!.type} readonly />
-            <InfoStackInput title="Charge" value={model!.charge || '0'} readonly />
+            {#if model!.type === 'subscription'}
+                <InfoStackInput title="Tier" value={model!.subscription_tier || '—'} readonly />
+                <InfoStackInput title="Pro Charge" value={model!.charge || '0'} readonly />
+                {#if Number(model!.max_tier_charge || 0) > 0}
+                    <InfoStackInput title="Max Tier Charge" value={model!.max_tier_charge} readonly />
+                {/if}
+                {#if Number(model!.max_charge_per_message || 0) > 0}
+                    <InfoStackInput title="Max Charge Per Message" value={model!.max_charge_per_message} readonly />
+                {/if}
+            {:else}
+                <InfoStackInput title="Max Charge Per Message" value={model!.max_charge_per_message || '0'} readonly />
+            {/if}
             <InfoStackInput title="Available until" value={formatDate(model!.period)} readonly />
             <InfoStackInput title="Auto renew" value={model!.auto_renew} readonly />
             <InfoStackInput

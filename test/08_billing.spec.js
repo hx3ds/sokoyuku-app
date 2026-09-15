@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 
 test.describe('Billing & Credits', () => {
   test('should show credits page and allow adding credits', async ({ page }) => {

@@ -2,8 +2,11 @@
 //export const BASE_URL = import.meta.env.DEV ? 'http://localhost:9000' : 'https://apid.sokoyuku.com';
 //export const BASE_URL = import.meta.env.DEV ? 'http://localhost:9000' : 'https://apis.sokoyuku.com';
 //export const BASE_URL = 'https://api.sokoyuku.com';
-export const BASE_URL = import.meta.env.DEV ? 'https://apid.sokoyuku.com' : 'https://apis.sokoyuku.com';
-//export const BASE_URL = 'https://apis.sokoyuku.com';
+
+// npm test sets VITE_BASE_URL=http://localhost:9000; manual `npm run dev` uses apid.
+export const BASE_URL =
+    import.meta.env.VITE_BASE_URL ||
+    (import.meta.env.DEV ? 'https://apid.sokoyuku.com' : 'https://apis.sokoyuku.com');
 export const GOOGLE_CLIENT_ID =
     import.meta.env.VITE_GOOGLE_CLIENT_ID ||
     '1073852159531-hoob9nn2f9jse3o5eb65s698crl4res6.apps.googleusercontent.com';

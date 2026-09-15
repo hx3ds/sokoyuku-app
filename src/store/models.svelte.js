@@ -35,13 +35,19 @@ function createModelStore() {
         return unique;
     }
 
+    function sortModels(list) {
+        return [...normalizeModels(list)].sort((a, b) =>
+            String(a?.name || '').localeCompare(String(b?.name || ''))
+        );
+    }
+
     async function load() {
         if (loading) return;
         loading = true;
         try {
             const res = await getUserModelList();
             if (res.result === 0) {
-                models = normalizeModels(res.data?.models);
+                models = sortModels(res.data?.models);
                 initialized = true;
             }
         } catch (e) {
@@ -55,7 +61,7 @@ function createModelStore() {
         const id = model?.model_id;
         if (!id) return;
         if (!models.find(m => m.model_id === id)) {
-            models.push(model);
+            models = sortModels([...models, model]);
         }
     }
 
@@ -72,7 +78,7 @@ function createModelStore() {
         if (!id) return;
         const idx = models.findIndex(m => m.model_id === id);
         if (idx !== -1) {
-            models[idx] = { ...models[idx], ...updatedModel };
+            models = sortModels(models.map((m, i) => (i === idx ? { ...m, ...updatedModel } : m)));
         }
     }
 

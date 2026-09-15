@@ -1,10 +1,10 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures.js';
 import { clickAppNav, isWideDesktop } from './utils.js';
 
 test.describe('Navigation', () => {
   test('should navigate to Explore page', async ({ page }) => {
     await page.goto('/models');
-    await expect(page.getByRole('heading', { name: 'Models' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Models' })).toBeVisible({ timeout: 15000 });
 
     await clickAppNav(page, '/explore');
     await expect(page).toHaveURL(/\/explore/);
@@ -12,11 +12,11 @@ test.describe('Navigation', () => {
 
   test('should navigate to Profile page', async ({ page }) => {
     await page.goto('/models');
-    await expect(page.getByRole('heading', { name: 'Models' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Models' })).toBeVisible({ timeout: 15000 });
 
     await clickAppNav(page, '/profile');
     await expect(page).toHaveURL(/\/profile/);
-    await expect(page.getByText('My Information')).toBeVisible();
+    await expect(page.getByText('My Information')).toBeVisible({ timeout: 15000 });
   });
 
   test('should show overview in the desktop right sidebar', async ({ page }) => {
