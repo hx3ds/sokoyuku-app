@@ -9,6 +9,7 @@
     import PageContainer from '../../components/PageContainer.svelte';
     import InfoStack from '../../components/InfoStack/InfoStack.svelte';
     import InfoStackItem from '../../components/InfoStack/InfoStackItem.svelte';
+    import InfoStackBadge from '../../components/InfoStack/InfoStackBadge.svelte';
 
     type PlatformSubscription = {
         status?: string | null;
@@ -172,9 +173,7 @@
                 description={subscription?.plan?.description || 'Free plan with Sokoyuku default quotas.'}
             >
                 {#snippet titleSuffix()}
-                    <span class="status-badge {statusTone(subscription?.status)}">
-                        {subscription?.status || 'free'}
-                    </span>
+                    <InfoStackBadge class="status-badge {statusTone(subscription?.status)}" label={subscription?.status || 'free'} />
                 {/snippet}
                 <div class="overview-body">
                     <div><strong>Current access:</strong> {isPlatformSubscriptionActive ? 'Pro active' : 'Free mode'}</div>
@@ -197,9 +196,7 @@
                 description="Your total models. The higher limit stays unlocked forever after any Pro subscription."
             >
                 {#snippet titleSuffix()}
-                    <span class="status-badge {usageTone(models.length, modelLimit)}">
-                        {toneLabel(usageTone(models.length, modelLimit))}
-                    </span>
+                    <InfoStackBadge class="status-badge {usageTone(models.length, modelLimit)}" label={toneLabel(usageTone(models.length, modelLimit))} />
                 {/snippet}
                 <div class="overview-body">
                     <div><strong>Usage:</strong> {formatQuota(models.length, modelLimit)}</div>
@@ -212,9 +209,7 @@
                 description="Your published and draft prototypes. This cap also stays unlocked forever after Pro."
             >
                 {#snippet titleSuffix()}
-                    <span class="status-badge {usageTone(prototypes.length, prototypeLimit)}">
-                        {toneLabel(usageTone(prototypes.length, prototypeLimit))}
-                    </span>
+                    <InfoStackBadge class="status-badge {usageTone(prototypes.length, prototypeLimit)}" label={toneLabel(usageTone(prototypes.length, prototypeLimit))} />
                 {/snippet}
                 <div class="overview-body">
                     <div><strong>Usage:</strong> {formatQuota(prototypes.length, prototypeLimit)}</div>
@@ -239,9 +234,10 @@
                 description="Pro-group accounts only stay active while your platform subscription is active."
             >
                 {#snippet titleSuffix()}
-                    <span class="status-badge {isPlatformSubscriptionActive ? 'ok' : 'locked'}">
-                        {isPlatformSubscriptionActive ? 'Pro active' : 'Subscription inactive'}
-                    </span>
+                    <InfoStackBadge
+                        class="status-badge {isPlatformSubscriptionActive ? 'ok' : 'locked'}"
+                        label={isPlatformSubscriptionActive ? 'Pro active' : 'Subscription inactive'}
+                    />
                 {/snippet}
                 <div class="overview-body">
                     <div><strong>Normal:</strong> {formatQuota(activeProNormalAccounts, proNormalLimit)}</div>
@@ -269,34 +265,28 @@
         color: var(--color-text-secondary, #586069);
     }
 
-    .status-badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.125rem 0.5rem;
-        border-radius: 999px;
-        font-size: 0.75rem;
+    :global(.info-stack-badge.status-badge) {
         font-weight: 600;
         text-transform: capitalize;
     }
 
-    .status-badge.ok {
+    :global(.info-stack-badge.status-badge.ok) {
         background: rgba(16, 185, 129, 0.12);
         color: rgb(4, 120, 87);
     }
 
-    .status-badge.warning {
+    :global(.info-stack-badge.status-badge.warning) {
         background: rgba(245, 158, 11, 0.14);
         color: rgb(180, 83, 9);
     }
 
-    .status-badge.danger {
+    :global(.info-stack-badge.status-badge.danger) {
         background: rgba(239, 68, 68, 0.12);
         color: rgb(185, 28, 28);
     }
 
-    .status-badge.locked,
-    .status-badge.muted {
+    :global(.info-stack-badge.status-badge.locked),
+    :global(.info-stack-badge.status-badge.muted) {
         background: rgba(107, 114, 128, 0.12);
         color: rgb(75, 85, 99);
     }

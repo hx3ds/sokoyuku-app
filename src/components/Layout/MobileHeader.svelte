@@ -1,14 +1,7 @@
-<script>
-    import Controls from './Controls.svelte';
-</script>
-
 <header class="mobile-header">
     <div class="header-content">
         <div class="logo-container">
             <h1 class="logo-text">Sokoyuku</h1>
-        </div>
-        <div class="header-actions">
-            <Controls isMobile={true} />
         </div>
     </div>
 </header>
@@ -30,7 +23,6 @@
     .header-content {
         display: flex;
         align-items: center;
-        justify-content: space-between;
         padding: 0 16px;
         height: 100%;
     }
@@ -43,13 +35,7 @@
     .logo-text {
         font-size: 1.125rem;
         font-weight: 600;
-        color: var(--color-text-main);
-    }
-
-    .header-actions {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+        color: var(--color-primary);
     }
 
     @media (min-width: 768px) {

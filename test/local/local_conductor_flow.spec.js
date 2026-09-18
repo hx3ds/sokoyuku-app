@@ -122,7 +122,7 @@ test.describe('Local Conductor E2E', () => {
       await page.goto('/my-prototypes');
       await expect(page.getByText(protoName)).toBeVisible({ timeout: 15000 });
       const protoItem = page.locator('.list-item').filter({ hasText: protoName }).first();
-      await expect(protoItem.locator('span').filter({ hasText: /^Local$/ })).toBeVisible({ timeout: 15000 });
+      await expect(protoItem.getByTitle('Only visible to you')).toBeVisible({ timeout: 15000 });
       await addToMyModels(page, protoItem);
 
       await page.goto('/models');
@@ -200,6 +200,20 @@ test.describe('Local Conductor E2E', () => {
           { timeout: 15000 }
         )
         .toMatch(/^lcenc1:/);
+
+      await page.goto(`/model/${modelIdFromUrl}`);
+      await expect(page.getByText('Model Details')).toBeVisible({ timeout: 15000 });
+      await expect(page.getByText('Encrypted Settings')).toBeVisible();
+      await page.locator('#page-model').getByRole('button', { name: 'Edit' }).click();
+      await page
+        .locator('.list-item')
+        .filter({ hasText: 'New Settings (JSON Object)' })
+        .locator('textarea')
+        .fill(JSON.stringify({ hello: 'page', n: 2 }));
+      await page.locator('#page-model').getByRole('button', { name: 'Save' }).click();
+      await expect(page.locator('#page-model').getByRole('button', { name: 'Edit' })).toBeVisible({
+        timeout: 15000,
+      });
     } finally {
       if (modelIdFromUrl) {
         try {

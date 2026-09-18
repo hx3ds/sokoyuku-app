@@ -7,6 +7,7 @@
     import InfoStackInput from '../InfoStack/InfoStackInput.svelte';
     import InfoStackTextarea from '../InfoStack/InfoStackTextarea.svelte';
     import InfoStackDivider from '../InfoStack/InfoStackDivider.svelte';
+    import InfoStackBadge from '../InfoStack/InfoStackBadge.svelte';
     import { fetchModel, updateModel } from '../../proxy/model.js';
     import { showError } from './state.svelte.js';
 
@@ -276,7 +277,7 @@
     <Loading />
 {/snippet}
 {#snippet lastUsedBadge()}
-    <span class="last-used-badge">Last used</span>
+    <InfoStackBadge class="last-used-badge" label="Last used" />
 {/snippet}
 <Dialog
     title={model?.name || 'Model Details'}
@@ -420,17 +421,9 @@
 </Dialog>
 
 <style>
-    .last-used-badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.125rem 0.5rem;
-        border-radius: 999px;
+    :global(.info-stack-badge.last-used-badge) {
         background: #dcfce7;
         color: #166534;
-        font-size: 0.75rem;
-        font-weight: 500;
-        white-space: nowrap;
     }
 
     .setting-row {

@@ -81,12 +81,14 @@
     <InfoStackItem 
         onclick={() => { if (!loading) onselect(account); }}
         title={account.name}
-        description={account.account_username}
     >
-        {#snippet titleSuffix()}
+        {#snippet meta()}
             {#if assignedModelText}
                 <span class={getAssignedModelBadgeClass(account)}>{assignedModelText}</span>
             {/if}
+            <div style="color: #586069; font-size: 0.875rem;">
+                <span>{account.account_username}</span>
+            </div>
         {/snippet}
     </InfoStackItem>
 {/snippet}
@@ -136,6 +138,7 @@
         font-size: 0.75rem;
         font-weight: 500;
         white-space: nowrap;
+        margin-top: 0.125rem;
     }
 
     .current-model-badge {

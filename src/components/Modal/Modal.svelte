@@ -53,7 +53,7 @@
                         variant="text-button"
                         onclick={modalState.onConfirm}
                     >
-                        OK
+                        {modalState.confirmLabel || 'OK'}
                     </Button>
                 </div>
             {/snippet}

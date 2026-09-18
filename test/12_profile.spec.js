@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures.js';
-import { prepareTrackedUser, uniqueSuffix } from './utils.js';
+import { mockClipboard, prepareTrackedUser, uniqueSuffix, submitAuthForm } from './utils.js';
 import { getVerificationCode } from './db.js';
 import { installTurnstileMock } from './turnstile.js';
 
@@ -91,7 +91,8 @@ test.describe('Profile Page', () => {
     await page.getByRole('button', { name: 'Connect' }).click();
 
     await expect(page).toHaveURL(/\/profile\?stripe_connect_return=1/);
-    await expect(stripeConnectInput).toHaveValue('Connected · Payouts enabled');
+    await expect(page.getByRole('heading', { name: 'Stripe Connect' })).toBeVisible({ timeout: 15000 });
+    await expect(stripeConnectInput).toHaveValue('Connected · Payouts enabled', { timeout: 15000 });
   });
 
   test('should show upgrade action for the free plan and start checkout', async ({ page, baseURL }) => {
@@ -196,7 +197,50 @@ test.describe('Profile Page', () => {
     await expect(profilePage.getByRole('link', { name: 'My Prototypes' })).toBeVisible();
     await expect(profilePage.getByRole('link', { name: 'Notifications' })).toBeVisible();
     await expect(profilePage.getByRole('link', { name: 'Credits' })).toBeVisible();
+    await expect(profilePage.getByRole('link', { name: 'My Subscriptions' })).toBeVisible();
+    await expect(profilePage.getByRole('link', { name: 'Payment History' })).toBeVisible();
     await expect(profilePage.getByRole('link', { name: 'Payout Details' })).toBeVisible();
+  });
+
+  const profileLinks = [
+    ['My Prototypes', /\/my-prototypes/],
+    ['Notifications', /\/notifications/],
+    ['Credits', /\/credits/],
+    ['My Subscriptions', /\/my-subscriptions/],
+    ['Payment History', /\/payment-history/],
+    ['Payout Details', /\/payout-details/],
+  ];
+
+  for (const [name, url] of profileLinks) {
+    test(`should open ${name} from profile`, async ({ page }) => {
+      await page.goto('/profile', { waitUntil: 'domcontentloaded' });
+      await page.locator('#page-profile').getByRole('link', { name }).click();
+      await expect(page).toHaveURL(url);
+    });
+  }
+
+  test('should copy the conductor public key', async ({ page }) => {
+    await mockClipboard(page);
+    await page.goto('/profile');
+    const localConductorSection = page.locator('.list-section', {
+      has: page.getByRole('heading', { name: 'Local Conductor' }),
+    });
+    await localConductorSection
+      .getByRole('button', { name: /Show Conductor Public Key|Set Conductor Public Key/ })
+      .click();
+    const modal = page.locator('.dialog-wrapper').filter({
+      has: page.getByRole('heading', { name: 'Conductor Public Key' }),
+    });
+    await expect(modal).toBeVisible();
+    const keyInput = modal.getByPlaceholder('lcpk1:...');
+    const existing = await keyInput.inputValue();
+    const copied = existing || 'lcpk1:e2e-copy-test-key';
+    if (!existing) {
+      await keyInput.fill(copied);
+    }
+    await modal.getByRole('button', { name: 'Copy Conductor Public Key' }).click();
+    await expect(page.getByText('Conductor public key copied to clipboard')).toBeVisible();
+    await expect.poll(async () => page.evaluate(() => window.__pwClipboard)).toBe(copied);
   });
 
   test('should open overview from profile', async ({ page }) => {
@@ -234,13 +278,15 @@ test.describe('Profile Sign Out', () => {
     await page.locator('#signupUsername').fill(user.username);
     await page.locator('#signupPassword').fill(user.password);
     await page.locator('#signupTerms').check();
-    await page.getByRole('button', { name: 'Sign Up' }).click();
+    const signUp = await submitAuthForm(page, 'Sign Up', '/api/sign_up');
+    expect(signUp.result).toBe(0);
     await expect(page).toHaveURL(/\/signin/);
 
     await page.locator('#signinIdentifier').fill(user.email);
     await page.locator('#signinPassword').fill(user.password);
     await page.locator('#signinTerms').check();
-    await page.getByRole('button', { name: 'Enter' }).click();
+    const signIn = await submitAuthForm(page, 'Enter', '/api/sign_in');
+    expect(signIn.result).toBe(0);
     await expect(page).toHaveURL(/\/models/);
 
     await page.goto('/profile');

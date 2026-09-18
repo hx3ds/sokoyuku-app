@@ -111,6 +111,20 @@ test.describe.serial('Details Pages', () => {
     await page.goto(`/model/${modelId}`);
     await expect(page.getByText('Model Details')).toBeVisible({ timeout: 15000 });
     await expect(page.locator('.list-item').filter({ hasText: 'Name' }).locator('input')).toHaveValue(protoName);
+    await expect(page.getByText('Encrypted Settings')).toHaveCount(0);
+    await expect(page.getByText('No settings configured')).toBeVisible();
+
+    const details = page.locator('#page-model');
+    await details.getByRole('button', { name: 'Edit' }).click();
+    const updatedName = `${protoName} Page`;
+    await details.locator('.list-item').filter({ hasText: 'Name' }).locator('input').fill(updatedName);
+    await details.locator('#model-description').fill('edited on model page');
+    await details.getByRole('button', { name: 'Save' }).click();
+    await expect(details.getByRole('button', { name: 'Edit' })).toBeVisible({ timeout: 15000 });
+    await expect(details.locator('.list-item').filter({ hasText: 'Name' }).locator('input')).toHaveValue(
+      updatedName
+    );
+    await expect(details.locator('#model-description')).toHaveValue('edited on model page');
   });
 
   test('should display Prototype Details page and allow editing', async ({ page }) => {
@@ -138,7 +152,10 @@ test.describe.serial('Details Pages', () => {
     await page.goto(`/user/${username}`);
     await expect(page.getByText('User Details')).toBeVisible();
     await expect(page.locator('.list-item').filter({ hasText: 'Username' }).locator('input')).toHaveValue(username);
-    await expect(page.getByText('View Prototypes')).toBeVisible();
+    await page.getByText('View Prototypes').click();
+    await expect(page).toHaveURL(new RegExp(`/prototypes/${username}`));
+    await expect(page.getByText(`Prototypes by ${username}`)).toBeVisible();
+    await expect(page.getByText(protoName)).toBeVisible();
   });
 
   test('should display User Prototypes list', async ({ page }) => {

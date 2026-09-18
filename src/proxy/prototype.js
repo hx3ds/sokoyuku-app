@@ -155,8 +155,3 @@ export async function fetchUserPrototypes(username) {
     return data.result === 0 ? data.data.prototypes : [];
 }
 
-export function certifyPrototype(prototypeId) {
-    return request('/api/certify_prototype', {
-        body: { prototype_id: prototypeId }
-    });
-}

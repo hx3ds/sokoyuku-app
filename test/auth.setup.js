@@ -1,7 +1,7 @@
 import { test as setup, expect } from '@playwright/test';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { prepareTrackedUser } from './utils.js';
+import { prepareTrackedUser, submitAuthForm } from './utils.js';
 import { getVerificationCode, closePool } from './db.js';
 import { saveSetupUserEmail } from './cleanup.js';
 import { installTurnstileMock } from './turnstile.js';
@@ -36,14 +36,16 @@ async function authenticateInto(page, authFile) {
   await page.locator('#signupPassword').fill(user.password);
   await page.locator('#signupTerms').check();
 
-  await page.getByRole('button', { name: 'Sign Up' }).click();
+  const signUp = await submitAuthForm(page, 'Sign Up', '/api/sign_up');
+  expect(signUp.result, `sign_up: ${JSON.stringify(signUp)}`).toBe(0);
   await expect(page).toHaveURL(/\/signin/);
 
   await page.locator('#signinIdentifier').fill(user.email);
   await page.locator('#signinPassword').fill(user.password);
   await page.locator('#signinTerms').check();
 
-  await page.getByRole('button', { name: 'Enter' }).click();
+  const signIn = await submitAuthForm(page, 'Enter', '/api/sign_in');
+  expect(signIn.result, `sign_in: ${JSON.stringify(signIn)}`).toBe(0);
   await expect(page).toHaveURL(/\/models/);
 
   await page.context().storageState({ path: authFile });

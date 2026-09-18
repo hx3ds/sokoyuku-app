@@ -77,7 +77,7 @@
     .sidebar-logo {
         font-size: 1.125rem;
         font-weight: 600;
-        color: var(--color-text-main);
+        color: var(--color-primary);
     }
 
     .sidebar-links {

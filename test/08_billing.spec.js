@@ -33,12 +33,28 @@ test.describe('Billing & Credits', () => {
     // Click Proceed to Checkout
     await page.getByRole('button', { name: 'Proceed to Checkout' }).click();
     
-    // Expect redirection to mock stripe URL
-    // We can check if the page url changes to the mocked one, but since it's a full redirect (window.location.href),
-    // Playwright might wait for load.
-    // The mocked URL is on localhost:8880/mock_stripe_checkout, which doesn't exist, so it might 404.
-    // That's fine, we just want to know it tried to go there.
     await expect(page).toHaveURL(/mock_stripe_checkout/);
+  });
+
+  test('should show failed checkout error', async ({ page }) => {
+    await page.route('**/api/create_checkout_session', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          result: 1,
+          msg: 'Your card was declined',
+        }),
+      });
+    });
+
+    await page.goto('/credits');
+    await page.getByRole('button', { name: 'Add Credits' }).click();
+    await expect(page.getByRole('heading', { name: 'Add Credits' })).toBeVisible();
+    await page.locator('#creditsAmount').fill('10');
+    await page.getByRole('button', { name: 'Proceed to Checkout' }).click();
+    await expect(page.getByText('Your card was declined')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Add Credits' })).toBeVisible();
   });
 
   test('should show subscriptions page', async ({ page }) => {

@@ -2,7 +2,7 @@
     import { onMount, onDestroy } from 'svelte';
     import Loading from '../../components/Loading.svelte';
     import NotFound from '../../components/NotFound.svelte';
-    import { fetchMyPrototypes, fetchUserPrototypes, deletePrototype, certifyPrototype, updatePrototype } from '../../proxy/prototype.js';
+    import { fetchMyPrototypes, fetchUserPrototypes, deletePrototype } from '../../proxy/prototype.js';
     import { fetchProfile } from '../../proxy/user.js';
     import { showConfirm, showError } from '../../components/Modal/state.svelte.js';
     import PageContainer from '../../components/PageContainer.svelte';
@@ -18,7 +18,6 @@
         name: string;
         description?: string | null;
         certified?: boolean;
-        status?: string | null;
     };
 
     type UserProfile = {
@@ -75,27 +74,6 @@
                     await showError('Failed to delete prototype: ' + res.msg);
                 }
             }
-        } else if (action === 'certify') {
-            const res = await certifyPrototype(prototype.prototype_id);
-            if (res.result === 0) {
-                await loadData();
-            } else {
-                await showError('Failed to certify prototype: ' + res.msg);
-            }
-        } else if (action === 'start') {
-            const res = await updatePrototype({ prototype_id: prototype.prototype_id, status: 'active' });
-            if (res.result === 0) {
-                await loadData();
-            } else {
-                await showError('Failed to start prototype: ' + (res.msg || 'Unknown error'));
-            }
-        } else if (action === 'stop') {
-            const res = await updatePrototype({ prototype_id: prototype.prototype_id, status: 'inactive' });
-            if (res.result === 0) {
-                await loadData();
-            } else {
-                await showError('Failed to stop prototype: ' + (res.msg || 'Unknown error'));
-            }
         }
     }
 
@@ -130,15 +108,7 @@
                                 onclick={(e) => toggleMenu(prototype.prototype_id, e)}
                             >
                                 <MenuItem onclick={() => handleAction('edit', prototype)}>Edit</MenuItem>
-                                {#if prototype.status !== 'active'}
-                                    <MenuItem onclick={() => handleAction('start', prototype)}>Start</MenuItem>
-                                {:else}
-                                    <MenuItem onclick={() => handleAction('stop', prototype)}>Stop</MenuItem>
-                                {/if}
                                 <MenuItem onclick={() => handleAction('delete', prototype)}>Delete</MenuItem>
-                                {#if !prototype.certified}
-                                    <MenuItem onclick={() => handleAction('certify', prototype)}>Certify</MenuItem>
-                                {/if}
                             </ActionMenu>
                         {/if}
                     {/snippet}

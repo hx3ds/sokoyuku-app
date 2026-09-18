@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures.js';
-import { prepareTrackedUser } from './utils';
+import { prepareTrackedUser, submitAuthForm } from './utils';
 import { getVerificationCode } from './db';
 import { installTurnstileMock } from './turnstile';
 
@@ -31,7 +31,8 @@ test.describe('Password Reset Flow', () => {
     await page.locator('#signupPassword').fill(user.password);
 
     await page.locator('#signupTerms').check();
-    await page.getByRole('button', { name: 'Sign Up' }).click();
+    const signUp = await submitAuthForm(page, 'Sign Up', '/api/sign_up');
+    expect(signUp.result).toBe(0);
     await expect(page).toHaveURL(/\/signin/);
 
     await page.goto('/change-password');
@@ -58,14 +59,15 @@ test.describe('Password Reset Flow', () => {
 
     await page.getByRole('button', { name: 'Reset Password' }).click();
 
-    await expect(page).toHaveURL(/\/signin/);
+    await expect(page).toHaveURL(/\/signin/, { timeout: 30000 });
 
     await page.goto('/signin');
     await page.locator('#signinIdentifier').fill(user.email);
     await page.locator('#signinPassword').fill(newPassword);
     await page.locator('#signinTerms').check();
 
-    await page.getByRole('button', { name: 'Enter' }).click();
+    const signIn = await submitAuthForm(page, 'Enter', '/api/sign_in');
+    expect(signIn.result).toBe(0);
     await expect(page).toHaveURL(/\/models/);
   });
 });

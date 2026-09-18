@@ -7,6 +7,7 @@
     import Button from '../../components/Button/Button.svelte';
     import InfoStack from '../../components/InfoStack/InfoStack.svelte';
     import InfoStackItem from '../../components/InfoStack/InfoStackItem.svelte';
+    import InfoStackBadge from '../../components/InfoStack/InfoStackBadge.svelte';
 
     type PlatformPlan = {
         name: string;
@@ -135,9 +136,9 @@
                 >
                     {#snippet titleSuffix()}
                         {#if platformSub!.status === 'past_due'}
-                            <span style="font-size: 0.75rem; padding: 0.125rem 0.5rem; border-radius: 0.25rem; background-color: #fee2e2; color: #991b1b; margin-left: 0.5rem;">Past Due</span>
+                            <InfoStackBadge class="past-due-badge" label="Past Due" />
                         {:else if platformSub!.status === 'trialing'}
-                            <span style="font-size: 0.75rem; padding: 0.125rem 0.5rem; border-radius: 0.25rem; background-color: #dbeafe; color: #1e40af; margin-left: 0.5rem;">Trial</span>
+                            <InfoStackBadge class="trial-badge" label="Trial" />
                         {/if}
                     {/snippet}
 
@@ -213,3 +214,16 @@
         </InfoStack>
     {/if}
 </PageContainer>
+
+<style>
+    :global(.info-stack-badge.past-due-badge) {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+
+    :global(.info-stack-badge.trial-badge) {
+        background-color: #dbeafe;
+        color: #1e40af;
+    }
+</style>
+

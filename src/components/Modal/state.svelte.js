@@ -4,6 +4,7 @@ const initialState = {
     message: '',
     type: 'info', // info, success, error, warning
     isConfirm: false,
+    confirmLabel: 'OK',
     onConfirm: null,
     onCancel: null
 };
@@ -18,6 +19,7 @@ export function showAlert(message, title = 'Notification', type = 'info') {
         modalState.message = message;
         modalState.type = type;
         modalState.isConfirm = false;
+        modalState.confirmLabel = 'OK';
         modalState.onConfirm = () => {
             closeModal();
             resolve(true);
@@ -26,13 +28,14 @@ export function showAlert(message, title = 'Notification', type = 'info') {
     });
 }
 
-export function showConfirm(message, title = 'Confirm', type = 'warning') {
+export function showConfirm(message, title = 'Confirm', type = 'warning', confirmLabel = 'OK') {
     return new Promise((resolve) => {
         modalState.isOpen = true;
         modalState.title = title;
         modalState.message = message;
         modalState.type = type;
         modalState.isConfirm = true;
+        modalState.confirmLabel = confirmLabel || 'OK';
         modalState.onConfirm = () => {
             closeModal();
             resolve(true);

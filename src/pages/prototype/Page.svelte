@@ -269,12 +269,6 @@
                 </InfoStackInput>
             {/if}
             
-            <InfoStackSelect title="Status" id="protoStatus" bind:value={prototype!.status} disabled={!isEditing}>
-                <option value="">Not Set</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-            </InfoStackSelect>
-            
             <InfoStackInput title="Max Chats" type="number" id="maxChats" bind:value={prototype!.max_chats} readonly={!isEditing} min="1" />
             
             <InfoStackSelect title="Private" id="protoPrivate" bind:value={prototype!.private} disabled={!isEditing || Boolean(prototype!.is_local) || hasActiveModels}>

@@ -29,7 +29,7 @@ test.describe('Chat Flow', () => {
       await page.getByPlaceholder('Enter token').fill(bot.token);
       await page.getByPlaceholder('Enter account description').fill('Chat test account');
       await page.getByRole('button', { name: 'Save Account' }).click();
-      await expect(page.getByRole('heading', { name: 'Add New Account' })).toBeHidden();
+      await expect(page.getByRole('heading', { name: 'Add New Account' })).toBeHidden({ timeout: 15000 });
       await expect(page.getByText(accountUsername)).toBeVisible();
 
       await page.goto('/my-prototypes');

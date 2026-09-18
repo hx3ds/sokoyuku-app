@@ -64,7 +64,9 @@
             <div class="title-row">
                 <h4 class="title" class:label-title={isLabel}>{title}</h4>
                 {#if titleSuffix}
-                    {@render titleSuffix()}
+                    <div class="title-suffix">
+                        {@render titleSuffix()}
+                    </div>
                 {/if}
             </div>
         {/if}
@@ -167,14 +169,25 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        min-width: 0;
     }
 
     .title {
+        flex: 1 1 auto;
+        min-width: 0;
         font-weight: 500;
         color: var(--color-dark);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    .title-suffix {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-shrink: 0;
+        min-width: 0;
     }
 
     .title.label-title {

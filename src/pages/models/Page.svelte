@@ -23,6 +23,7 @@
     import AddAccountModal from '../../components/Modal/AddAccountModal.svelte';
     import AccountDetailsModal from '../../components/Modal/AccountDetailsModal.svelte';
     import ModelDetailsModal from '../../components/Modal/ModelDetailsModal.svelte';
+    import InfoStackBadge from '../../components/InfoStack/InfoStackBadge.svelte';
 
     type ModelAccount = {
         acct_id: string;
@@ -230,10 +231,6 @@
         return Array.isArray(model?.accts) ? model.accts : [];
     }
 
-    function getAssignedAccountCount(model: Model | null | undefined): number {
-        return getModelAccounts(model).length;
-    }
-
     function getResolvedModelAccounts(model: Model | null | undefined): Account[] {
         return getModelAccounts(model).map((account) => {
             const stored = (accountStoreAny.accounts as Account[]).find((item) => item.account_id === account.acct_id);
@@ -331,6 +328,7 @@
         }
 
         if (res.result !== 0) {
+            if (await offerSubscribeIfNeeded(res, model, () => handleStartChat(account))) return;
             showError(res.msg || 'Failed to start chat');
             return;
         }
@@ -377,6 +375,7 @@
 
         const res = await AccountAPI.requestOtpForChat(account.account_id, model.model_id);
         if (res.result !== 0) {
+            if (await offerSubscribeIfNeeded(res, model, () => handleShareWithAccount(account, model))) return;
             showError(res.msg || 'Share failed');
             return;
         }
@@ -431,7 +430,6 @@
         return res;
     }, id, 'Delete this model? This cannot be undone.');
 
-    // Subscription
     async function handleSubscriptionCheckout(modelId: string) {
         const res = await SubAPI.createModelSubscriptionCheckout({
             model_id: modelId,
@@ -440,10 +438,27 @@
         });
         if (res.result === 0 && (res.data?.subscribed || res.data?.reactivated)) {
             await loadData();
-            return;
+            return 'subscribed';
         }
-        if (res.result === 0 && res.data?.url) window.location.href = res.data.url;
-        else showError(res.msg || 'Checkout failed');
+        if (res.result === 0 && res.data?.url) {
+            window.location.href = res.data.url;
+            return 'checkout';
+        }
+        showError(res.msg || 'Checkout failed');
+        return 'failed';
+    }
+
+    async function offerSubscribeIfNeeded(res: any, model: Model, retry: () => Promise<void>) {
+        if (!res?.data?.need_subscription) return false;
+        if (!await showConfirm(
+            'This model is not subscribed yet. Do you want to subscribe?',
+            'Subscribe',
+            'warning',
+            'Subscribe'
+        )) return true;
+        const outcome = await handleSubscriptionCheckout(model.model_id);
+        if (outcome === 'subscribed') await retry();
+        return true;
     }
 
     const handleUnsubscribe = (id: string) => performAction(SubAPI.cancelModelSubscription, id, 'Cancel subscription?');
@@ -559,9 +574,73 @@
         modelStore.update(data);
     }
 
+    let normalModels = $derived((modelStoreAny.models as Model[]).filter((model) => !model.is_local));
+    let localModels = $derived((modelStoreAny.models as Model[]).filter((model) => Boolean(model.is_local)));
     let normalAccounts = $derived((accountStoreAny.accounts as Account[]).filter((account) => !account.is_local));
     let localAccounts = $derived((accountStoreAny.accounts as Account[]).filter((account) => Boolean(account.is_local)));
 </script>
+
+{#snippet modelRow(model: Model)}
+    <InfoStackItem 
+        title={model.name}
+        description={model.description || 'No description'}
+        onclick={() => openModelDetails(model.model_id)}
+    >
+        {#snippet titleSuffix()}
+            {#if modelHasActiveCall(model)}
+                <InfoStackBadge
+                    class="in-call-badge"
+                    label="In call"
+                    title="You have an active call with this model"
+                />
+            {/if}
+        {/snippet}
+
+        {#snippet actions()}
+            {#if model.call_support && model.type === 'subscription'}
+                <CallButton
+                    active={modelHasActiveCall(model)}
+                    onclick={(e: MouseEvent) => {
+                        e.stopPropagation();
+                        history.pushState(null, '', `/call/${model.model_id}`);
+                        window.dispatchEvent(new PopStateEvent('popstate'));
+                    }}
+                />
+            {/if}
+            <OpenChatButton onclick={(e: MouseEvent) => { e.stopPropagation(); openModal('accountSelect', model); }} />
+            
+            <ActionMenu 
+                isOpen={activeMenu === model.model_id}
+                iconSize="1.5rem"
+                padding="0.25rem"
+                width="8rem"
+                onclick={(e: MouseEvent) => handleToggleMenu({ detail: { id: model.model_id, event: e } })}
+            >
+                {@const deleteDisabledReason = getDeleteDisabledReason(model)}
+                {#if deleteDisabledReason}
+                    <MenuItem style="opacity: 0.5; cursor: not-allowed;" onclick={() => showError(deleteDisabledReason)}>Delete</MenuItem>
+                {:else}
+                    <MenuItem onclick={() => handleDeleteModel(model.model_id)}>Delete</MenuItem>
+                {/if}
+                
+                <div style="height: 1px; background-color: #e1e4e8; margin: 4px 0;"></div>
+                <MenuItem onclick={() => openModal('chatManage', model)}>Manage Chats</MenuItem>
+                        
+                {#if model.type !== 'token'}
+                    {@const periodActive = Boolean(model.period && new Date(model.period) > new Date())}
+                    {#if periodActive && model.auto_renew}
+                        <MenuItem onclick={() => handleUnsubscribe(model.model_id)}>Unsubscribe</MenuItem>
+                    {:else if periodActive}
+                        <MenuItem onclick={() => handleSubscriptionCheckout(model.model_id)}>Resubscribe</MenuItem>
+                    {:else}
+                        <MenuItem onclick={() => handleSubscriptionCheckout(model.model_id)}>Subscribe</MenuItem>
+                    {/if}
+                {/if}
+                <MenuItem onclick={() => handleShare(model.model_id)}>Share</MenuItem>
+            </ActionMenu>
+        {/snippet}
+    </InfoStackItem>
+{/snippet}
 
 {#snippet accountRow(account: Account)}
     {@const assignedModelBadgeText = getAccountAssignedModelBadgeText(account)}
@@ -570,13 +649,10 @@
         description={account.description || 'No description'}
         onclick={() => openModal('accountDetails', { ...account })}
     >
-        {#snippet titleSuffix()}
+        {#snippet meta()}
             {#if assignedModelBadgeText}
                 <span class="account-count-badge">{assignedModelBadgeText}</span>
             {/if}
-        {/snippet}
-
-        {#snippet meta()}
             <div style="color: #586069; font-size: 0.875rem;">
                 <span>{account.account_username} · Group: {account.account_group || 'free'}</span>
             </div>
@@ -610,68 +686,14 @@
             </svg>
         {/snippet}
 
-        {#each modelStore.models as model (model.model_id)}
-            <InfoStackItem 
-                title={model.name}
-                description={model.description || 'No description'}
-                onclick={() => openModelDetails(model.model_id)}
-            >
-                {#snippet titleSuffix()}
-                    {#if model.is_local}
-                        <span style="padding: 0.125rem 0.375rem; font-size: 0.625rem; text-transform: uppercase; letter-spacing: 0.05em; border-radius: 0.125rem; background-color: rgba(56, 189, 248, 0.15); color: rgba(3, 105, 161, 0.9);">Local</span>
-                    {/if}
-                    <span class="account-count-badge">
-                        {getAssignedAccountCount(model)} {getAssignedAccountCount(model) === 1 ? 'account' : 'accounts'}
-                    </span>
-                    {#if modelHasActiveCall(model)}
-                        <span class="in-call-badge" title="You have an active call with this model">In call</span>
-                    {/if}
-                {/snippet}
-
-                {#snippet actions()}
-                    {#if model.call_support && model.type === 'subscription'}
-                        <CallButton
-                            active={modelHasActiveCall(model)}
-                            onclick={(e: MouseEvent) => {
-                                e.stopPropagation();
-                                history.pushState(null, '', `/call/${model.model_id}`);
-                                window.dispatchEvent(new PopStateEvent('popstate'));
-                            }}
-                        />
-                    {/if}
-                    <OpenChatButton onclick={(e: MouseEvent) => { e.stopPropagation(); openModal('accountSelect', model); }} />
-                    
-                    <ActionMenu 
-                        isOpen={activeMenu === model.model_id}
-                        iconSize="1.5rem"
-                        padding="0.25rem"
-                        width="8rem"
-                        onclick={(e: MouseEvent) => handleToggleMenu({ detail: { id: model.model_id, event: e } })}
-                    >
-                        {@const deleteDisabledReason = getDeleteDisabledReason(model)}
-                        {#if deleteDisabledReason}
-                            <MenuItem style="opacity: 0.5; cursor: not-allowed;" onclick={() => showError(deleteDisabledReason)}>Delete</MenuItem>
-                        {:else}
-                            <MenuItem onclick={() => handleDeleteModel(model.model_id)}>Delete</MenuItem>
-                        {/if}
-                        
-                        <div style="height: 1px; background-color: #e1e4e8; margin: 4px 0;"></div>
-                        <MenuItem onclick={() => openModal('chatManage', model)}>Manage Chats</MenuItem>
-                                
-                        {#if model.type !== 'token'}
-                            {@const periodActive = Boolean(model.period && new Date(model.period) > new Date())}
-                            {#if periodActive && model.auto_renew}
-                                <MenuItem onclick={() => handleUnsubscribe(model.model_id)}>Unsubscribe</MenuItem>
-                            {:else if periodActive}
-                                <MenuItem onclick={() => handleSubscriptionCheckout(model.model_id)}>Resubscribe</MenuItem>
-                            {:else}
-                                <MenuItem onclick={() => handleSubscriptionCheckout(model.model_id)}>Subscribe</MenuItem>
-                            {/if}
-                        {/if}
-                        <MenuItem onclick={() => handleShare(model.model_id)}>Share</MenuItem>
-                    </ActionMenu>
-                {/snippet}
-            </InfoStackItem>
+        {#each normalModels as model (model.model_id)}
+            {@render modelRow(model)}
+        {/each}
+        {#if normalModels.length > 0 && localModels.length > 0}
+            <InfoStackDivider label="Local" ariaLabel="Local models" />
+        {/if}
+        {#each localModels as model (model.model_id)}
+            {@render modelRow(model)}
         {/each}
     </InfoStack>
 
@@ -788,17 +810,9 @@
         white-space: nowrap;
     }
 
-    .in-call-badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.125rem 0.5rem;
-        border-radius: 999px;
+    :global(.info-stack-badge.in-call-badge) {
         background: #ecfdf5;
         color: #047857;
-        font-size: 0.75rem;
-        font-weight: 500;
-        white-space: nowrap;
     }
 
 </style>

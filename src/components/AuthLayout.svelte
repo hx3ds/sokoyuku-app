@@ -41,7 +41,7 @@
         line-height: 2.25rem;
         font-weight: 700;
         text-align: center;
-        color: var(--color-dark);
+        color: var(--color-primary);
         padding-bottom: 0.5rem;
     }
 

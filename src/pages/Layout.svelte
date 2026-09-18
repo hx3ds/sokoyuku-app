@@ -3,7 +3,6 @@
   import Sidebar from '../components/Layout/Sidebar.svelte';
   import MobileBottomNav from '../components/Layout/MobileBottomNav.svelte';
   import RightSidebar from '../components/Layout/RightSidebar.svelte';
-  import Controls from '../components/Layout/Controls.svelte';
 
   let { children } = $props();
 </script>
@@ -15,12 +14,8 @@
 
     <MobileBottomNav />
 
-    <!-- Main Content Area -->
     <main class="main-content">
         <div class="content-wrapper">
-            <div class="desktop-header-actions">
-                <Controls />
-             </div>
             <div id="page" class="page-container">
                 {@render children()}
             </div>
@@ -57,10 +52,6 @@
         padding-bottom: 2rem;
     }
 
-    .desktop-header-actions {
-        display: none;
-    }
-
     .page-container {
         width: 100%;
         height: 100%;
@@ -81,10 +72,6 @@
         .content-wrapper {
             max-width: 700px;
             padding-bottom: 2rem;
-        }
-        
-        .desktop-header-actions {
-            display: flex;
         }
     }
 

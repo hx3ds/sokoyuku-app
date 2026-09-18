@@ -10,4 +10,25 @@ test.describe('Notifications', () => {
     const items = page.locator('#page-notifications .list-item');
     await expect.poll(async () => (await empty.count()) + (await items.count())).toBeGreaterThan(0);
   });
+
+  test('should render notification items', async ({ page }) => {
+    await page.route('**/api/get_notifications', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          result: 0,
+          data: [
+            {
+              content: 'E2E notification body',
+              type: 'success',
+              created_at: new Date().toISOString(),
+            },
+          ],
+        }),
+      });
+    });
+    await page.goto('/notifications');
+    await expect(page.locator('#page-notifications .list-item').filter({ hasText: 'E2E notification body' })).toBeVisible();
+  });
 });

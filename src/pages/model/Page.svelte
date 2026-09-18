@@ -10,6 +10,7 @@
     import { modelStore } from '../../store/models.svelte.js';
     import { showError } from '../../components/Modal/state.svelte.js';
     import PageContainer from '../../components/PageContainer.svelte';
+    import InfoStackBadge from '../../components/InfoStack/InfoStackBadge.svelte';
 
     type ModelAccount = {
         acct_id: string;
@@ -212,7 +213,7 @@
                     >
                         {#snippet titleSuffix()}
                             {#if account.is_last_used}
-                                <span class="last-used-badge">Last used</span>
+                                <InfoStackBadge class="last-used-badge" label="Last used" />
                             {/if}
                         {/snippet}
 
@@ -286,16 +287,8 @@
         padding-top: 0.125rem;
     }
 
-    .last-used-badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.125rem 0.5rem;
-        border-radius: 999px;
+    :global(.info-stack-badge.last-used-badge) {
         background: #dcfce7;
         color: #166534;
-        font-size: 0.75rem;
-        font-weight: 500;
-        white-space: nowrap;
     }
 </style>
