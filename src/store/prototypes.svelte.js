@@ -10,19 +10,24 @@ function createPrototypeStore() {
     let prototypes = $state([]);
     let loading = $state(false);
     let initialized = $state(false);
+    let inflight = null;
 
     async function load() {
-        if (loading) return;
+        if (inflight) return inflight;
         loading = true;
-        try {
-            const list = await fetchMyPrototypes();
-            prototypes = sortPrototypes(list);
-            initialized = true;
-        } catch (e) {
-            console.error('Failed to load prototypes:', e);
-        } finally {
-            loading = false;
-        }
+        inflight = (async () => {
+            try {
+                const list = await fetchMyPrototypes();
+                prototypes = sortPrototypes(list);
+                initialized = true;
+            } catch (e) {
+                console.error('Failed to load prototypes:', e);
+            } finally {
+                loading = false;
+                inflight = null;
+            }
+        })();
+        return inflight;
     }
 
     function add(prototype) {
@@ -32,10 +37,7 @@ function createPrototypeStore() {
     }
 
     function remove(prototypeId) {
-        const idx = prototypes.findIndex(p => p.prototype_id === prototypeId);
-        if (idx !== -1) {
-            prototypes.splice(idx, 1);
-        }
+        prototypes = prototypes.filter((p) => p.prototype_id !== prototypeId);
     }
     
     function update(updatedPrototype) {

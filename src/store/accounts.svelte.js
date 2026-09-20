@@ -23,21 +23,26 @@ function createAccountStore() {
     let accounts = $state([]);
     let loading = $state(false);
     let initialized = $state(false);
+    let inflight = null;
 
     async function load() {
-        if (loading) return;
+        if (inflight) return inflight;
         loading = true;
-        try {
-            const res = await getUserAccountList();
-            if (res.result === 0) {
-                accounts = sortAccounts(res.data.accounts || []);
-                initialized = true;
+        inflight = (async () => {
+            try {
+                const res = await getUserAccountList();
+                if (res.result === 0) {
+                    accounts = sortAccounts(res.data.accounts || []);
+                    initialized = true;
+                }
+            } catch (e) {
+                console.error('Failed to load accounts:', e);
+            } finally {
+                loading = false;
+                inflight = null;
             }
-        } catch (e) {
-            console.error('Failed to load accounts:', e);
-        } finally {
-            loading = false;
-        }
+        })();
+        return inflight;
     }
 
     function add(account) {
@@ -47,10 +52,7 @@ function createAccountStore() {
     }
 
     function remove(accountId) {
-        const idx = accounts.findIndex(a => a.account_id === accountId);
-        if (idx !== -1) {
-            accounts.splice(idx, 1);
-        }
+        accounts = accounts.filter((a) => a.account_id !== accountId);
     }
 
     function update(updatedAccount) {

@@ -4,6 +4,7 @@ function createModelStore() {
     let models = $state([]);
     let loading = $state(false);
     let initialized = $state(false);
+    let inflight = null;
 
     function normalizeModels(list) {
         const input = Array.isArray(list) ? list : [];
@@ -42,19 +43,23 @@ function createModelStore() {
     }
 
     async function load() {
-        if (loading) return;
+        if (inflight) return inflight;
         loading = true;
-        try {
-            const res = await getUserModelList();
-            if (res.result === 0) {
-                models = sortModels(res.data?.models);
-                initialized = true;
+        inflight = (async () => {
+            try {
+                const res = await getUserModelList();
+                if (res.result === 0) {
+                    models = sortModels(res.data?.models);
+                    initialized = true;
+                }
+            } catch (e) {
+                console.error('Failed to load models:', e);
+            } finally {
+                loading = false;
+                inflight = null;
             }
-        } catch (e) {
-            console.error('Failed to load models:', e);
-        } finally {
-            loading = false;
-        }
+        })();
+        return inflight;
     }
 
     function add(model) {
@@ -67,10 +72,7 @@ function createModelStore() {
 
     function remove(modelId) {
         if (!modelId) return;
-        const idx = models.findIndex(m => m.model_id === modelId);
-        if (idx !== -1) {
-            models.splice(idx, 1);
-        }
+        models = models.filter((m) => m.model_id !== modelId);
     }
     
     function update(updatedModel) {

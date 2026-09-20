@@ -25,6 +25,7 @@
     import AccountDetailsModal from '../../components/Modal/AccountDetailsModal.svelte';
     import ModelDetailsModal from '../../components/Modal/ModelDetailsModal.svelte';
     import InfoStackBadge from '../../components/InfoStack/InfoStackBadge.svelte';
+    import Link from '../../components/InfoStack/Link.svelte';
     import { t, tAccountType, tStatus } from '../../i18n/locale.svelte.js';
 
     type ModelAccount = {
@@ -91,6 +92,12 @@
     let isAccountsSectionExpanded: boolean = $state(false);
     let activeCallPoll: ReturnType<typeof setInterval> | null = null;
     let managedCallSessions: any[] = $state([]);
+
+    $effect(() => {
+        if (accountStore.initialized && accountStore.accounts.length === 0) {
+            isAccountsSectionExpanded = true;
+        }
+    });
 
     function modelHasActiveCall(model: Model) {
         void callStore.sessions;
@@ -714,13 +721,27 @@
     </InfoStackItem>
 {/snippet}
 
+{#snippet emptyModels()}
+    <div class="empty-hint">
+        <p>{t('Add a prototype from Explore, then open chat')}</p>
+        <Link href="/explore" className="empty-hint-link">{t('Explore')}</Link>
+    </div>
+{/snippet}
+
+{#snippet emptyAccounts()}
+    <div class="empty-hint">
+        <p>{t('Add an account, then open chat from a model')}</p>
+        <Button variant="text-button" onclick={() => openModal('addAccount')}>{t('Add account')}</Button>
+    </div>
+{/snippet}
+
 <PageContainer id="page-models">
-    <!-- Models List -->
     <InfoStack 
         title="Models" 
         loading={modelStore.loading}
         empty={modelStore.models.length === 0}
         emptyText="No models found"
+        emptyContent={emptyModels}
     >
         {#snippet icon()}
             <svg style="width: 1.125rem; height: 1.125rem; color: var(--color-primary);" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
@@ -746,6 +767,7 @@
         loading={accountStore.loading}
         empty={accountStore.accounts.length === 0}
         emptyText="No accounts found"
+        emptyContent={emptyAccounts}
         onClick={() => isAccountsSectionExpanded = !isAccountsSectionExpanded}
     >
         {#snippet icon()}
@@ -780,8 +802,13 @@
             title="Select Account for Chat"
             emptyText="No accounts found"
             emptyDescription={selectModel?.is_local
-                ? t('Create a local account first to assign it to this model')
-                : t('Create a normal account first to assign it to this model')}
+                ? 'Add a local account, then open chat'
+                : 'Add an account, then open chat'}
+            emptyActionLabel="Add account"
+            onemptyAction={() => {
+                isAccountsSectionExpanded = true;
+                openModal('addAccount');
+            }}
             showAssignedModel={true}
             onclose={closeModal}
             onselect={handleStartChat}
@@ -866,6 +893,26 @@
     :global(.info-stack-badge.in-call-badge) {
         background: #ecfdf5;
         color: #047857;
+    }
+
+    .empty-hint {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 1rem 0.5rem;
+        text-align: center;
+    }
+
+    .empty-hint p {
+        margin: 0;
+        font-size: 0.875rem;
+        color: color-mix(in srgb, var(--color-dark), transparent 40%);
+    }
+
+    :global(.empty-hint-link) {
+        font-size: 0.875rem;
+        font-weight: 500;
     }
 
 </style>

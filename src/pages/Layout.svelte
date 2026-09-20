@@ -1,10 +1,28 @@
 <script>
+  import { onMount } from 'svelte';
   import MobileHeader from '../components/Layout/MobileHeader.svelte';
   import Sidebar from '../components/Layout/Sidebar.svelte';
   import MobileBottomNav from '../components/Layout/MobileBottomNav.svelte';
   import RightSidebar from '../components/Layout/RightSidebar.svelte';
+  import { refreshOverview } from '../store/overview.svelte.js';
 
   let { children } = $props();
+
+  onMount(() => {
+    void refreshOverview();
+    const refresh = () => { void refreshOverview(); };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    window.addEventListener('popstate', refresh);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('popstate', refresh);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  });
 </script>
 
 <div class="layout-wrapper">

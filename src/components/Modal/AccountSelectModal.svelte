@@ -4,6 +4,7 @@
     import InfoStackInput from '../InfoStack/InfoStackInput.svelte';
     import InfoStackItem from '../InfoStack/InfoStackItem.svelte';
     import InfoStackDivider from '../InfoStack/InfoStackDivider.svelte';
+    import Button from '../Button/Button.svelte';
     import { t } from '../../i18n/locale.svelte.js';
 
     /**
@@ -18,6 +19,8 @@
         title = 'Select Account',
         emptyText = 'No accounts found',
         emptyDescription = 'Create an account first to add it to this model',
+        emptyActionLabel = '',
+        onemptyAction = () => {},
         showAssignedModel = false,
         onclose = () => {},
         onselect = () => {}
@@ -109,9 +112,12 @@
     
     {#if filteredAccounts.length === 0}
         <InfoStackItem>
-            <div style="text-align: center; padding: 1rem; color: #6b7280;">
-                <p style="margin: 0;">{emptyText}</p>
-                <p style="font-size: 0.875rem; color: #9ca3af; margin-top: 0.5rem; margin-bottom: 0;">{emptyDescription}</p>
+            <div class="empty-hint">
+                <p class="empty-title">{t(emptyText)}</p>
+                <p class="empty-desc">{t(emptyDescription)}</p>
+                {#if emptyActionLabel && accounts.length === 0}
+                    <Button variant="text-button" onclick={() => onemptyAction()}>{t(emptyActionLabel)}</Button>
+                {/if}
             </div>
         </InfoStackItem>
     {:else}
@@ -145,5 +151,25 @@
     .current-model-badge {
         background: #e8f7ee;
         color: #1f8f55;
+    }
+
+    .empty-hint {
+        text-align: center;
+        padding: 1rem;
+        color: #6b7280;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .empty-title {
+        margin: 0;
+    }
+
+    .empty-desc {
+        margin: 0;
+        font-size: 0.875rem;
+        color: #9ca3af;
     }
 </style>

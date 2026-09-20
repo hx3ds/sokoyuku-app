@@ -1,9 +1,9 @@
 <script lang="ts">
-    import { onMount } from 'svelte';
-    import { fetchPlatformSubscription } from '../../proxy/subscription.js';
-    import { getUserModelList } from '../../proxy/model.js';
-    import { getUserAccountList } from '../../proxy/account.js';
-    import { fetchMyPrototypes } from '../../proxy/prototype.js';
+    import { modelStore } from '../../store/models.svelte.js';
+    import { accountStore } from '../../store/accounts.svelte.js';
+    import { prototypeStore } from '../../store/prototypes.svelte.js';
+    import { subscriptionStore } from '../../store/subscription.svelte.js';
+    import { refreshOverview } from '../../store/overview.svelte.js';
 
     import Loading from '../../components/Loading.svelte';
     import PageContainer from '../../components/PageContainer.svelte';
@@ -11,6 +11,7 @@
     import InfoStackItem from '../../components/InfoStack/InfoStackItem.svelte';
     import InfoStackBadge from '../../components/InfoStack/InfoStackBadge.svelte';
     import { formatDate as formatLocaleDate, formatMoney as formatLocaleMoney, t, tStatus } from '../../i18n/locale.svelte.js';
+    import { onMount } from 'svelte';
 
     type PlatformSubscription = {
         status?: string | null;
@@ -24,16 +25,8 @@
         } | null;
     } | null;
 
-    type Model = {
-        model_id: string;
-    };
-
-    type Prototype = {
-        prototype_id: number;
-    };
-
     type Account = {
-        account_id: string;
+        account_id?: string;
         account_group?: 'free' | 'pro' | string | null;
         is_local?: boolean;
         subscription_disabled?: boolean;
@@ -49,40 +42,17 @@
     const PRO_LOCAL_ACCOUNT_LIMIT = 240;
     const ACTIVE_PLATFORM_STATUSES = ['active', 'trialing', 'past_due'];
 
-    let loading = $state(true);
-    let subscription = $state<PlatformSubscription>(null);
-    let models = $state<Model[]>([]);
-    let prototypes = $state<Prototype[]>([]);
-    let accounts = $state<Account[]>([]);
+    const loading = $derived(
+        !modelStore.initialized || !accountStore.initialized || !prototypeStore.initialized || !subscriptionStore.initialized
+    );
+    const subscription = $derived(subscriptionStore.subscription as PlatformSubscription);
+    const models = $derived(modelStore.models);
+    const prototypes = $derived(prototypeStore.prototypes);
+    const accounts = $derived(accountStore.accounts as Account[]);
 
-    onMount(async () => {
-        await loadData();
+    onMount(() => {
+        void refreshOverview();
     });
-
-    async function loadData() {
-        loading = true;
-        try {
-            const [subscriptionRes, modelRes, prototypeList, accountRes] = await Promise.all([
-                fetchPlatformSubscription(),
-                getUserModelList(),
-                fetchMyPrototypes(),
-                getUserAccountList()
-            ]);
-
-            subscription = subscriptionRes?.result === 0 ? (subscriptionRes.data as PlatformSubscription) : null;
-            models = modelRes?.result === 0 ? ((modelRes.data?.models || []) as Model[]) : [];
-            prototypes = Array.isArray(prototypeList) ? (prototypeList as Prototype[]) : [];
-            accounts = accountRes?.result === 0 ? ((accountRes.data?.accounts || []) as Account[]) : [];
-        } catch (error) {
-            console.error('Failed to load overview data:', error);
-            subscription = null;
-            models = [];
-            prototypes = [];
-            accounts = [];
-        } finally {
-            loading = false;
-        }
-    }
 
     const hasPlatformSubscriptionHistory = $derived(Boolean(subscription));
     const isPlatformSubscriptionActive = $derived(

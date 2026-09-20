@@ -39,6 +39,8 @@
 
 html {
     -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 body {
@@ -46,6 +48,14 @@ body {
     background-color: var(--color-bg-body);
     color: var(--color-text-main);
     margin: 0;
+}
+
+input,
+textarea,
+select,
+[contenteditable="true"] {
+    -webkit-user-select: text;
+    user-select: text;
 }
 
 a {
