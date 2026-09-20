@@ -1,6 +1,7 @@
 <script>
     import InfoStackItem from './InfoStackItem.svelte';
     import { tick, onMount } from 'svelte';
+    import { t } from '../../i18n/locale.svelte.js';
 
     let {
         title = '',
@@ -50,12 +51,12 @@
     });
 </script>
 
-<InfoStackItem {title} {description} {className} {start} {hover} {isLabel}>
+<InfoStackItem title={t(title)} description={t(description)} {className} {start} {hover} {isLabel}>
     {#snippet children()}
         <textarea 
             bind:this={textarea}
             bind:value 
-            {placeholder} 
+            placeholder={t(placeholder)} 
             {required} 
             {readonly}
             {disabled}

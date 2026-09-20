@@ -58,8 +58,8 @@ test.describe('Model actions', () => {
         await page.getByRole('button', { name: 'Add account' }).click();
         await expect(page.getByRole('heading', { name: 'Add New Account' })).toBeVisible();
         await page.getByPlaceholder('Enter name').fill(`Share Account ${suffix} ${i}`);
-        await page.getByPlaceholder('Enter username').fill(bots[i].username);
-        await page.getByPlaceholder('Enter token').fill(bots[i].token);
+        await page.getByPlaceholder('Enter bot username').fill(bots[i].username);
+        await page.getByPlaceholder('Enter bot token').fill(bots[i].token);
         await page.getByRole('button', { name: 'Save Account' }).click();
         await expect(page.getByRole('heading', { name: 'Add New Account' })).toBeHidden({ timeout: 15000 });
       }

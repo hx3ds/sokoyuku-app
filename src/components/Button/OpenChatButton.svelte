@@ -1,5 +1,6 @@
 <script>
     import Button from './Button.svelte';
+    import { t } from '../../i18n/locale.svelte.js';
     export let size = '1.75rem';
     export let onclick = undefined;
     export let className = '';
@@ -9,7 +10,7 @@
     variant="icon-button"
     style="width: {size}; height: {size};"
     {onclick} 
-    aria-label="Open chat" 
+    aria-label={t('Open chat')} 
     {className}
     {...$$restProps}
 >

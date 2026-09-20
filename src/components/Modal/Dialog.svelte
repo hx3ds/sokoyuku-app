@@ -1,6 +1,7 @@
 <script>
     import InfoStack from '../InfoStack/InfoStack.svelte';
     import Button from '../Button/Button.svelte';
+    import { t } from '../../i18n/locale.svelte.js';
 
     let { 
         title, 
@@ -39,7 +40,7 @@
             {...rest}
         >
             {#snippet headerActions()}
-                 <Button variant="icon-button" onclick={onclose} aria-label="Close">
+                 <Button variant="icon-button" onclick={onclose} aria-label={t('Close')}>
                     <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 12h14" /></svg>
                 </Button>
             {/snippet}

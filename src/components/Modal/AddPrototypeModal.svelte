@@ -7,6 +7,7 @@
     import InfoStackSelect from '../InfoStack/InfoStackSelect.svelte';
     import InfoStackToggle from '../InfoStack/InfoStackToggle.svelte';
     import InfoStackItem from '../InfoStack/InfoStackItem.svelte';
+    import { t } from '../../i18n/locale.svelte.js';
 
     let { 
         show = $bindable(false), 
@@ -104,7 +105,7 @@
             oncreated();
             close();
         } else {
-            createError = res.msg || 'Failed to create prototype';
+            createError = res.msg || t('Failed to create prototype');
         }
         creating = false;
     }
@@ -120,7 +121,7 @@
             <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>
         {/snippet}
     <Dialog 
-        title="Create New Prototype" 
+        title={t('Create New Prototype')} 
         onclose={close} 
         maxWidth="max-w-4xl"
         icon={protoIcon}
@@ -133,7 +134,7 @@
         <InfoStackInput 
             title="Access Point" 
             bind:value={newPrototype.access_point} 
-            placeholder={newPrototype.is_local ? 'e.g. localhost:8080' : 'e.g. https://example.com'}
+            placeholder={newPrototype.is_local ? 'e.g. http://localhost:8080' : 'e.g. https://example.com'}
         />
         <InfoStackInput 
             title="Path" 
@@ -158,7 +159,7 @@
         />
 
         <InfoStackItem>
-            <h4 style="font-weight: 600; color: var(--color-dark);">Configuration</h4>
+            <h4 style="font-weight: 600; color: var(--color-dark);">{t('Configuration')}</h4>
         </InfoStackItem>
 
         <InfoStackInput 
@@ -177,22 +178,22 @@
             title="Type" 
             bind:value={newPrototype.type}
         >
-            <option value="token">token</option>
-            <option value="subscription">subscription</option>
+            <option value="token">{t('token')}</option>
+            <option value="subscription">{t('subscription')}</option>
         </InfoStackSelect>
         {#if newPrototype.type === 'subscription'}
             <InfoStackSelect 
                 title="Billing Interval" 
                 bind:value={newPrototype.billing_interval}
             >
-                <option value="daily">daily</option>
-                <option value="weekly">weekly</option>
-                <option value="monthly">monthly</option>
-                <option value="yearly">yearly</option>
+                <option value="daily">{t('daily')}</option>
+                <option value="weekly">{t('weekly')}</option>
+                <option value="monthly">{t('monthly')}</option>
+                <option value="yearly">{t('yearly')}</option>
             </InfoStackSelect>
         {/if}
         {#if newPrototype.is_local}
-            <InfoStackInput title="Private Visibility" value="Yes (required for local)" readonly />
+            <InfoStackInput title="Private Visibility" value={t('Yes (required for local)')} readonly />
         {:else}
             <InfoStackToggle 
                 title="Private Visibility" 
@@ -214,11 +215,11 @@
         {/if}
 
         <InfoStackItem>
-            <h4 style="font-weight: 600; color: var(--color-dark);">Pricing</h4>
+            <h4 style="font-weight: 600; color: var(--color-dark);">{t('Pricing')}</h4>
         </InfoStackItem>
 
         {#if newPrototype.is_local}
-            <InfoStackInput title="Pricing" value="Free (required for local)" readonly />
+            <InfoStackInput title="Pricing" value={t('Free (required for local)')} readonly />
         {:else if newPrototype.type === 'subscription'}
             <InfoStackToggle
                 title="Free Tier"
@@ -267,14 +268,14 @@
         <InfoStackItem>
             {#snippet actions()}
                 <div style="display: flex; gap: 0.75rem;">
-                    <Button variant="secondary" onclick={close} disabled={creating} aria-label="Cancel">
+                    <Button variant="icon-button" onclick={close} disabled={creating} aria-label={t('Cancel')}>
                         <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </Button>
-                    <Button variant="primary" onclick={handleCreatePrototype} disabled={creating} loading={creating} aria-label="Create Prototype">
+                    <Button variant="icon-button" onclick={handleCreatePrototype} disabled={creating} loading={creating} aria-label={t('Create Prototype')}>
                         {#if creating}
-                            Creating...
+                            {t('Creating...')}
                         {:else}
                             <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />

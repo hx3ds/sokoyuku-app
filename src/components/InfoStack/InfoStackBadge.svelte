@@ -1,5 +1,6 @@
 <script>
     import { onMount } from 'svelte';
+    import { t } from '../../i18n/locale.svelte.js';
 
     let {
         label = '',
@@ -10,7 +11,9 @@
 
     let root = $state(/** @type {HTMLElement | null} */ (null));
     let compact = $state(false);
-    const lead = $derived(Array.from(String(label || ''))[0] || '');
+    const displayLabel = $derived(t(label));
+    const displayTitle = $derived(t(title || label));
+    const lead = $derived(Array.from(String(displayLabel || ''))[0] || '');
 
     function rowOf(el) {
         return el?.closest('.title-row') || el?.closest('.input-wrapper') || el?.parentElement;
@@ -39,12 +42,12 @@
 <span
     bind:this={root}
     class="info-stack-badge {klass}"
-    title={title || label}
-    aria-label={label}
+    title={displayTitle || displayLabel}
+    aria-label={displayLabel}
     {...rest}
 >
-    <span class="badge-sizer" aria-hidden="true">{label}</span>
-    <span class="badge-label">{compact ? lead : label}</span>
+    <span class="badge-sizer" aria-hidden="true">{displayLabel}</span>
+    <span class="badge-label">{compact ? lead : displayLabel}</span>
 </span>
 
 <style>

@@ -4,6 +4,7 @@
     import { getUserModelList } from '../../proxy/model.js';
     import { getUserAccountList } from '../../proxy/account.js';
     import { fetchMyPrototypes } from '../../proxy/prototype.js';
+    import { formatDate as formatLocaleDate, t } from '../../i18n/locale.svelte.js';
 
     type PlatformSubscription = {
         status?: string | null;
@@ -100,50 +101,54 @@
     }
 
     function formatDate(dateString?: string | null) {
-        if (!dateString) return '';
-        return new Date(dateString).toLocaleDateString(undefined, {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
+        return formatLocaleDate(dateString);
     }
 
     function formatQuota(used: number, limit: number) {
-        return limit > 0 ? `${used}/${limit}` : `${used}/Locked`;
+        return limit > 0 ? `${used}/${limit}` : t('{used}/Locked', { used });
     }
 
     const subscriptionSummary = $derived.by(() => {
-        if (!isPlatformSubscriptionActive) return 'Free';
+        if (!isPlatformSubscriptionActive) return t('Free');
         const periodEnd = formatDate(subscription?.current_period_end);
-        return periodEnd ? `Pro until ${periodEnd}` : 'Pro';
+        return periodEnd ? t('Pro until {date}', { date: periodEnd }) : t('Pro');
     });
 
-    const resourceSummary = $derived(`Models ${formatQuota(models.length, modelLimit)} · Prototypes ${formatQuota(prototypes.length, prototypeLimit)}`);
+    const resourceSummary = $derived(t('Models {models} · Prototypes {prototypes}', {
+        models: formatQuota(models.length, modelLimit),
+        prototypes: formatQuota(prototypes.length, prototypeLimit),
+    }));
 
     const accountSummary = $derived.by(() => {
-        const freeSummary = `Free ${formatQuota(freeNormalAccounts, FREE_NORMAL_ACCOUNT_LIMIT)} normal, ${formatQuota(freeLocalAccounts, FREE_LOCAL_ACCOUNT_LIMIT)} local`;
-        const proSummary = `Pro ${formatQuota(activeProNormalAccounts, proNormalLimit)} normal, ${formatQuota(activeProLocalAccounts, proLocalLimit)} local`;
+        const freeSummary = t('Free {normal} normal, {local} local', {
+            normal: formatQuota(freeNormalAccounts, FREE_NORMAL_ACCOUNT_LIMIT),
+            local: formatQuota(freeLocalAccounts, FREE_LOCAL_ACCOUNT_LIMIT),
+        });
+        const proSummary = t('Pro {normal} normal, {local} local', {
+            normal: formatQuota(activeProNormalAccounts, proNormalLimit),
+            local: formatQuota(activeProLocalAccounts, proLocalLimit),
+        });
         const disabled = disabledProNormalAccounts + disabledProLocalAccounts;
-        return disabled > 0 ? `${freeSummary} · ${proSummary} · Disabled ${disabled}` : `${freeSummary} · ${proSummary}`;
+        return disabled > 0 ? `${freeSummary} · ${proSummary} · ${t('Disabled {count}', { count: disabled })}` : `${freeSummary} · ${proSummary}`;
     });
 </script>
 
 <div class="right-sidebar">
     <div class="overview-card">
-        <h3 class="overview-title">Overview</h3>
-        <p class="overview-copy">A quick Sokoyuku snapshot for subscription and usage.</p>
+        <h3 class="overview-title">{t('Overview')}</h3>
+        <p class="overview-copy">{t('A quick Sokoyuku snapshot for subscription and usage.')}</p>
         <div class="overview-sections">
             <div class="overview-section">
-                <div class="overview-section-title">Sokoyuku Subscription</div>
-                <div class="overview-section-body">{loading ? 'Loading...' : subscriptionSummary}</div>
+                <div class="overview-section-title">{t('Sokoyuku Subscription')}</div>
+                <div class="overview-section-body">{loading ? t('Loading...') : subscriptionSummary}</div>
             </div>
             <div class="overview-section">
-                <div class="overview-section-title">Resource Usage</div>
-                <div class="overview-section-body">{loading ? 'Loading...' : resourceSummary}</div>
+                <div class="overview-section-title">{t('Resource Usage')}</div>
+                <div class="overview-section-body">{loading ? t('Loading...') : resourceSummary}</div>
             </div>
             <div class="overview-section">
-                <div class="overview-section-title">Account Usage</div>
-                <div class="overview-section-body">{loading ? 'Loading...' : accountSummary}</div>
+                <div class="overview-section-title">{t('Account Usage')}</div>
+                <div class="overview-section-body">{loading ? t('Loading...') : accountSummary}</div>
             </div>
         </div>
     </div>

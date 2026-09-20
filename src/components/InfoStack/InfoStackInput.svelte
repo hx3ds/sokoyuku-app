@@ -1,5 +1,6 @@
 <script>
     import InfoStackItem from './InfoStackItem.svelte';
+    import { t } from '../../i18n/locale.svelte.js';
 
     let {
         title = '',
@@ -24,8 +25,8 @@
 </script>
 
 <InfoStackItem
-    {title}
-    {description}
+    title={t(title)}
+    description={t(description)}
     {className}
     start={startProp}
     {hover}
@@ -59,7 +60,7 @@
                     class:pl-10={inputStart}
                     class:pr-10={endProp}
                     class:editing={!readonly && !disabled}
-                    {placeholder}
+                    placeholder={t(placeholder)}
                     {...rest}
                 >
             {/if}

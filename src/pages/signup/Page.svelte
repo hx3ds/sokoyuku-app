@@ -10,6 +10,8 @@
   import InfoStackInput from '../../components/InfoStack/InfoStackInput.svelte';
   import InfoStackCheckbox from '../../components/InfoStack/InfoStackCheckbox.svelte';
   import Button from '../../components/Button/Button.svelte';
+  import { t } from '../../i18n/locale.svelte.js';
+  import LegalAgree from '../../components/LegalAgree.svelte';
 
   let email = $state('');
   let code = $state('');
@@ -45,11 +47,11 @@
           },
           'expired-callback': () => {
             turnstileToken = '';
-            turnstileError = 'Please complete the verification challenge again';
+            turnstileError = t('Please complete the verification challenge again');
           },
           'error-callback': () => {
             turnstileToken = '';
-            turnstileError = 'Verification challenge failed to load';
+            turnstileError = t('Verification challenge failed to load');
           }
         });
         if (!disposed) {
@@ -57,7 +59,7 @@
         }
       } catch (error) {
         if (!disposed) {
-          turnstileError = 'Verification challenge failed to load';
+          turnstileError = t('Verification challenge failed to load');
         }
       }
     }
@@ -77,7 +79,7 @@
       return;
     }
     if (!validateEmail(email)) {
-      showFieldHint('signupEmail', 'Please enter a valid email address');
+      showFieldHint('signupEmail', t('Please enter a valid email address'));
       return;
     }
     errors.email = '';
@@ -103,7 +105,7 @@
           }
         }, 1000);
       } else {
-        errors.code = result.msg || 'Failed to send code';
+        errors.code = result.msg || t('Failed to send code');
       }
     } finally {
       codeSubmitting = false;
@@ -114,7 +116,7 @@
     if (!username) return;
     const data = await checkUsernameApi(username);
     if (data.result !== 0) {
-        errors.username = 'This username is not available';
+        errors.username = t('This username is not available');
     } else {
         errors.username = '';
     }
@@ -172,11 +174,11 @@
         variant="text-button"
         loading={codeSubmitting}
     >
-        {countdown > 0 ? `${countdown}s` : 'Get Code'}
+        {countdown > 0 ? `${countdown}s` : t('Get Code')}
     </Button>
 {/snippet}
 
-<AuthLayout title="Sign Up">
+<AuthLayout title={t('Sign Up')}>
     <form onsubmit={handleSignUp}>
       <div style="padding-top: 1rem; padding-bottom: 0.25rem; display: flex; flex-direction: column; gap: 0;">
         <div style="padding-bottom: 0.5rem;">
@@ -264,8 +266,7 @@
 
         <div style="padding-bottom: 0.5rem;">
             <InfoStackCheckbox id="signupTerms" required className="clean-item checkbox-reverse">
-                I confirm that I have read and agree to Sokoyuku's <a href="/terms" style="color: #0366d6; transition: color 0.2s; font-weight: 500; text-decoration: none;">Terms of Use</a> and
-                <a href="/privacy" style="color: #0366d6; transition: color 0.2s; font-weight: 500; text-decoration: none;">Privacy Policy</a>.
+                <LegalAgree />
             </InfoStackCheckbox>
         </div>
 
@@ -277,12 +278,12 @@
               value={turnstileToken}
               required
               tabindex="-1"
-              aria-label="Verification challenge"
+              aria-label={t('Verification challenge')}
             />
             <div bind:this={turnstileContainer}></div>
           </div>
           {#if !turnstileLoaded && !turnstileError}
-            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #6b7280;">Loading verification challenge...</p>
+            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #6b7280;">{t('Loading verification challenge...')}</p>
           {/if}
           {#if turnstileError}
             <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #ef4444;">{turnstileError}</p>
@@ -294,12 +295,12 @@
           variant="text-button"
           style="width: 100%; justify-content: center;"
           containerStyle="padding: 0 0.5rem;"
-        >Sign Up</Button>
+        >{t('Sign Up')}</Button>
       </div>
     </form>
     <div style="padding-top: 1rem; text-align: center; display: flex; flex-direction: column; gap: 0.25rem;">
       <div style="display: block; font-size: 0.875rem;">
-        <Link href="/signin" style="color: #0366d6; transition: color 0.2s; font-weight: 500; text-decoration: none;">Already have an account? Sign In</Link>
+        <Link href="/signin" style="color: #0366d6; transition: color 0.2s; font-weight: 500; text-decoration: none;">{t('Already have an account? Sign In')}</Link>
       </div>
     </div>
 </AuthLayout>

@@ -22,10 +22,10 @@ async function authenticateInto(page, authFile) {
   await expect(page.getByRole('button', { name: /\d+s/ })).toBeVisible({ timeout: 15000 });
 
   let code = null;
-  for (let i = 0; i < 30; i++) {
-    await page.waitForTimeout(1000);
+  for (let i = 0; i < 40; i++) {
     code = await getVerificationCode(user.email, 'sign_up');
     if (code) break;
+    await page.waitForTimeout(250);
   }
   expect(code, 'Verification code should be generated').toBeTruthy();
   console.log('Got code:', code);

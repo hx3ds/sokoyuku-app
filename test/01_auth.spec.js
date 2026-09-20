@@ -104,23 +104,46 @@ test.describe('Authentication Flow', () => {
 
   test('should open terms and privacy links from sign-in', async ({ page }) => {
     await page.goto('/signin');
-    await expect(page.getByRole('link', { name: 'Terms of Use' })).toHaveAttribute('href', /terms/);
-    await expect(page.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', /privacy/);
-
-    await page.getByRole('link', { name: 'Terms of Use' }).click();
-    await expect(page).toHaveURL(/terms/);
-    await expect(page.getByRole('heading', { name: 'Terms of Use', exact: true })).toBeVisible();
-
-    await page.goto('/signin');
-    await page.getByRole('link', { name: 'Privacy Policy' }).click();
-    await expect(page).toHaveURL(/privacy/);
-    await expect(page.getByRole('heading', { name: 'Privacy Policy', exact: true })).toBeVisible();
+    const signInTerms = page.getByRole('link', { name: 'Terms of Service' });
+    const signInPrivacy = page.getByRole('link', { name: 'Privacy Policy' });
+    const signInCookies = page.getByRole('link', { name: 'Cookie Policy' });
+    await expect(signInTerms).toHaveAttribute('href', 'https://sokoyuku.com/legal/terms');
+    await expect(signInPrivacy).toHaveAttribute('href', 'https://sokoyuku.com/legal/privacy');
+    await expect(signInCookies).toHaveAttribute('href', 'https://sokoyuku.com/legal/cookies');
+    await expect(signInTerms).toHaveAttribute('target', '_blank');
+    await expect(signInPrivacy).toHaveAttribute('target', '_blank');
+    await expect(signInCookies).toHaveAttribute('target', '_blank');
 
     await page.goto('/signup');
-    await expect(page.getByRole('link', { name: 'Terms of Use' })).toHaveAttribute('href', /terms/);
-    await expect(page.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', /privacy/);
-    await page.getByRole('link', { name: 'Terms of Use' }).click();
-    await expect(page).toHaveURL(/\/terms/);
+    const signUpTerms = page.getByRole('link', { name: 'Terms of Service' });
+    const signUpPrivacy = page.getByRole('link', { name: 'Privacy Policy' });
+    const signUpCookies = page.getByRole('link', { name: 'Cookie Policy' });
+    await expect(signUpTerms).toHaveAttribute('href', 'https://sokoyuku.com/legal/terms');
+    await expect(signUpPrivacy).toHaveAttribute('href', 'https://sokoyuku.com/legal/privacy');
+    await expect(signUpCookies).toHaveAttribute('href', 'https://sokoyuku.com/legal/cookies');
+    await expect(signUpTerms).toHaveAttribute('target', '_blank');
+    await expect(signUpPrivacy).toHaveAttribute('target', '_blank');
+    await expect(signUpCookies).toHaveAttribute('target', '_blank');
+  });
+
+  test('should localize legal agreement links', async ({ page }) => {
+    await page.goto('/signin');
+    const picker = page.locator('.language-picker.floating select');
+    await picker.selectOption('jp');
+    await expect(page.getByRole('link', { name: '利用規約' })).toHaveAttribute('href', 'https://sokoyuku.com/legal/terms');
+    await expect(page.getByRole('link', { name: 'プライバシーポリシー' })).toHaveAttribute('href', 'https://sokoyuku.com/legal/privacy');
+    await expect(page.getByRole('link', { name: 'Cookieポリシー' })).toHaveAttribute('href', 'https://sokoyuku.com/legal/cookies');
+    await expect(page.getByText('を読み、同意します。')).toBeVisible();
+
+    await picker.selectOption('zh-Hans');
+    await expect(page.getByRole('link', { name: '服务条款' })).toBeVisible();
+    await expect(page.getByRole('link', { name: '隐私政策' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Cookie 政策' })).toBeVisible();
+
+    await picker.selectOption('zh-Hant');
+    await expect(page.getByRole('link', { name: '服務條款' })).toBeVisible();
+    await expect(page.getByRole('link', { name: '隱私權政策' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Cookie 政策' })).toBeVisible();
   });
 
   test('should reject unavailable username on blur', async ({ page }) => {

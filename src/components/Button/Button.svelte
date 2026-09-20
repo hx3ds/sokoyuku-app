@@ -5,7 +5,7 @@
     export let padding = undefined;
     export let iconSize = undefined;
     export let onclick = undefined;
-    export let variant = 'icon-button'; // icon-button, text-button
+    export let variant = 'icon-button';
 
     export let menuOpen = false;
     export let menuClass = '';
@@ -119,21 +119,18 @@
         box-shadow: none;
     }
     
-    .btn.icon-button :global(svg),
-    .btn.primary :global(svg),
-    .btn.secondary :global(svg) {
+    .btn.icon-button :global(svg) {
         width: var(--icon-size, 1.25em);
         height: var(--icon-size, 1.25em);
         flex-shrink: 0;
         transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* Text Button Styles */
     .btn.text-button {
         display: inline-flex;
         background-color: var(--color-primary, #0088cc);
         color: var(--color-primary-contrast, #ffffff);
-        padding: 0.5rem 1rem;
+        padding: 0.25rem 0.75rem;
         border-radius: 6px;
         font-weight: 500;
         font-family: inherit;
@@ -162,7 +159,6 @@
         cursor: not-allowed;
     }
 
-    /* Spinner styles — explicit size so text-button loading stays visible in end slots */
     .spinner {
         width: var(--icon-size, 1.25em);
         height: var(--icon-size, 1.25em);

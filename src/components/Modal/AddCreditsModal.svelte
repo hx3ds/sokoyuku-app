@@ -4,6 +4,7 @@
     import InfoStackInput from '../InfoStack/InfoStackInput.svelte';
     import InfoStackItem from '../InfoStack/InfoStackItem.svelte';
     import Button from '../Button/Button.svelte';
+    import { t } from '../../i18n/locale.svelte.js';
 
     let { showCreditsModal = $bindable(false), onClose = () => {} } = $props();
 
@@ -27,7 +28,7 @@
 
     async function handleCheckout() {
         if (!creditsAmount || creditsAmount <= 0) {
-            checkoutError = 'Please enter a valid amount';
+            checkoutError = t('Please enter a valid amount');
             return;
         }
 
@@ -44,7 +45,7 @@
         if (res.result === 0) {
             window.location.href = res.data.url;
         } else {
-            checkoutError = res.msg || 'Failed to create checkout session';
+            checkoutError = res.msg || t('Failed to create checkout session');
             checkoutLoading = false;
         }
     }
@@ -81,7 +82,7 @@
                     disabled={checkoutLoading}
                     loading={checkoutLoading}
                 >
-                    Proceed to Checkout
+                    {t('Proceed to Checkout')}
                 </Button>
             {/snippet}
         </InfoStackItem>

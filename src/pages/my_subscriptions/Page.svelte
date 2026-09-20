@@ -2,6 +2,7 @@
     import { onMount } from 'svelte';
     import { fetchAllSubscriptions, cancelPlatformSubscription, cancelModelSubscription } from '../../proxy/subscription.js';
     import { showError, showConfirm } from '../../components/Modal/state.svelte.js';
+    import { formatDate as formatLocaleDate, formatMoney, t } from '../../i18n/locale.svelte.js';
     import PageContainer from '../../components/PageContainer.svelte';
     import Loading from '../../components/Loading.svelte';
     import Button from '../../components/Button/Button.svelte';
@@ -63,14 +64,14 @@
             modelSubs = data.models || [];
         } catch (err) {
             console.error('Error loading subscriptions:', err);
-            error = 'Failed to load subscriptions';
+            error = t('Failed to load subscriptions');
         } finally {
             loading = false;
         }
     }
 
     async function handleCancelPlatform() {
-        if (!await showConfirm('Are you sure you want to cancel your platform subscription? You will lose access to premium features at the end of the current period.')) return;
+        if (!await showConfirm(t('Are you sure you want to cancel your platform subscription? You will lose access to premium features at the end of the current period.'))) return;
         
         processingId = 'platform';
         try {
@@ -79,17 +80,17 @@
                 // Refresh data
                 await loadData();
             } else {
-                await showError('Failed to cancel subscription: ' + res.msg);
+                await showError(t('Failed to cancel subscription: {msg}', { msg: res.msg }));
             }
         } catch (err) {
-            await showError('Error cancelling subscription');
+            await showError(t('Error cancelling subscription'));
         } finally {
             processingId = null;
         }
     }
 
     async function handleCancelModel(modelId: string) {
-        if (!await showConfirm('Are you sure you want to cancel this model subscription? Auto-renewal will be disabled.')) return;
+        if (!await showConfirm(t('Are you sure you want to cancel this model subscription? Auto-renewal will be disabled.'))) return;
 
         processingId = modelId;
         try {
@@ -97,22 +98,22 @@
             if (res.result === 0) {
                 await loadData();
             } else {
-                await showError('Failed to cancel subscription: ' + res.msg);
+                await showError(t('Failed to cancel subscription: {msg}', { msg: res.msg }));
             }
         } catch (err) {
-            await showError('Error cancelling subscription');
+            await showError(t('Error cancelling subscription'));
         } finally {
             processingId = null;
         }
     }
 
     function formatDate(dateString?: string | null) {
-        if (!dateString) return 'N/A';
-        return new Date(dateString).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+        if (!dateString) return t('N/A');
+        return formatLocaleDate(dateString) || t('N/A');
     }
     
     function formatCurrency(amount?: number | null) {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount ?? 0);
+        return formatMoney(amount, 'USD');
     }
 </script>
 
@@ -143,13 +144,13 @@
                     {/snippet}
 
                     <div style="padding-top: 0.25rem; font-size: 0.875rem; color: var(--color-text-secondary);">
-                        <span style="font-weight: 500;">Price:</span> {formatCurrency(platformSub!.plan.price)}/{platformSub!.plan.interval || 'month'}
+                        <span style="font-weight: 500;">{t('Price:')}</span> {formatCurrency(platformSub!.plan.price)}/{t(platformSub!.plan.interval || 'month')}
                         <span style="padding-left: 0.5rem; padding-right: 0.5rem;">•</span>
-                        <span style="font-weight: 500;">Next Payment:</span> {formatDate(platformSub!.current_period_end)}
+                        <span style="font-weight: 500;">{t('Next Payment:')}</span> {formatDate(platformSub!.current_period_end)}
                         
                         {#if platformSub!.cancel_at_period_end}
                             <div style="padding-top: 0.25rem; color: #d97706; font-weight: 500;">
-                                Cancels at end of period
+                                {t('Cancels at end of period')}
                             </div>
                         {/if}
                     </div>
@@ -157,12 +158,12 @@
                     {#snippet actions()}
                         {#if !platformSub!.cancel_at_period_end}
                             <Button 
-                                variant="danger"
+                                variant="text-button"
+                                className="compact-action"
                                 onclick={handleCancelPlatform} 
                                 disabled={processingId === 'platform'}
-                                size="sm"
                             >
-                                {processingId === 'platform' ? 'Processing...' : 'Cancel Subscription'}
+                                {processingId === 'platform' ? t('Processing...') : t('Cancel Subscription')}
                             </Button>
                         {/if}
                     {/snippet}
@@ -180,16 +181,16 @@
                 >
                     <div style="padding-top: 0.25rem; font-size: 0.875rem; color: var(--color-text-secondary);">
                         {#if sub.subscription_tier}
-                            <span style="font-weight: 500;">Tier:</span> {sub.subscription_tier}
+                            <span style="font-weight: 500;">{t('Tier:')}</span> {sub.subscription_tier}
                             <span style="padding-left: 0.5rem; padding-right: 0.5rem;">•</span>
                         {/if}
-                        <span style="font-weight: 500;">Price:</span> {formatCurrency(sub.prototype.interval_charge)}/{sub.prototype.billing_interval || 'monthly'}
+                        <span style="font-weight: 500;">{t('Price:')}</span> {formatCurrency(sub.prototype.interval_charge)}/{t(sub.prototype.billing_interval || 'monthly')}
                         <span style="padding-left: 0.5rem; padding-right: 0.5rem;">•</span>
-                        <span style="font-weight: 500;">Available Until:</span> {formatDate(sub.period)}
+                        <span style="font-weight: 500;">{t('Available Until:')}</span> {formatDate(sub.period)}
                         
                         {#if !sub.auto_renew && sub.status === 'active'}
                             <div style="padding-top: 0.25rem; color: #d97706; font-weight: 500;">
-                                Auto-renew disabled
+                                {t('Auto-renew disabled')}
                             </div>
                         {/if}
                     </div>
@@ -197,15 +198,15 @@
                     {#snippet actions()}
                         {#if sub.auto_renew}
                             <Button 
-                                variant="danger"
+                                variant="text-button"
+                                className="compact-action"
                                 onclick={(e: MouseEvent) => {
                                     e.preventDefault();
                                     handleCancelModel(sub.model_id);
                                 }}
                                 disabled={processingId === sub.model_id}
-                                size="sm"
                             >
-                                {processingId === sub.model_id ? 'Processing...' : 'Cancel Auto-renew'}
+                                {processingId === sub.model_id ? t('Processing...') : t('Cancel Subscription')}
                             </Button>
                         {/if}
                     {/snippet}
@@ -216,6 +217,15 @@
 </PageContainer>
 
 <style>
+    :global(#page-my-subscriptions .compact-action) {
+        white-space: normal;
+        width: auto;
+        max-width: 5.5rem;
+        line-height: 1.2;
+        text-align: center;
+        padding: 0.25rem 0.5rem;
+    }
+
     :global(.info-stack-badge.past-due-badge) {
         background-color: #fee2e2;
         color: #991b1b;

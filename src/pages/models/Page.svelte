@@ -4,10 +4,10 @@
     import * as AccountAPI from '../../proxy/account.js';
     import * as SubAPI from '../../proxy/subscription.js';
     import * as ChatAPI from '../../proxy/chat.js';
-    import { listOpenCallSessions } from '../../proxy/call.js';
     import { showConfirm, showError, showSuccess, showAlert } from '../../components/Modal/state.svelte.js';
     import { modelStore } from '../../store/models.svelte.js';
     import { accountStore } from '../../store/accounts.svelte.js';
+    import { callStore } from '../../store/calls.svelte.js';
 
     import PageContainer from '../../components/PageContainer.svelte';
     import InfoStack from '../../components/InfoStack/InfoStack.svelte';
@@ -20,10 +20,12 @@
     import CallButton from '../../components/Button/CallButton.svelte';
     import AccountSelectModal from '../../components/Modal/AccountSelectModal.svelte';
     import ChatManagementModal from '../../components/Modal/ChatManagementModal.svelte';
+    import CallManagementModal from '../../components/Modal/CallManagementModal.svelte';
     import AddAccountModal from '../../components/Modal/AddAccountModal.svelte';
     import AccountDetailsModal from '../../components/Modal/AccountDetailsModal.svelte';
     import ModelDetailsModal from '../../components/Modal/ModelDetailsModal.svelte';
     import InfoStackBadge from '../../components/InfoStack/InfoStackBadge.svelte';
+    import { t, tAccountType, tStatus } from '../../i18n/locale.svelte.js';
 
     type ModelAccount = {
         acct_id: string;
@@ -64,13 +66,15 @@
         type?: string | null;
         server?: string | null;
         is_local?: boolean;
+        account_group?: string | null;
+        subscription_disabled?: boolean;
         created_at?: string | null;
         models?: Array<{ model_id: string; name: string }>;
         assignedModelName?: string;
         assignedModelStatus?: 'current' | 'other';
     };
 
-    type ModalType = 'accountSelect' | 'shareAccountSelect' | 'chatManage' | 'addAccount' | 'accountDetails' | 'modelDetails' | null;
+    type ModalType = 'accountSelect' | 'shareAccountSelect' | 'chatManage' | 'callManage' | 'addAccount' | 'accountDetails' | 'modelDetails' | null;
 
     const modelStoreAny = modelStore as any;
     const accountStoreAny = accountStore as any;
@@ -85,26 +89,65 @@
     let isEditingAccount: boolean = $state(false);
     let managedChats: any[] = $state([]);
     let isAccountsSectionExpanded: boolean = $state(false);
-    let activeCallModelIds: Set<string> = $state(new Set());
     let activeCallPoll: ReturnType<typeof setInterval> | null = null;
-
-    function normalizeModelId(id: string | null | undefined) {
-        return String(id || '').replace(/-/g, '').toLowerCase();
-    }
+    let managedCallSessions: any[] = $state([]);
 
     function modelHasActiveCall(model: Model) {
-        return activeCallModelIds.has(normalizeModelId(model.model_id));
+        void callStore.sessions;
+        return callStore.sessionsForModel(model.model_id).length > 0;
     }
 
     async function refreshActiveCalls() {
         try {
-            const res = await listOpenCallSessions();
-            if (res?.result !== 0) return;
-            const sessions = Array.isArray(res?.data?.sessions) ? res.data.sessions : [];
-            activeCallModelIds = new Set(
-                sessions.map((s: { model_id?: string }) => normalizeModelId(s.model_id)).filter(Boolean)
-            );
+            await callStore.refresh();
+            if (activeModal === 'callManage' && modalData && 'model_id' in modalData) {
+                managedCallSessions = callStore.sessionsForModel((modalData as Model).model_id);
+            }
         } catch (_) {}
+    }
+
+    async function handleCallClick(model: Model) {
+        try {
+            const res = await callStore.refresh();
+            if (res && res.result !== 0) {
+                showError(res.msg || t('Failed to list call sessions'));
+                return;
+            }
+        } catch (_) {
+            showError(t('Failed to list call sessions'));
+            return;
+        }
+        const sessions = callStore.sessionsForModel(model.model_id);
+        if (sessions.length > 1) {
+            openModal('callManage', model);
+            return;
+        }
+        if (sessions.length === 1) {
+            callStore.setIntent({ modelId: model.model_id, sessionId: sessions[0].session_id });
+        } else {
+            callStore.setIntent({ modelId: model.model_id, sessionId: '' });
+        }
+        callStore.goToCall(model.model_id);
+    }
+
+    function handleResumeCall(session: { session_id?: string }) {
+        const model = modalData as Model | null;
+        if (!model?.model_id || !session?.session_id) return;
+        callStore.setIntent({ modelId: model.model_id, sessionId: session.session_id });
+        closeModal();
+        callStore.goToCall(model.model_id);
+    }
+
+    async function handleHangupCall(session: { session_id?: string }) {
+        if (!session?.session_id) return;
+        if (!await showConfirm(t('Hang up this call?'))) return;
+        const res = await callStore.hangupSession(session);
+        if (res?.result !== 0) {
+            showError(res?.msg || t('Operation failed: {msg}', { msg: t('Unknown error') }));
+            return;
+        }
+        const model = modalData as Model | null;
+        managedCallSessions = model?.model_id ? callStore.sessionsForModel(model.model_id) : [];
     }
 
     onMount(async () => {
@@ -129,19 +172,16 @@
         if (activeCallPoll) clearInterval(activeCallPoll);
     });
 
-    const formatDate = (d: string | null | undefined) =>
-        d ? new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '';
-
     function getDeleteDisabledReason(model: Model) {
         if (model.stripe_subscription_id && !['canceled', 'incomplete_expired'].includes(model.subscription_status || '')) {
-            return 'Cannot delete model with active subscription. Please unsubscribe first.';
+            return t('Cannot delete model with active subscription. Please unsubscribe first.');
         }
         if (model.period && new Date(model.period) > new Date()) {
             // Token models can be deleted even if they have available time
             if (model.type === 'token') {
                 return null;
             }
-            return 'Cannot delete model while it is still available.';
+            return t('Cannot delete model while it is still available.');
         }
         return null;
     }
@@ -170,7 +210,7 @@
             await loadData();
             return true;
         } else {
-            showError('Operation failed: ' + (res.msg || 'Unknown error'));
+            showError(t('Operation failed: {msg}', { msg: res.msg || t('Unknown error') }));
             return false;
         }
     }
@@ -183,8 +223,12 @@
         modalBusyAccountId = null;
         isEditingAccount = false;
         managedChats = [];
+        managedCallSessions = [];
         
         if (type === 'chatManage' && data?.model_id) loadChats(String(data.model_id));
+        if (type === 'callManage' && data?.model_id) {
+            managedCallSessions = callStore.sessionsForModel(data.model_id);
+        }
     };
     
     const closeModal = () => {
@@ -291,9 +335,9 @@
             return '';
         }
         if (assignedModels.length === 1) {
-            return `In ${assignedModels[0].name}`;
+            return t('In {name}', { name: assignedModels[0].name });
         }
-        return `In ${assignedModels[0].name} +${assignedModels.length - 1}`;
+        return t('In {name} +{count}', { name: assignedModels[0].name, count: assignedModels.length - 1 });
     }
 
     async function copyTextToClipboard(text: string) {
@@ -314,7 +358,7 @@
         const accountId = account.account_id;
         const existingModel = findModelUsingAccount(accountId, model.model_id);
         if (existingModel) {
-            if (!await showConfirm(`Account "${account.account_username}" is used by "${existingModel.name}". Reassign?`)) return;
+            if (!await showConfirm(t('Account "{account}" is used by "{model}". Reassign?', { account: account.account_username, model: existingModel.name }))) return;
         }
 
         modalLoading = true;
@@ -329,7 +373,7 @@
 
         if (res.result !== 0) {
             if (await offerSubscribeIfNeeded(res, model, () => handleStartChat(account))) return;
-            showError(res.msg || 'Failed to start chat');
+            showError(res.msg || t('Failed to start chat'));
             return;
         }
 
@@ -345,28 +389,28 @@
             const startCmd = buildStartCommand(model.model_id, res.data.otp);
             const copied = await copyTextToClipboard(startCmd);
             if (!copied) {
-                prompt('Copy start command:', startCmd);
+                prompt(t('Copy start command:'), startCmd);
             }
             if ((account?.type || '') === 'whatsapp_cloud') {
                 const verifyToken = String(res.data?.verify_token || '').trim();
                 const webhookURL = String(res.data?.webhook_url || '').trim();
-                const lines = ['Start command copied!'];
+                const lines = [t('Start command copied!')];
                 lines.push('');
-                lines.push('Configure Meta WhatsApp webhook settings:');
+                lines.push(t('Configure Meta WhatsApp webhook settings:'));
                 if (verifyToken) lines.push(`Verify token: ${verifyToken}`);
                 if (webhookURL) lines.push(`Webhook URL: ${webhookURL}`);
                 lines.push('');
-                lines.push('Verify token is derived from this account id. Set both values in Meta before messaging.');
-                await showAlert(lines.join('\n'), 'WhatsApp Business', 'info');
+                lines.push(t('Verify token is derived from this account id. Set both values in Meta before messaging.'));
+                await showAlert(lines.join('\n'), t('WhatsApp Cloud API'), 'info');
             } else if (copied) {
-                showSuccess('Start command copied!');
+                showSuccess(t('Start command copied!'));
             }
             closeModal();
             await loadData();
             return;
         }
 
-        showError(res.msg || 'Failed to start chat');
+        showError(res.msg || t('Failed to start chat'));
     }
 
     async function handleShareWithAccount(account: Account, modelArg: Model | null = modalData as Model | null) {
@@ -376,7 +420,7 @@
         const res = await AccountAPI.requestOtpForChat(account.account_id, model.model_id);
         if (res.result !== 0) {
             if (await offerSubscribeIfNeeded(res, model, () => handleShareWithAccount(account, model))) return;
-            showError(res.msg || 'Share failed');
+            showError(res.msg || t('Share failed'));
             return;
         }
 
@@ -384,9 +428,9 @@
         if (link) {
             const copied = await copyTextToClipboard(link);
             if (!copied) {
-                prompt('Copy link:', link);
+                prompt(t('Copy link:'), link);
             } else {
-                showSuccess('Link copied!');
+                showSuccess(t('Link copied!'));
             }
             closeModal();
             await loadData();
@@ -397,28 +441,28 @@
             const startCmd = buildStartCommand(model.model_id, res.data.otp);
             const copied = await copyTextToClipboard(startCmd);
             if (!copied) {
-                prompt('Copy start command:', startCmd);
+                prompt(t('Copy start command:'), startCmd);
             }
             if ((account?.type || '') === 'whatsapp_cloud') {
                 const verifyToken = String(res.data?.verify_token || '').trim();
                 const webhookURL = String(res.data?.webhook_url || '').trim();
-                const lines = ['Start command copied!'];
+                const lines = [t('Start command copied!')];
                 lines.push('');
-                lines.push('Configure Meta WhatsApp webhook settings:');
+                lines.push(t('Configure Meta WhatsApp webhook settings:'));
                 if (verifyToken) lines.push(`Verify token: ${verifyToken}`);
                 if (webhookURL) lines.push(`Webhook URL: ${webhookURL}`);
                 lines.push('');
-                lines.push('Verify token is derived from this account id. Set both values in Meta before messaging.');
-                await showAlert(lines.join('\n'), 'WhatsApp Business', 'info');
+                lines.push(t('Verify token is derived from this account id. Set both values in Meta before messaging.'));
+                await showAlert(lines.join('\n'), t('WhatsApp Cloud API'), 'info');
             } else if (copied) {
-                showSuccess('Start command copied!');
+                showSuccess(t('Start command copied!'));
             }
             closeModal();
             await loadData();
             return;
         }
 
-        showError(res.msg || 'Share failed');
+        showError(res.msg || t('Share failed'));
     }
 
     // Model Actions
@@ -428,7 +472,7 @@
             modelStore.remove(arg);
         }
         return res;
-    }, id, 'Delete this model? This cannot be undone.');
+    }, id, t('Delete this model? This cannot be undone.'));
 
     async function handleSubscriptionCheckout(modelId: string) {
         const res = await SubAPI.createModelSubscriptionCheckout({
@@ -444,31 +488,31 @@
             window.location.href = res.data.url;
             return 'checkout';
         }
-        showError(res.msg || 'Checkout failed');
+        showError(res.msg || t('Checkout failed'));
         return 'failed';
     }
 
     async function offerSubscribeIfNeeded(res: any, model: Model, retry: () => Promise<void>) {
         if (!res?.data?.need_subscription) return false;
         if (!await showConfirm(
-            'This model is not subscribed yet. Do you want to subscribe?',
-            'Subscribe',
+            t('This model is not subscribed yet. Do you want to subscribe?'),
+            t('Subscribe'),
             'warning',
-            'Subscribe'
+            t('Subscribe')
         )) return true;
         const outcome = await handleSubscriptionCheckout(model.model_id);
         if (outcome === 'subscribed') await retry();
         return true;
     }
 
-    const handleUnsubscribe = (id: string) => performAction(SubAPI.cancelModelSubscription, id, 'Cancel subscription?');
+    const handleUnsubscribe = (id: string) => performAction(SubAPI.cancelModelSubscription, id, t('Cancel subscription?'));
 
     async function handleShare(modelId: string) {
         const model = (modelStoreAny.models as Model[]).find((m) => m.model_id === modelId);
         const accounts = getResolvedModelAccounts(model);
 
         if (!model || accounts.length === 0) {
-            showError('No account assigned to this model.');
+            showError(t('No account assigned to this model.'));
             return;
         }
 
@@ -498,11 +542,11 @@
         const model = modalData as Model | null;
         if (!model || !chat?.chat_id || !chat?.account_id) return;
         
-        if (!await showConfirm('Remove this chat?')) return;
+        if (!await showConfirm(t('Remove this chat?'))) return;
         
         const res = await ChatAPI.removeChatFromModel(model.model_id, chat.chat_id, chat.account_id);
         if (res.result === 0) {
-            showSuccess('Chat removed');
+            showSuccess(t('Chat removed'));
             await loadChats(model.model_id);
         } else {
             showError(res.msg);
@@ -534,7 +578,9 @@
                     description: res.data.description,
                     type: res.data.type,
                     server: res.data.server,
-                    is_local: res.data.is_local
+                    is_local: res.data.is_local,
+                    account_group: res.data.account_group,
+                    subscription_disabled: Boolean(res.data.subscription_disabled)
                 });
             } else {
                 await accountStore.load();
@@ -564,7 +610,7 @@
             accountStore.remove(arg);
         }
         return res;
-    }, accountId, 'Remove this account?');
+    }, accountId, t('Remove this account?'));
     
     function openModelDetails(id: string) {
         openModal('modelDetails', { model_id: id });
@@ -583,7 +629,7 @@
 {#snippet modelRow(model: Model)}
     <InfoStackItem 
         title={model.name}
-        description={model.description || 'No description'}
+        description={model.description || t('No description')}
         onclick={() => openModelDetails(model.model_id)}
     >
         {#snippet titleSuffix()}
@@ -600,11 +646,7 @@
             {#if model.call_support && model.type === 'subscription'}
                 <CallButton
                     active={modelHasActiveCall(model)}
-                    onclick={(e: MouseEvent) => {
-                        e.stopPropagation();
-                        history.pushState(null, '', `/call/${model.model_id}`);
-                        window.dispatchEvent(new PopStateEvent('popstate'));
-                    }}
+                    onclick={(e: MouseEvent) => { e.stopPropagation(); void handleCallClick(model); }}
                 />
             {/if}
             <OpenChatButton onclick={(e: MouseEvent) => { e.stopPropagation(); openModal('accountSelect', model); }} />
@@ -618,25 +660,25 @@
             >
                 {@const deleteDisabledReason = getDeleteDisabledReason(model)}
                 {#if deleteDisabledReason}
-                    <MenuItem style="opacity: 0.5; cursor: not-allowed;" onclick={() => showError(deleteDisabledReason)}>Delete</MenuItem>
+                    <MenuItem style="opacity: 0.5; cursor: not-allowed;" onclick={() => showError(deleteDisabledReason)}>{t('Delete')}</MenuItem>
                 {:else}
-                    <MenuItem onclick={() => handleDeleteModel(model.model_id)}>Delete</MenuItem>
+                    <MenuItem onclick={() => handleDeleteModel(model.model_id)}>{t('Delete')}</MenuItem>
                 {/if}
                 
                 <div style="height: 1px; background-color: #e1e4e8; margin: 4px 0;"></div>
-                <MenuItem onclick={() => openModal('chatManage', model)}>Manage Chats</MenuItem>
+                <MenuItem onclick={() => openModal('chatManage', model)}>{t('Manage Chats')}</MenuItem>
                         
                 {#if model.type !== 'token'}
                     {@const periodActive = Boolean(model.period && new Date(model.period) > new Date())}
                     {#if periodActive && model.auto_renew}
-                        <MenuItem onclick={() => handleUnsubscribe(model.model_id)}>Unsubscribe</MenuItem>
+                        <MenuItem onclick={() => handleUnsubscribe(model.model_id)}>{t('Unsubscribe')}</MenuItem>
                     {:else if periodActive}
-                        <MenuItem onclick={() => handleSubscriptionCheckout(model.model_id)}>Resubscribe</MenuItem>
+                        <MenuItem onclick={() => handleSubscriptionCheckout(model.model_id)}>{t('Resubscribe')}</MenuItem>
                     {:else}
-                        <MenuItem onclick={() => handleSubscriptionCheckout(model.model_id)}>Subscribe</MenuItem>
+                        <MenuItem onclick={() => handleSubscriptionCheckout(model.model_id)}>{t('Subscribe')}</MenuItem>
                     {/if}
                 {/if}
-                <MenuItem onclick={() => handleShare(model.model_id)}>Share</MenuItem>
+                <MenuItem onclick={() => handleShare(model.model_id)}>{t('Share')}</MenuItem>
             </ActionMenu>
         {/snippet}
     </InfoStackItem>
@@ -646,7 +688,7 @@
     {@const assignedModelBadgeText = getAccountAssignedModelBadgeText(account)}
     <InfoStackItem 
         title={account.name}
-        description={account.description || 'No description'}
+        description={account.description || t('No description')}
         onclick={() => openModal('accountDetails', { ...account })}
     >
         {#snippet meta()}
@@ -654,7 +696,7 @@
                 <span class="account-count-badge">{assignedModelBadgeText}</span>
             {/if}
             <div style="color: #586069; font-size: 0.875rem;">
-                <span>{account.account_username} · Group: {account.account_group || 'free'}</span>
+                <span>{account.account_username} · {tAccountType(account.type)} · {t('Group: {group}', { group: tStatus(account.account_group || 'free') })} · {account.subscription_disabled ? t('Disabled') : t('Active')}</span>
             </div>
         {/snippet}
 
@@ -665,8 +707,8 @@
                 width="8rem"
                 onclick={(e: MouseEvent) => handleToggleMenu({ detail: { id: account.account_id ?? account.account_username, event: e } })}
             >
-                <MenuItem onclick={() => openModal('accountDetails', { ...account })}>Edit</MenuItem>
-                <MenuItem onclick={() => handleRemoveAccount(account.account_id)}>Delete</MenuItem>
+                <MenuItem onclick={() => openModal('accountDetails', { ...account })}>{t('Edit')}</MenuItem>
+                <MenuItem onclick={() => handleRemoveAccount(account.account_id)}>{t('Delete')}</MenuItem>
             </ActionMenu>
         {/snippet}
     </InfoStackItem>
@@ -713,7 +755,7 @@
         {/snippet}
 
         {#snippet headerActions()}
-            <Button variant="icon-button" iconSize="1.25rem" padding="0.25rem" onclick={() => openModal('addAccount')} aria-label="Add account">
+            <Button variant="icon-button" iconSize="1.25rem" padding="0.25rem" onclick={() => openModal('addAccount')} aria-label={t('Add account')}>
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.5v15m7.5-7.5h-15" /></svg>
             </Button>
         {/snippet}
@@ -738,8 +780,8 @@
             title="Select Account for Chat"
             emptyText="No accounts found"
             emptyDescription={selectModel?.is_local
-                ? 'Create a local account first to assign it to this model'
-                : 'Create a normal account first to assign it to this model'}
+                ? t('Create a local account first to assign it to this model')
+                : t('Create a normal account first to assign it to this model')}
             showAssignedModel={true}
             onclose={closeModal}
             onselect={handleStartChat}
@@ -766,6 +808,17 @@
             loading={modalLoading} 
             onclose={closeModal}
             ondeleteChat={handleRemoveChat}
+        />
+    {/if}
+
+    {#if activeModal === 'callManage'}
+        <CallManagementModal
+            model={modalData}
+            sessions={managedCallSessions}
+            loading={modalLoading}
+            onclose={closeModal}
+            onresume={handleResumeCall}
+            onhangup={handleHangupCall}
         />
     {/if}
 

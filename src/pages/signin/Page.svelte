@@ -10,6 +10,8 @@
   import Button from '../../components/Button/Button.svelte';
   import { TELEGRAM_LOGIN_USERNAME } from '../../config.js';
   import { renderGoogleSignInButton } from '../../googleIdentity.js';
+  import { t } from '../../i18n/locale.svelte.js';
+  import LegalAgree from '../../components/LegalAgree.svelte';
 
   let identifier = $state('');
   let password = $state('');
@@ -57,7 +59,7 @@
     const isEmail = validateEmail(identifier);
     
     if (!isEmail && !/^[a-zA-Z0-9._]{1,32}$/.test(identifier)) {
-        showFieldHint('signinIdentifier', 'Invalid email or username');
+        showFieldHint('signinIdentifier', t('Invalid email or username'));
         return;
     }
 
@@ -129,12 +131,12 @@
 
     renderGoogleSignInButton(googleContainer, handleGoogleCredential).catch((error) => {
       console.error('Google sign-in initialization failed:', error);
-      identifierError = error?.message || 'Google sign-in is unavailable';
+      identifierError = error?.message || t('Google sign-in is unavailable');
     });
   });
 </script>
 
-<AuthLayout title="Sign In">
+<AuthLayout title={t('Sign In')}>
     <InfoStack showTitle={false} style="padding: 0 !important; border: none !important; box-shadow: none !important; background: transparent !important;">
     <form onsubmit={handleSignIn}>
       <div style="padding-top: 2rem; padding-bottom: 1rem; display: flex; flex-direction: column; gap: 0;">
@@ -170,8 +172,7 @@
         
         <div style="padding-bottom: 0.5rem;">
             <InfoStackCheckbox id="signinTerms" bind:checked={termsAccepted} required className="clean-item checkbox-reverse">
-                I confirm that I have read and agree to Sokoyuku's <a href="/terms.html" style="color: #0366d6; transition: color 0.2s; font-weight: 500; text-decoration: none;">Terms of Use</a> and
-                <a href="/privacy.html" style="color: #0366d6; transition: color 0.2s; font-weight: 500; text-decoration: none;">Privacy Policy</a>.
+                <LegalAgree />
             </InfoStackCheckbox>
         </div>
         
@@ -180,13 +181,13 @@
           variant="text-button"
           style="width: 100%; justify-content: center;"
           containerStyle="padding: 0 0.5rem;"
-        >Enter</Button>
+        >{t('Enter')}</Button>
       </div>
     </form>
     
     <div style="padding-top: 0.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
          <span style="flex: 1; border-bottom: 1px solid #e5e7eb;"></span>
-         <span style="font-size: 0.75rem; text-align: center; color: #6b7280; text-transform: uppercase;">or</span>
+         <span style="font-size: 0.75rem; text-align: center; color: #6b7280; text-transform: uppercase;">{t('or')}</span>
          <span style="flex: 1; border-bottom: 1px solid #e5e7eb;"></span>
     </div>
 
@@ -197,7 +198,7 @@
         <button
           type="button"
           class="social-login-blocker"
-          aria-label="Agree to terms before social sign in"
+          aria-label={t('Agree to terms before social sign in')}
           onclick={requireTerms}
         ></button>
       {/if}
@@ -205,10 +206,10 @@
 
     <div style="padding-top: 1rem; text-align: center; display: flex; flex-direction: column; gap: 0.25rem;">
       <div style="display: block; font-size: 0.875rem;">
-        <Link href="/signup" style="color: #0366d6; transition: color 0.2s; font-weight: 500; text-decoration: none;">Create Account</Link>
+        <Link href="/signup" style="color: #0366d6; transition: color 0.2s; font-weight: 500; text-decoration: none;">{t('Create Account')}</Link>
       </div>
       <div style="display: block; font-size: 0.875rem;">
-        <Link href="/change-password" style="color: #0366d6; transition: color 0.2s; font-weight: 500; text-decoration: none;">Forgot Password?</Link>
+        <Link href="/change-password" style="color: #0366d6; transition: color 0.2s; font-weight: 500; text-decoration: none;">{t('Forgot Password?')}</Link>
       </div>
     </div>
     </InfoStack>

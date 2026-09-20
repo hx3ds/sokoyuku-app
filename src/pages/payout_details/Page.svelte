@@ -4,6 +4,7 @@
     import InfoStack from '../../components/InfoStack/InfoStack.svelte';
     import InfoStackItem from '../../components/InfoStack/InfoStackItem.svelte';
     import { fetchMyPrototypePayoutDetails } from '../../proxy/prototype.js';
+    import { formatDate as formatLocaleDate, formatMoney, t, tStatus } from '../../i18n/locale.svelte.js';
 
     type PrototypePayoutSummary = {
         currency: string;
@@ -89,41 +90,22 @@
     }
 
     function formatDate(dateString?: string | null) {
-        if (!dateString) return 'Unknown date';
-        const date = new Date(dateString);
-        if (Number.isNaN(date.getTime())) return 'Unknown date';
-        return date.toLocaleDateString(undefined, {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric',
-        });
+        return formatLocaleDate(dateString) || t('Unknown date');
     }
 
     function formatCurrency(amount?: number | string | null, currency = 'usd') {
-        const numericAmount = Number(amount ?? 0);
-        const normalizedCurrency = String(currency || 'usd').toUpperCase();
-        try {
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: normalizedCurrency,
-                minimumFractionDigits: 2,
-            }).format(numericAmount);
-        } catch {
-            return `${normalizedCurrency} ${numericAmount.toFixed(2)}`;
-        }
+        return formatMoney(amount, currency);
     }
 
     function formatStatusLabel(status?: string | null) {
-        const value = String(status || '').trim().toLowerCase();
-        if (!value) return 'Unknown';
-        return value.charAt(0).toUpperCase() + value.slice(1);
+        return tStatus(status);
     }
 
     function describeEventSource(event: PrototypeRevenueEvent) {
         const sourceType = String(event.source_type || '').replace(/_/g, ' ').trim();
         const label = sourceType
-            ? sourceType.charAt(0).toUpperCase() + sourceType.slice(1)
-            : 'Revenue event';
+            ? t(sourceType.charAt(0).toUpperCase() + sourceType.slice(1))
+            : t('Revenue event');
         return event.source_id ? `${label} ${event.source_id}` : label;
     }
 
@@ -224,15 +206,15 @@
     >
         {#if !loading && !hasAggregateData}
             <InfoStackItem
-                title="No payout activity yet"
-                description="Your prototypes do not have payout events yet."
+                title={t('No payout activity yet')}
+                description={t('Your prototypes do not have payout events yet.')}
             />
         {/if}
 
         {#each aggregateSummary as summary}
             <InfoStackItem
-                title={`Summary · ${summary.currency.toUpperCase()}`}
-                description={`${summary.event_count} revenue event${summary.event_count === 1 ? '' : 's'} · Last activity ${formatDate(summary.last_event_at)}`}
+                title={t('Summary · {currency}', { currency: summary.currency.toUpperCase() })}
+                description={summary.event_count === 1 ? t('{count} revenue event · Last activity {date}', { count: summary.event_count, date: formatDate(summary.last_event_at) }) : t('{count} revenue events · Last activity {date}', { count: summary.event_count, date: formatDate(summary.last_event_at) })}
                 lines={3}
             >
                 {#snippet actions()}
@@ -242,24 +224,24 @@
                 {/snippet}
 
                 <div style="padding-top: 0.25rem; font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.5;">
-                    <span style="font-weight: 500;">Gross:</span> {formatCurrency(summary.gross_amount, summary.currency)}
+                    <span style="font-weight: 500;">{t('Gross:')}</span> {formatCurrency(summary.gross_amount, summary.currency)}
                     <span style="padding-left: 0.5rem; padding-right: 0.5rem;">•</span>
-                    <span style="font-weight: 500;">Fees:</span> {formatCurrency(summary.platform_fee_amount, summary.currency)}
+                    <span style="font-weight: 500;">{t('Fees:')}</span> {formatCurrency(summary.platform_fee_amount, summary.currency)}
                     <span style="padding-left: 0.5rem; padding-right: 0.5rem;">•</span>
-                    <span style="font-weight: 500;">Paid:</span> {formatCurrency(summary.paid_net_amount, summary.currency)}
+                    <span style="font-weight: 500;">{t('Paid:')}</span> {formatCurrency(summary.paid_net_amount, summary.currency)}
                 </div>
                 <div style="font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.5;">
-                    <span style="font-weight: 500;">Pending:</span> {formatCurrency(summary.pending_net_amount, summary.currency)}
+                    <span style="font-weight: 500;">{t('Pending:')}</span> {formatCurrency(summary.pending_net_amount, summary.currency)}
                     <span style="padding-left: 0.5rem; padding-right: 0.5rem;">•</span>
-                    <span style="font-weight: 500;">Failed:</span> {formatCurrency(summary.failed_net_amount, summary.currency)}
+                    <span style="font-weight: 500;">{t('Failed:')}</span> {formatCurrency(summary.failed_net_amount, summary.currency)}
                 </div>
             </InfoStackItem>
         {/each}
 
         {#each aggregatePayoutList as payout}
             <InfoStackItem
-                title={`${formatStatusLabel(payout.status)} payout`}
-                description={`${payout.prototype_name || `Prototype ${payout.prototype_id}`} · ${payout.event_count} event${payout.event_count === 1 ? '' : 's'} · Created ${formatDate(payout.created_at)}${payout.paid_at ? ` · Paid ${formatDate(payout.paid_at)}` : ''}`}
+                title={t('{status} payout', { status: formatStatusLabel(payout.status) })}
+                description={`${payout.prototype_name || t('Prototype {id}', { id: payout.prototype_id })} · ${payout.event_count === 1 ? t('{count} event · Created {created}', { count: payout.event_count, created: formatDate(payout.created_at) }) : t('{count} events · Created {created}', { count: payout.event_count, created: formatDate(payout.created_at) })}${payout.paid_at ? ` · ${t('Paid {date}', { date: formatDate(payout.paid_at) })}` : ''}`}
                 lines={4}
             >
                 {#snippet actions()}
@@ -269,9 +251,9 @@
                 {/snippet}
 
                 <div style="padding-top: 0.25rem; font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.5;">
-                    <span style="font-weight: 500;">Gross:</span> {formatCurrency(payout.gross_amount, payout.currency)}
+                    <span style="font-weight: 500;">{t('Gross:')}</span> {formatCurrency(payout.gross_amount, payout.currency)}
                     <span style="padding-left: 0.5rem; padding-right: 0.5rem;">•</span>
-                    <span style="font-weight: 500;">Fees:</span> {formatCurrency(payout.platform_fee_amount, payout.currency)}
+                    <span style="font-weight: 500;">{t('Fees:')}</span> {formatCurrency(payout.platform_fee_amount, payout.currency)}
                 </div>
                 {#if payout.last_error}
                     <div style="font-size: 0.875rem; color: #b91c1c; line-height: 1.5;">
@@ -284,7 +266,7 @@
         {#each aggregateEventList as event}
             <InfoStackItem
                 title={describeEventSource(event)}
-                description={`${event.prototype_name || `Prototype ${event.prototype_id}`} · ${formatStatusLabel(event.status)} · Created ${formatDate(event.created_at)}${event.paid_at ? ` · Paid ${formatDate(event.paid_at)}` : ''}`}
+                description={`${event.prototype_name || t('Prototype {id}', { id: event.prototype_id })} · ${formatStatusLabel(event.status)} · ${t('Created {date}', { date: formatDate(event.created_at) })}${event.paid_at ? ` · ${t('Paid {date}', { date: formatDate(event.paid_at) })}` : ''}`}
                 lines={4}
             >
                 {#snippet actions()}
@@ -294,12 +276,12 @@
                 {/snippet}
 
                 <div style="padding-top: 0.25rem; font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.5;">
-                    <span style="font-weight: 500;">Gross:</span> {formatCurrency(event.gross_amount, event.currency)}
+                    <span style="font-weight: 500;">{t('Gross:')}</span> {formatCurrency(event.gross_amount, event.currency)}
                     <span style="padding-left: 0.5rem; padding-right: 0.5rem;">•</span>
-                    <span style="font-weight: 500;">Fees:</span> {formatCurrency(event.platform_fee_amount, event.currency)}
+                    <span style="font-weight: 500;">{t('Fees:')}</span> {formatCurrency(event.platform_fee_amount, event.currency)}
                     {#if event.payout_id}
                         <span style="padding-left: 0.5rem; padding-right: 0.5rem;">•</span>
-                        <span style="font-weight: 500;">Payout:</span> {event.payout_id.slice(0, 8)}
+                        <span style="font-weight: 500;">{t('Payout:')}</span> {event.payout_id.slice(0, 8)}
                     {/if}
                 </div>
                 {#if event.last_error}
@@ -313,7 +295,7 @@
 
     {#each prototypes as prototype (prototype.prototype_id)}
         <InfoStack
-            title={prototype.name || `Prototype ${prototype.prototype_id}`}
+            title={prototype.name || t('Prototype {id}', { id: prototype.prototype_id })}
             collapsible={true}
             expanded={false}
             empty={!prototype.payout_details?.has_data}
@@ -321,14 +303,14 @@
         >
             <InfoStackItem
                 href="/prototype/{prototype.prototype_id}"
-                title="Open Prototype"
-                description={prototype.description || 'No description'}
+                title={t('Open Prototype')}
+                description={prototype.description || t('No description')}
             />
 
             {#each prototype.payout_details?.summary_by_currency || [] as summary}
                 <InfoStackItem
-                    title={`Summary · ${summary.currency.toUpperCase()}`}
-                    description={`${summary.event_count} revenue event${summary.event_count === 1 ? '' : 's'} · Last activity ${formatDate(summary.last_event_at)}`}
+                    title={t('Summary · {currency}', { currency: summary.currency.toUpperCase() })}
+                    description={summary.event_count === 1 ? t('{count} revenue event · Last activity {date}', { count: summary.event_count, date: formatDate(summary.last_event_at) }) : t('{count} revenue events · Last activity {date}', { count: summary.event_count, date: formatDate(summary.last_event_at) })}
                     lines={3}
                 >
                     {#snippet actions()}
@@ -338,24 +320,24 @@
                     {/snippet}
 
                     <div style="padding-top: 0.25rem; font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.5;">
-                        <span style="font-weight: 500;">Gross:</span> {formatCurrency(summary.gross_amount, summary.currency)}
+                        <span style="font-weight: 500;">{t('Gross:')}</span> {formatCurrency(summary.gross_amount, summary.currency)}
                         <span style="padding-left: 0.5rem; padding-right: 0.5rem;">•</span>
-                        <span style="font-weight: 500;">Fees:</span> {formatCurrency(summary.platform_fee_amount, summary.currency)}
+                        <span style="font-weight: 500;">{t('Fees:')}</span> {formatCurrency(summary.platform_fee_amount, summary.currency)}
                         <span style="padding-left: 0.5rem; padding-right: 0.5rem;">•</span>
-                        <span style="font-weight: 500;">Paid:</span> {formatCurrency(summary.paid_net_amount, summary.currency)}
+                        <span style="font-weight: 500;">{t('Paid:')}</span> {formatCurrency(summary.paid_net_amount, summary.currency)}
                     </div>
                     <div style="font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.5;">
-                        <span style="font-weight: 500;">Pending:</span> {formatCurrency(summary.pending_net_amount, summary.currency)}
+                        <span style="font-weight: 500;">{t('Pending:')}</span> {formatCurrency(summary.pending_net_amount, summary.currency)}
                         <span style="padding-left: 0.5rem; padding-right: 0.5rem;">•</span>
-                        <span style="font-weight: 500;">Failed:</span> {formatCurrency(summary.failed_net_amount, summary.currency)}
+                        <span style="font-weight: 500;">{t('Failed:')}</span> {formatCurrency(summary.failed_net_amount, summary.currency)}
                     </div>
                 </InfoStackItem>
             {/each}
 
             {#each prototype.payout_details?.payouts || [] as payout}
                 <InfoStackItem
-                    title={`${formatStatusLabel(payout.status)} payout`}
-                    description={`${payout.event_count} event${payout.event_count === 1 ? '' : 's'} · Created ${formatDate(payout.created_at)}${payout.paid_at ? ` · Paid ${formatDate(payout.paid_at)}` : ''}`}
+                    title={t('{status} payout', { status: formatStatusLabel(payout.status) })}
+                    description={`${payout.event_count === 1 ? t('{count} event · Created {created}', { count: payout.event_count, created: formatDate(payout.created_at) }) : t('{count} events · Created {created}', { count: payout.event_count, created: formatDate(payout.created_at) })}${payout.paid_at ? ` · ${t('Paid {date}', { date: formatDate(payout.paid_at) })}` : ''}`}
                     lines={4}
                 >
                     {#snippet actions()}
@@ -365,9 +347,9 @@
                     {/snippet}
 
                     <div style="padding-top: 0.25rem; font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.5;">
-                        <span style="font-weight: 500;">Gross:</span> {formatCurrency(payout.gross_amount, payout.currency)}
+                        <span style="font-weight: 500;">{t('Gross:')}</span> {formatCurrency(payout.gross_amount, payout.currency)}
                         <span style="padding-left: 0.5rem; padding-right: 0.5rem;">•</span>
-                        <span style="font-weight: 500;">Fees:</span> {formatCurrency(payout.platform_fee_amount, payout.currency)}
+                        <span style="font-weight: 500;">{t('Fees:')}</span> {formatCurrency(payout.platform_fee_amount, payout.currency)}
                     </div>
                     {#if payout.last_error}
                         <div style="font-size: 0.875rem; color: #b91c1c; line-height: 1.5;">
@@ -380,7 +362,7 @@
             {#each prototype.payout_details?.events || [] as event}
                 <InfoStackItem
                     title={describeEventSource(event)}
-                    description={`${formatStatusLabel(event.status)} · Created ${formatDate(event.created_at)}${event.paid_at ? ` · Paid ${formatDate(event.paid_at)}` : ''}`}
+                    description={`${formatStatusLabel(event.status)} · ${t('Created {date}', { date: formatDate(event.created_at) })}${event.paid_at ? ` · ${t('Paid {date}', { date: formatDate(event.paid_at) })}` : ''}`}
                     lines={4}
                 >
                     {#snippet actions()}
@@ -390,12 +372,12 @@
                     {/snippet}
 
                     <div style="padding-top: 0.25rem; font-size: 0.875rem; color: var(--color-text-secondary); line-height: 1.5;">
-                        <span style="font-weight: 500;">Gross:</span> {formatCurrency(event.gross_amount, event.currency)}
+                        <span style="font-weight: 500;">{t('Gross:')}</span> {formatCurrency(event.gross_amount, event.currency)}
                         <span style="padding-left: 0.5rem; padding-right: 0.5rem;">•</span>
-                        <span style="font-weight: 500;">Fees:</span> {formatCurrency(event.platform_fee_amount, event.currency)}
+                        <span style="font-weight: 500;">{t('Fees:')}</span> {formatCurrency(event.platform_fee_amount, event.currency)}
                         {#if event.payout_id}
                             <span style="padding-left: 0.5rem; padding-right: 0.5rem;">•</span>
-                            <span style="font-weight: 500;">Payout:</span> {event.payout_id.slice(0, 8)}
+                            <span style="font-weight: 500;">{t('Payout:')}</span> {event.payout_id.slice(0, 8)}
                         {/if}
                     </div>
                     {#if event.last_error}

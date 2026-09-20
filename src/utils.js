@@ -1,5 +1,6 @@
 
 import { BASE_URL } from './config.js';
+import { t } from './i18n/locale.svelte.js';
 
 const PUBLIC_KEY_TOKEN_PREFIX = 'lcpk1:';
 const ENCRYPTED_TOKEN_PREFIX = 'lcenc1:';
@@ -25,7 +26,7 @@ export function showFieldHint(id, message) {
         el.required &&
         !el.checked
     ) {
-        message = 'Please check this box if you want to proceed.';
+        message = t('Please check this box if you want to proceed.');
     }
     if (typeof el.focus === 'function') {
         el.focus({ preventScroll: true });
@@ -88,7 +89,7 @@ export async function request(endpoint, { body, ...options } = {}) {
         console.error(`Error requesting ${endpoint}:`, err);
         return { 
             result: -1, 
-            msg: err.message || 'Connection error',
+            msg: err.message || t('Connection error'),
             ...(import.meta.env.DEV ? { error: err, stack: err.stack } : {})
         };
     }

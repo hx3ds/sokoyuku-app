@@ -1,18 +1,23 @@
 <script>
+    import { t } from '../../i18n/locale.svelte.js';
+
     let {
         label = '',
         ariaLabel = '',
     } = $props();
+
+    const displayLabel = $derived(t(label));
+    const displayAria = $derived(t(ariaLabel || label));
 </script>
 
 <div
     class="stack-divider"
     role="separator"
-    aria-label={ariaLabel || label || undefined}
+    aria-label={displayAria || undefined}
 >
     <span class="stack-divider-line"></span>
-    {#if label}
-        <span class="stack-divider-label">{label}</span>
+    {#if displayLabel}
+        <span class="stack-divider-label">{displayLabel}</span>
         <span class="stack-divider-line"></span>
     {/if}
 </div>

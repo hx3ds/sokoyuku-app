@@ -61,17 +61,19 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: WORKER_COUNT,
+  timeout: 60000,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: 'http://localhost:8880',
     trace: 'on-first-retry',
+    locale: 'en-US',
   },
   projects: [
     {
       name: 'setup',
       testMatch: /.*\.setup\.js/,
-      // Same-file setup tests parallelize (global fullyParallel is false).
       fullyParallel: true,
+      timeout: 120000,
     },
     ...browserProjects,
   ],

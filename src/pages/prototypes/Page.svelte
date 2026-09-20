@@ -5,6 +5,7 @@
     import { fetchMyPrototypes, fetchUserPrototypes, deletePrototype } from '../../proxy/prototype.js';
     import { fetchProfile } from '../../proxy/user.js';
     import { showConfirm, showError } from '../../components/Modal/state.svelte.js';
+    import { t } from '../../i18n/locale.svelte.js';
     import PageContainer from '../../components/PageContainer.svelte';
     import InfoStack from '../../components/InfoStack/InfoStack.svelte';
     import InfoStackItem from '../../components/InfoStack/InfoStackItem.svelte';
@@ -66,12 +67,12 @@
         if (action === 'edit') {
             window.history.pushState({}, '', `/prototype/${prototype.prototype_id}`);
         } else if (action === 'delete') {
-            if (await showConfirm('Are you sure you want to delete this prototype?')) {
+            if (await showConfirm(t('Are you sure you want to delete this prototype?'))) {
                 const res = await deletePrototype(prototype.prototype_id);
                 if (res.result === 0) {
                     await loadData();
                 } else {
-                    await showError('Failed to delete prototype: ' + res.msg);
+                    await showError(t('Failed to delete prototype: {msg}', { msg: res.msg }));
                 }
             }
         }
@@ -82,14 +83,14 @@
 </script>
 
 <PageContainer id="page-prototypes">
-    <InfoStack title="Prototypes by {username}" id="prototypesList">
+    <InfoStack title={t('Prototypes by {username}', { username })} id="prototypesList">
         {#if loading}
             <Loading />
         {:else if prototypes.length === 0}
             <NotFound text="No prototypes found" />
         {:else}
             {#each prototypes as prototype}
-                <InfoStackItem href="/prototype/{prototype.prototype_id}" title={prototype.name} description={prototype.description || 'No description'} separateHover>
+                <InfoStackItem href="/prototype/{prototype.prototype_id}" title={prototype.name} description={prototype.description || t('No description')} separateHover>
                     {#snippet titleSuffix()}
                         {#if prototype.certified}
                             <svg style="width: 1rem; height: 1rem; color: #22c55e;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
@@ -107,8 +108,8 @@
                                 width="6rem"
                                 onclick={(e) => toggleMenu(prototype.prototype_id, e)}
                             >
-                                <MenuItem onclick={() => handleAction('edit', prototype)}>Edit</MenuItem>
-                                <MenuItem onclick={() => handleAction('delete', prototype)}>Delete</MenuItem>
+                                <MenuItem onclick={() => handleAction('edit', prototype)}>{t('Edit')}</MenuItem>
+                                <MenuItem onclick={() => handleAction('delete', prototype)}>{t('Delete')}</MenuItem>
                             </ActionMenu>
                         {/if}
                     {/snippet}

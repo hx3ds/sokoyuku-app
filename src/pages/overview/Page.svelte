@@ -10,6 +10,7 @@
     import InfoStack from '../../components/InfoStack/InfoStack.svelte';
     import InfoStackItem from '../../components/InfoStack/InfoStackItem.svelte';
     import InfoStackBadge from '../../components/InfoStack/InfoStackBadge.svelte';
+    import { formatDate as formatLocaleDate, formatMoney as formatLocaleMoney, t, tStatus } from '../../i18n/locale.svelte.js';
 
     type PlatformSubscription = {
         status?: string | null;
@@ -118,25 +119,15 @@
     }
 
     function formatDate(dateString?: string | null) {
-        if (!dateString) return 'N/A';
-        return new Date(dateString).toLocaleDateString(undefined, {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
+        return formatLocaleDate(dateString) || t('N/A');
     }
 
     function formatMoney(value?: string | number | null) {
-        const amount = typeof value === 'string' ? parseFloat(value) : Number(value ?? 0);
-        const safeAmount = Number.isFinite(amount) ? amount : 0;
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD'
-        }).format(safeAmount);
+        return formatLocaleMoney(value, 'USD');
     }
 
     function formatQuota(used: number, limit: number) {
-        return limit > 0 ? `${used} / ${limit}` : `${used} / Locked`;
+        return limit > 0 ? `${used} / ${limit}` : t('{used}/Locked', { used });
     }
 
     function usageTone(used: number, limit: number) {
@@ -155,11 +146,11 @@
     }
 
     function toneLabel(tone: string) {
-        if (tone === 'danger') return 'Over';
-        if (tone === 'warning') return 'At limit';
-        if (tone === 'locked') return 'Locked';
-        if (tone === 'ok') return 'Available';
-        return 'Info';
+        if (tone === 'danger') return t('Over');
+        if (tone === 'warning') return t('At limit');
+        if (tone === 'locked') return t('Locked');
+        if (tone === 'ok') return t('Available');
+        return t('Info');
     }
 </script>
 
@@ -169,22 +160,22 @@
     {:else}
         <InfoStack title="Sokoyuku Subscription">
             <InfoStackItem
-                title={subscription?.plan?.name || 'Free Access'}
-                description={subscription?.plan?.description || 'Free plan with Sokoyuku default quotas.'}
+                title={subscription?.plan?.name || t('Free Access')}
+                description={subscription?.plan?.description || t('Free plan with Sokoyuku default quotas.')}
             >
                 {#snippet titleSuffix()}
-                    <InfoStackBadge class="status-badge {statusTone(subscription?.status)}" label={subscription?.status || 'free'} />
+                    <InfoStackBadge class="status-badge {statusTone(subscription?.status)}" label={tStatus(subscription?.status || 'free')} />
                 {/snippet}
                 <div class="overview-body">
-                    <div><strong>Current access:</strong> {isPlatformSubscriptionActive ? 'Pro active' : 'Free mode'}</div>
-                    <div><strong>Pro unlocked permanently:</strong> {hasPlatformSubscriptionHistory ? 'Yes' : 'No'}</div>
-                    <div><strong>Monthly price:</strong> {subscription?.plan ? formatMoney(subscription.plan.price) : '$0.00'}</div>
-                    <div><strong>Current period end:</strong> {formatDate(subscription?.current_period_end)}</div>
+                    <div><strong>{t('Current access:')}</strong> {isPlatformSubscriptionActive ? t('Pro active') : t('Free mode')}</div>
+                    <div><strong>{t('Pro unlocked permanently:')}</strong> {hasPlatformSubscriptionHistory ? t('Yes') : t('No')}</div>
+                    <div><strong>{t('Monthly price:')}</strong> {subscription?.plan ? formatMoney(subscription.plan.price) : formatMoney(0)}</div>
+                    <div><strong>{t('Current period end:')}</strong> {formatDate(subscription?.current_period_end)}</div>
                     {#if subscription?.cancel_at_period_end}
-                        <div class="note-warning">Subscription will cancel at the end of the current period.</div>
+                        <div class="note-warning">{t('Subscription will cancel at the end of the current period.')}</div>
                     {/if}
                     {#if !isPlatformSubscriptionActive}
-                        <div class="note-muted">Pro account groups stay locked until a platform subscription becomes active again.</div>
+                        <div class="note-muted">{t('Pro account groups stay locked until a platform subscription becomes active again.')}</div>
                     {/if}
                 </div>
             </InfoStackItem>
@@ -192,61 +183,61 @@
 
         <InfoStack title="Resource Usage">
             <InfoStackItem
-                title="Models"
-                description="Your total models. The higher limit stays unlocked forever after any Pro subscription."
+                title={t('Models')}
+                description={t('Your total models. The higher limit stays unlocked forever after any Pro subscription.')}
             >
                 {#snippet titleSuffix()}
                     <InfoStackBadge class="status-badge {usageTone(models.length, modelLimit)}" label={toneLabel(usageTone(models.length, modelLimit))} />
                 {/snippet}
                 <div class="overview-body">
-                    <div><strong>Usage:</strong> {formatQuota(models.length, modelLimit)}</div>
-                    <div><strong>Limit rule:</strong> {hasPlatformSubscriptionHistory ? 'Pro-unlocked permanent cap' : 'Free cap'}</div>
+                    <div><strong>{t('Usage:')}</strong> {formatQuota(models.length, modelLimit)}</div>
+                    <div><strong>{t('Limit rule:')}</strong> {hasPlatformSubscriptionHistory ? t('Pro-unlocked permanent cap') : t('Free cap')}</div>
                 </div>
             </InfoStackItem>
 
             <InfoStackItem
-                title="Prototypes"
-                description="Your published and draft prototypes. This cap also stays unlocked forever after Pro."
+                title={t('Prototypes')}
+                description={t('Your published and draft prototypes. This cap also stays unlocked forever after Pro.')}
             >
                 {#snippet titleSuffix()}
                     <InfoStackBadge class="status-badge {usageTone(prototypes.length, prototypeLimit)}" label={toneLabel(usageTone(prototypes.length, prototypeLimit))} />
                 {/snippet}
                 <div class="overview-body">
-                    <div><strong>Usage:</strong> {formatQuota(prototypes.length, prototypeLimit)}</div>
-                    <div><strong>Limit rule:</strong> {hasPlatformSubscriptionHistory ? 'Pro-unlocked permanent cap' : 'Free cap'}</div>
+                    <div><strong>{t('Usage:')}</strong> {formatQuota(prototypes.length, prototypeLimit)}</div>
+                    <div><strong>{t('Limit rule:')}</strong> {hasPlatformSubscriptionHistory ? t('Pro-unlocked permanent cap') : t('Free cap')}</div>
                 </div>
             </InfoStackItem>
         </InfoStack>
 
         <InfoStack title="Account Usage">
             <InfoStackItem
-                title="Free Accounts"
-                description="Free-group accounts remain usable without a platform subscription."
+                title={t('Free Accounts')}
+                description={t('Free-group accounts remain usable without a platform subscription.')}
             >
                 <div class="overview-body">
-                    <div><strong>Normal:</strong> {formatQuota(freeNormalAccounts, FREE_NORMAL_ACCOUNT_LIMIT)}</div>
-                    <div><strong>Local:</strong> {formatQuota(freeLocalAccounts, FREE_LOCAL_ACCOUNT_LIMIT)}</div>
+                    <div><strong>{t('Normal:')}</strong> {formatQuota(freeNormalAccounts, FREE_NORMAL_ACCOUNT_LIMIT)}</div>
+                    <div><strong>{t('Local:')}</strong> {formatQuota(freeLocalAccounts, FREE_LOCAL_ACCOUNT_LIMIT)}</div>
                 </div>
             </InfoStackItem>
 
             <InfoStackItem
-                title="Pro Accounts"
-                description="Pro-group accounts only stay active while your platform subscription is active."
+                title={t('Pro Accounts')}
+                description={t('Pro-group accounts only stay active while your platform subscription is active.')}
             >
                 {#snippet titleSuffix()}
                     <InfoStackBadge
                         class="status-badge {isPlatformSubscriptionActive ? 'ok' : 'locked'}"
-                        label={isPlatformSubscriptionActive ? 'Pro active' : 'Subscription inactive'}
+                        label={isPlatformSubscriptionActive ? t('Pro active') : t('Subscription inactive')}
                     />
                 {/snippet}
                 <div class="overview-body">
-                    <div><strong>Normal:</strong> {formatQuota(activeProNormalAccounts, proNormalLimit)}</div>
-                    <div><strong>Local:</strong> {formatQuota(activeProLocalAccounts, proLocalLimit)}</div>
-                    <div><strong>Total pro normal accounts:</strong> {proNormalAccounts}</div>
-                    <div><strong>Total pro local accounts:</strong> {proLocalAccounts}</div>
+                    <div><strong>{t('Normal:')}</strong> {formatQuota(activeProNormalAccounts, proNormalLimit)}</div>
+                    <div><strong>{t('Local:')}</strong> {formatQuota(activeProLocalAccounts, proLocalLimit)}</div>
+                    <div><strong>{t('Total pro normal accounts:')}</strong> {proNormalAccounts}</div>
+                    <div><strong>{t('Total pro local accounts:')}</strong> {proLocalAccounts}</div>
                     {#if disabledProNormalAccounts > 0 || disabledProLocalAccounts > 0}
                         <div class="note-warning">
-                            Disabled by subscription: {disabledProNormalAccounts} normal, {disabledProLocalAccounts} local
+                            {t('Disabled by subscription: {normal} normal, {local} local', { normal: disabledProNormalAccounts, local: disabledProLocalAccounts })}
                         </div>
                     {/if}
                 </div>

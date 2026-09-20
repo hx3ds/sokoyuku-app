@@ -8,6 +8,7 @@
     import AddToModelButton from '../../components/Button/AddToModelButton.svelte';
     import Loading from '../../components/Loading.svelte';
     import NotFound from '../../components/NotFound.svelte';
+    import { t } from '../../i18n/locale.svelte.js';
 
     type PrototypeSummary = {
         prototype_id: number;
@@ -76,7 +77,7 @@
                     <button
                         type="button"
                         onclick={focusSearchInput}
-                        aria-label="Focus search"
+                        aria-label={t('Focus search')}
                         style="display: inline-flex; align-items: center; justify-content: center; padding: 0; background: transparent; border: none; cursor: pointer; color: var(--color-primary);"
                     >
                         <svg style="width: 1rem; height: 1rem;" 
@@ -100,7 +101,7 @@
                 <InfoStackItem 
                     href="/prototype/{prototype.prototype_id}" 
                     title="{prototype.username}/{prototype.name}" 
-                    description={prototype.description || 'No description'}
+                    description={prototype.description || t('No description')}
                 >
                     {#snippet titleSuffix()}
                         {#if prototype.certified}

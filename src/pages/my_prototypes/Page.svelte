@@ -5,6 +5,7 @@
     import { modelStore } from '../../store/models.svelte.js';
     import { prototypeStore } from '../../store/prototypes.svelte.js';
     import { showConfirm, showError, showSuccess } from '../../components/Modal/state.svelte.js';
+    import { t } from '../../i18n/locale.svelte.js';
     import PageContainer from '../../components/PageContainer.svelte';
     import InfoStack from '../../components/InfoStack/InfoStack.svelte';
     import InfoStackItem from '../../components/InfoStack/InfoStackItem.svelte';
@@ -46,12 +47,12 @@
     }
 
     async function handleDelete(id: number) {
-        if (await showConfirm('Are you sure you want to delete this prototype?')) {
+        if (await showConfirm(t('Are you sure you want to delete this prototype?'))) {
             const res = await deletePrototype(id);
             if (res.result === 0) {
                 prototypeStore.remove(id);
             } else {
-                await showError('Failed to delete prototype: ' + (res.msg || 'Unknown error'));
+                await showError(t('Failed to delete prototype: {msg}', { msg: res.msg || t('Unknown error') }));
             }
         }
     }
@@ -64,7 +65,7 @@
     <InfoStackItem 
         href="/prototype/{prototype.prototype_id}"
         title={prototype.name}
-        description={prototype.description || 'No description'}
+        description={prototype.description || t('No description')}
     >
         {#snippet titleSuffix()}
             {#if prototype.certified}
@@ -85,8 +86,8 @@
                 width="8rem"
                 onclick={(e) => toggleMenu(prototype.prototype_id, e)}
             >
-                <MenuItem onclick={() => navigateToPrototype(prototype.prototype_id)}>Edit</MenuItem>
-                <MenuItem onclick={() => handleDelete(prototype.prototype_id)}>Delete</MenuItem>
+                <MenuItem onclick={() => navigateToPrototype(prototype.prototype_id)}>{t('Edit')}</MenuItem>
+                <MenuItem onclick={() => handleDelete(prototype.prototype_id)}>{t('Delete')}</MenuItem>
             </ActionMenu>
         {/snippet}
     </InfoStackItem>
@@ -100,7 +101,7 @@
         emptyText="You haven't created any prototypes yet."
     >
         {#snippet headerActions()}
-            <Button variant="icon-button" iconSize="1.25rem" padding="0.25rem" onclick={openAddModal} aria-label="Create Prototype">
+            <Button variant="icon-button" iconSize="1.25rem" padding="0.25rem" onclick={openAddModal} aria-label={t('Create Prototype')}>
                 <svg class="icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                 </svg>

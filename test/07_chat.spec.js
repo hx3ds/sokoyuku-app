@@ -25,8 +25,8 @@ test.describe('Chat Flow', () => {
       await expect(page).toHaveURL(/\/models/);
       await page.getByRole('button', { name: 'Add account' }).click();
       await page.getByPlaceholder('Enter name').fill(accountName);
-      await page.getByPlaceholder('Enter username').fill(accountUsername);
-      await page.getByPlaceholder('Enter token').fill(bot.token);
+      await page.getByPlaceholder('Enter bot username').fill(accountUsername);
+      await page.getByPlaceholder('Enter bot token').fill(bot.token);
       await page.getByPlaceholder('Enter account description').fill('Chat test account');
       await page.getByRole('button', { name: 'Save Account' }).click();
       await expect(page.getByRole('heading', { name: 'Add New Account' })).toBeHidden({ timeout: 15000 });

@@ -5,6 +5,7 @@
     import Button from '../Button/Button.svelte';
     import InfoStackInput from '../InfoStack/InfoStackInput.svelte';
     import InfoStackItem from '../InfoStack/InfoStackItem.svelte';
+    import { t } from '../../i18n/locale.svelte.js';
 
     let { 
         show = $bindable(false), 
@@ -39,7 +40,7 @@
             onadded(res.data);
             close();
         } else {
-            error = res.msg || 'Failed to add model';
+            error = res.msg || t('Failed to add model');
         }
         
         loading = false;
@@ -56,14 +57,14 @@
         <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v6m3-3H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
     {/snippet}
     <Dialog 
-        title="Add to My Models" 
+        title={t('Add to My Models')} 
         onclose={close} 
         maxWidth="max-w-md"
         icon={modelIcon}
     >
         <InfoStackItem>
                 <p style="color: #666; font-size: 0.9rem; margin: 0;">
-                Are you sure you want to add this account to your models?
+                {t('Are you sure you want to add this account to your models?')}
                 </p>
             </InfoStackItem>
         
@@ -82,14 +83,14 @@
         <InfoStackItem>
             {#snippet actions()}
                 <div style="display: flex; gap: 0.5rem;">
-                    <Button onclick={close} disabled={loading}>Cancel</Button>
+                    <Button variant="text-button" onclick={close} disabled={loading}>{t('Cancel')}</Button>
                     <Button 
                         variant="text-button" 
                         onclick={handleAdd}
                         disabled={!name.trim() || loading}
                         {loading}
                     >
-                        Add
+                        {t('Add')}
                     </Button>
                 </div>
             {/snippet}

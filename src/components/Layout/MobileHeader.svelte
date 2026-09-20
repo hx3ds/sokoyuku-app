@@ -1,8 +1,13 @@
+<script>
+    import LanguagePicker from '../LanguagePicker.svelte';
+</script>
+
 <header class="mobile-header">
     <div class="header-content">
         <div class="logo-container">
             <h1 class="logo-text">Sokoyuku</h1>
         </div>
+        <LanguagePicker />
     </div>
 </header>
 
@@ -23,6 +28,8 @@
     .header-content {
         display: flex;
         align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
         padding: 0 16px;
         height: 100%;
     }

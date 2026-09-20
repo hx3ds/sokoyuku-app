@@ -9,6 +9,7 @@
   import InfoStack from '../../components/InfoStack/InfoStack.svelte';
   import InfoStackInput from '../../components/InfoStack/InfoStackInput.svelte';
   import Button from '../../components/Button/Button.svelte';
+  import { t } from '../../i18n/locale.svelte.js';
 
   let email = $state('');
   let code = $state('');
@@ -41,11 +42,11 @@
           },
           'expired-callback': () => {
             turnstileToken = '';
-            turnstileError = 'Please complete the verification challenge again';
+            turnstileError = t('Please complete the verification challenge again');
           },
           'error-callback': () => {
             turnstileToken = '';
-            turnstileError = 'Verification challenge failed to load';
+            turnstileError = t('Verification challenge failed to load');
           }
         });
         if (!disposed) {
@@ -53,7 +54,7 @@
         }
       } catch (error) {
         if (!disposed) {
-          turnstileError = 'Verification challenge failed to load';
+          turnstileError = t('Verification challenge failed to load');
         }
       }
     }
@@ -73,7 +74,7 @@
         return;
     }
     if (!validateEmail(email)) {
-        showFieldHint('changePasswordEmail', 'Please enter a valid email address');
+        showFieldHint('changePasswordEmail', t('Please enter a valid email address'));
         return;
     }
     errors.email = '';
@@ -99,7 +100,7 @@
           }
         }, 1000);
       } else {
-          errors.email = result.msg || 'Failed to send code';
+          errors.email = result.msg || t('Failed to send code');
       }
     } finally {
       codeSubmitting = false;
@@ -149,11 +150,11 @@
         variant="text-button"
         loading={codeSubmitting}
     >
-        {countdown > 0 ? `${countdown}s` : 'Get Code'}
+        {countdown > 0 ? `${countdown}s` : t('Get Code')}
     </Button>
 {/snippet}
 
-<AuthLayout title="Change Password">
+<AuthLayout title={t('Change Password')}>
     <InfoStack showTitle={false} style="padding: 0 !important; border: none !important; box-shadow: none !important; background: transparent !important;">
     <form onsubmit={handleChangePassword}>
       <div style="padding-top: 2rem; padding-bottom: 1rem; display: flex; flex-direction: column; gap: 0;">
@@ -217,12 +218,12 @@
               value={turnstileToken}
               required
               tabindex="-1"
-              aria-label="Verification challenge"
+              aria-label={t('Verification challenge')}
             />
             <div bind:this={turnstileContainer}></div>
           </div>
           {#if !turnstileLoaded && !turnstileError}
-            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #6b7280;">Loading verification challenge...</p>
+            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #6b7280;">{t('Loading verification challenge...')}</p>
           {/if}
           {#if turnstileError}
             <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #ef4444;">{turnstileError}</p>
@@ -234,12 +235,12 @@
           variant="text-button"
           style="width: 100%; justify-content: center;"
           containerStyle="padding: 0 0.5rem;"
-        >Reset Password</Button>
+        >{t('Reset Password')}</Button>
       </div>
     </form>
     <div style="padding-top: 1rem; text-align: center; display: flex; flex-direction: column; gap: 0.25rem;">
       <div style="display: block; font-size: 0.875rem;">
-        <Link href="/signin" style="font-weight: 500; text-decoration: none;">Back to Sign In</Link>
+        <Link href="/signin" style="font-weight: 500; text-decoration: none;">{t('Back to Sign In')}</Link>
       </div>
     </div>
     </InfoStack>

@@ -4,6 +4,7 @@
     import PageContainer from '../../components/PageContainer.svelte';
     import InfoStack from '../../components/InfoStack/InfoStack.svelte';
     import InfoStackItem from '../../components/InfoStack/InfoStackItem.svelte';
+    import { formatDate as formatLocaleDate, formatMoney, t } from '../../i18n/locale.svelte.js';
 
     let transactions = $state([]);
     let loading = $state(true);
@@ -28,20 +29,11 @@
     }
 
     function formatDate(dateString) {
-        const date = new Date(dateString);
-        return date.toLocaleDateString(undefined, { 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric'
-        });
+        return formatLocaleDate(dateString);
     }
 
     function formatCurrency(amount) {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            minimumFractionDigits: 2
-        }).format(amount);
+        return formatMoney(amount, 'USD');
     }
 </script>
 
@@ -50,7 +42,7 @@
     <InfoStack title="Transaction History" {loading} empty={transactions.length === 0} emptyText="No transaction history">
         {#each transactions as tx}
             <InfoStackItem 
-                title={tx.description || 'Transaction'} 
+                title={tx.description || t('Transaction')} 
                 description={formatDate(tx.created_at)}
                 style="cursor: default; --line-clamp: 1;"
             >

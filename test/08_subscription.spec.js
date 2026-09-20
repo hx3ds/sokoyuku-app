@@ -67,11 +67,13 @@ test.describe('Subscription Page', () => {
 
     // Verify Platform Sub
     await expect(page.getByText('Pro Plan')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Cancel Subscription' })).toBeVisible();
+    const platformRow = page.locator('.list-item').filter({ hasText: 'Pro Plan' });
+    await expect(platformRow.getByRole('button', { name: 'Cancel Subscription' })).toBeVisible();
 
     // Verify Model Sub
     await expect(page.getByText('Cool Model')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Cancel Auto-renew' })).toBeVisible();
+    const modelRow = page.locator('.list-item').filter({ hasText: 'Cool Model' });
+    await expect(modelRow.getByRole('button', { name: 'Cancel Subscription' })).toBeVisible();
 
     // Cancel Platform
     // page.on('dialog', dialog => dialog.accept()); // Not needed for custom modal
@@ -80,7 +82,7 @@ test.describe('Subscription Page', () => {
     const cancelPromise = page.waitForResponse(resp => resp.url().includes('/api/cancel_platform_subscription'));
     const fetchPromise = page.waitForResponse(resp => resp.url().includes('/api/get_all_subscriptions'));
     
-    await page.getByRole('button', { name: 'Cancel Subscription' }).click();
+    await platformRow.getByRole('button', { name: 'Cancel Subscription' }).click();
     await expect(page.getByText('Are you sure you want to cancel your platform subscription?')).toBeVisible();
     await page.getByRole('button', { name: 'OK' }).click();
     
@@ -88,14 +90,14 @@ test.describe('Subscription Page', () => {
     await fetchPromise;
     
     // Verify update
-    await expect(page.getByRole('button', { name: 'Cancel Subscription' })).toBeHidden({ timeout: 10000 });
+    await expect(platformRow.getByRole('button', { name: 'Cancel Subscription' })).toBeHidden({ timeout: 10000 });
     await expect(page.getByText('Cancels at end of period')).toBeVisible({ timeout: 10000 });
 
     // Cancel Model
     const cancelModelPromise = page.waitForResponse(resp => resp.url().includes('/api/cancel_model_subscription'));
     const fetchModelPromise = page.waitForResponse(resp => resp.url().includes('/api/get_all_subscriptions'));
 
-    await page.getByRole('button', { name: 'Cancel Auto-renew' }).click();
+    await modelRow.getByRole('button', { name: 'Cancel Subscription' }).click();
     await expect(page.getByText('Are you sure you want to cancel this model subscription?')).toBeVisible();
     await page.getByRole('button', { name: 'OK' }).click();
     
@@ -104,6 +106,6 @@ test.describe('Subscription Page', () => {
     
     // Verify update
     await expect(page.getByText('Auto-renew disabled')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Cancel Auto-renew' })).toBeHidden();
+    await expect(modelRow.getByRole('button', { name: 'Cancel Subscription' })).toBeHidden();
   });
 });

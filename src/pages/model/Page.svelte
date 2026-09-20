@@ -9,6 +9,7 @@
     import { fetchModel, updateModel } from '../../proxy/model.js';
     import { modelStore } from '../../store/models.svelte.js';
     import { showError } from '../../components/Modal/state.svelte.js';
+    import { formatDateTime, t, tAccountType, tStatus, yesNo } from '../../i18n/locale.svelte.js';
     import PageContainer from '../../components/PageContainer.svelte';
     import InfoStackBadge from '../../components/InfoStack/InfoStackBadge.svelte';
 
@@ -109,14 +110,14 @@
             modelStore.update(data); // Update store
             await loadModel(); // Refresh to ensure data consistency
         } else {
-            await showError('Failed to update model: ' + res.msg);
+            await showError(t('Failed to update model: {msg}', { msg: res.msg }));
         }
     }
 
     function formatDate(dateString: string | null | undefined) {
-        if (!dateString) return 'Not specified';
+        if (!dateString) return t('Not specified');
         const date = new Date(dateString);
-        return date.toLocaleString();
+        return formatDateTime(date) || t('Not specified');
     }
 
     function getEncryptedSettingsToken(settings: Record<string, unknown> | null | undefined) {
@@ -130,7 +131,7 @@
     }
 
     function formatAccountLabel(account: ModelAccount | null | undefined): string {
-        if (!account?.acct_username) return 'Not specified';
+        if (!account?.acct_username) return t('Not specified');
         return account.acct_username;
     }
 
@@ -159,12 +160,12 @@
             <InfoStackInput title="Name" bind:value={model!.name} readonly={!isEditing} />
 
             <!-- Status -->
-            <InfoStackInput title="Status" value={model!.status || 'Unknown'} readonly />
+            <InfoStackInput title="Status" value={model!.status || t('Unknown')} readonly />
 
             <!-- Prototype Link -->
             <InfoStackInput title="Prototype" value={model!.prototype_id} readonly>
                 {#snippet end()}
-                    <Link href="/prototype/{model!.prototype_id}" aria-label="Visit Prototype">
+                    <Link href="/prototype/{model!.prototype_id}" aria-label={t('Visit Prototype')}>
                         <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                         </svg>
@@ -174,10 +175,10 @@
 
             <InfoStackTextarea title="Description" id="model-description" bind:value={model!.description} readonly={!isEditing} />
 
-            <InfoStackInput title="Local" value={isLocal ? 'Yes' : 'No'} readonly />
+            <InfoStackInput title="Local" value={yesNo(isLocal)} readonly />
             <InfoStackInput title="Max Chats" value={model!.max_chats} readonly />
             <InfoStackInput title="Access Point" value={model!.access_point} readonly />
-            <InfoStackInput title="Type" value={model!.type} readonly />
+            <InfoStackInput title="Type" value={tStatus(model!.type)} readonly />
             {#if model!.type === 'subscription'}
                 <InfoStackInput title="Tier" value={model!.subscription_tier || '—'} readonly />
                 <InfoStackInput title="Pro Charge" value={model!.charge || '0'} readonly />
@@ -191,7 +192,7 @@
                 <InfoStackInput title="Max Charge Per Message" value={model!.max_charge_per_message || '0'} readonly />
             {/if}
             <InfoStackInput title="Available until" value={formatDate(model!.period)} readonly />
-            <InfoStackInput title="Auto renew" value={model!.auto_renew} readonly />
+            <InfoStackInput title="Auto renew" value={yesNo(model!.auto_renew)} readonly />
             <InfoStackInput
                 title="Last Used Account"
                 value={formatAccountLabel(getLastUsedModelAccount(model))}
@@ -203,13 +204,13 @@
         <InfoStack title="Assigned Accounts">
             {#if getModelAccounts(model).length === 0}
                 <InfoStackItem>
-                    <div class="empty-accounts">No accounts assigned to this model.</div>
+                    <div class="empty-accounts">{t('No accounts assigned to this model.')}</div>
                 </InfoStackItem>
             {:else}
                 {#each getModelAccounts(model) as account (account.acct_id)}
                     <InfoStackItem
                         title={formatAccountLabel(account)}
-                        description={account.acct_type === 'matrix' && account.server ? `${account.acct_type} on ${account.server}` : (account.acct_type || 'account')}
+                        description={account.acct_type === 'matrix' && account.server ? t('{platform} on {server}', { platform: tAccountType(account.acct_type), server: account.server }) : tAccountType(account.acct_type || 'account')}
                     >
                         {#snippet titleSuffix()}
                             {#if account.is_last_used}
@@ -220,8 +221,8 @@
                         {#snippet meta()}
                             <div class="account-meta">
                                 <span>ID: {account.acct_id}</span>
-                                <span>Group: {account.account_group || 'free'}</span>
-                                <span>Status: {account.subscription_disabled ? 'Disabled' : 'Active'}</span>
+                                <span>{t('Group: {group}', { group: tStatus(account.account_group || 'free') })}</span>
+                                <span>{account.subscription_disabled ? t('Disabled') : t('Active')}</span>
                             </div>
                         {/snippet}
                     </InfoStackItem>
@@ -246,7 +247,7 @@
                 />
             {:else}
                 {#if !model!.settings || Object.keys(model!.settings).length === 0}
-                    <div style="color: #65676b; padding: 0.5rem; font-size: 0.875rem; text-align: center; width: 100%;">No settings configured</div>
+                    <div style="color: #65676b; padding: 0.5rem; font-size: 0.875rem; text-align: center; width: 100%;">{t('No settings configured')}</div>
                 {:else}
                     {#each Object.entries(model!.settings) as [key, value]}
                         <InfoStackInput title={key} 

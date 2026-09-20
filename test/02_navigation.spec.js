@@ -2,6 +2,22 @@ import { test, expect } from './fixtures.js';
 import { clickAppNav, isWideDesktop, isMobileViewport } from './utils.js';
 
 test.describe('Navigation', () => {
+  test('should show a language picker and switch locales', async ({ page }) => {
+    await page.goto('/models');
+    await expect(page.getByRole('heading', { name: 'Models' })).toBeVisible({ timeout: 15000 });
+    const picker = isMobileViewport(page)
+      ? page.locator('.mobile-header select')
+      : page.locator('.sidebar-footer select');
+    await expect(picker).toBeVisible();
+    try {
+      await picker.selectOption('jp');
+      await expect(page.getByRole('heading', { name: 'モデル' })).toBeVisible();
+    } finally {
+      await picker.selectOption('en');
+    }
+    await expect(page.getByRole('heading', { name: 'Models' })).toBeVisible();
+  });
+
   test('should navigate to Explore page', async ({ page }) => {
     await page.goto('/models');
     await expect(page.getByRole('heading', { name: 'Models' })).toBeVisible({ timeout: 15000 });

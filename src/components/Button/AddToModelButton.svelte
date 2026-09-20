@@ -3,6 +3,7 @@
     import { modelStore } from '../../store/models.svelte.js';
     import { showError } from '../Modal/state.svelte.js';
     import AddToModelModal from '../Modal/AddToModelModal.svelte';
+    import { t } from '../../i18n/locale.svelte.js';
 
     import Button from './Button.svelte';
 
@@ -31,7 +32,7 @@
             if (res.msg && (res.msg.toLowerCase().includes('exist') || res.msg.toLowerCase().includes('duplicate') || res.msg.toLowerCase().includes('already'))) {
                 showModal = true;
             } else {
-                showError('Failed to add model: ' + res.msg);
+                showError(t('Failed to add model: {msg}', { msg: res.msg }));
             }
         }
         
@@ -52,10 +53,10 @@
     style="width: {size}; height: {size}; {added ? 'color: var(--color-success);' : ''}"
     {padding}
     onclick={handleClick}
-    tooltip="Add to my models"
+    tooltip={t('Add to my models')}
     tooltipPosition="bottom"
     loading={loading}
-    aria-label="Add to my models"
+    aria-label={t('Add to my models')}
 >
     {#if added}
         <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">

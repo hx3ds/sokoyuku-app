@@ -1,5 +1,6 @@
 <script>
     import InfoStackItem from './InfoStackItem.svelte';
+    import { t } from '../../i18n/locale.svelte.js';
 
     let {
         title = '',
@@ -17,7 +18,7 @@
     } = $props();
 </script>
 
-<InfoStackItem {title} {description} {className} {start} {hover} {isLabel}>
+<InfoStackItem title={t(title)} description={t(description)} {className} {start} {hover} {isLabel}>
     {#snippet children()}
         <div class="select-wrapper">
             <select 

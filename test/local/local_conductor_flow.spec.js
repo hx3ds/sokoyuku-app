@@ -148,8 +148,8 @@ test.describe('Local Conductor E2E', () => {
       await page.getByRole('button', { name: 'Add account' }).click();
       await expect(page.getByRole('heading', { name: 'Add New Account' })).toBeVisible({ timeout: 15000 });
       await page.getByPlaceholder('Enter name').fill(accountName);
-      await page.getByPlaceholder('Enter username').fill(accountUsername);
-      await page.getByPlaceholder('Enter token').fill(bot.token);
+      await page.getByPlaceholder('Enter bot username').fill(accountUsername);
+      await page.getByPlaceholder('Enter bot token').fill(bot.token);
       await page.getByPlaceholder('Enter account description').fill('Local account');
       await page.locator('.list-item').filter({ hasText: 'Local Account' }).click();
       await page.getByRole('button', { name: 'Save Account' }).click();

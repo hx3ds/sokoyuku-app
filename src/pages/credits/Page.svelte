@@ -8,6 +8,7 @@
     import InfoStackInput from '../../components/InfoStack/InfoStackInput.svelte';
     import Button from '../../components/Button/Button.svelte';
     import AddCreditsModal from '../../components/Modal/AddCreditsModal.svelte';
+    import { t } from '../../i18n/locale.svelte.js';
 
     let profile = $state(null);
     let loading = $state(true);
@@ -39,7 +40,7 @@
         <!-- Credits Section -->
         <InfoStack title="Credits">
             {#snippet headerActions()}
-                <Button variant="text-button" onclick={openCreditsModal}>Add Credits</Button>
+                <Button variant="text-button" onclick={openCreditsModal}>{t('Add Credits')}</Button>
             {/snippet}
             
             <div class="section-content">
@@ -51,8 +52,8 @@
         <InfoStack title="History">
             <InfoStackItem 
                 href="/chat-history" 
-                title="Chat History" 
-                description="View your chat deduction history"
+                title={t('Chat History')} 
+                description={t('View your chat deduction history')}
             >
                 {#snippet actions()}
                     <div style="padding: 0.375rem; color: #586069;">
@@ -64,7 +65,7 @@
             </InfoStackItem>
         </InfoStack>
     {:else}
-        <div style="text-align: center; padding: 2rem; color: #ef4444;">Failed to load credits.</div>
+        <div style="text-align: center; padding: 2rem; color: #ef4444;">{t('Failed to load credits.')}</div>
     {/if}
 </PageContainer>
 

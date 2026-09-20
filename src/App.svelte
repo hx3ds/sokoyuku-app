@@ -23,6 +23,8 @@
   import Call from './pages/call/Page.svelte';
   import NotFound from './pages/not_found/Page.svelte';
   import Modal from './components/Modal/Modal.svelte';
+  import LanguagePicker from './components/LanguagePicker.svelte';
+  import './i18n/locale.svelte.js';
 
   /**
    * @typedef {object} Route
@@ -193,6 +195,9 @@
   </div>
 
   <Modal />
+  {#if isAuthLayout}
+    <LanguagePicker floating />
+  {/if}
 </div>
 
 <style>

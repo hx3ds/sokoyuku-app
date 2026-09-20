@@ -1,5 +1,6 @@
 <script>
     import InfoStackItem from './InfoStackItem.svelte';
+    import { t } from '../../i18n/locale.svelte.js';
 
     let {
         title = '',
@@ -20,7 +21,7 @@
     }
 </script>
 
-<InfoStackItem {title} {description} {className} {start} onclick={handleItemClick} {hover} {isLabel}>
+<InfoStackItem title={t(title)} description={t(description)} {className} {start} onclick={handleItemClick} {hover} {isLabel}>
     {#snippet actions()}
         <label class="toggle-label">
             <input 

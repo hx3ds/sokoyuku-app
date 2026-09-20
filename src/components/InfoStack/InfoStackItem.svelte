@@ -22,6 +22,7 @@
     let isInteractive = $derived(!!(href || onclick));
     let showHover = $derived(hover === undefined ? isInteractive : hover);
     let hasDescription = $derived(!!(description || children));
+    let isExternalHref = $derived(/^https?:\/\//i.test(href));
 
     /** @param {MouseEvent} e */
     function handleClick(e) {
@@ -49,7 +50,7 @@
         {/if}
 
         {#if href}
-            <Link {href} className="content-link">
+            <Link {href} className="content-link" target={isExternalHref ? '_blank' : undefined} rel={isExternalHref ? 'noopener noreferrer' : undefined}>
                 {@render content()}
             </Link>
         {:else}

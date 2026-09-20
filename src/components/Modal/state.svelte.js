@@ -1,25 +1,26 @@
+import { t } from '../../i18n/locale.svelte.js';
+
 const initialState = {
     isOpen: false,
     title: '',
     message: '',
-    type: 'info', // info, success, error, warning
+    type: 'info',
     isConfirm: false,
     confirmLabel: 'OK',
     onConfirm: null,
     onCancel: null
 };
 
-// Use $state for reactivity
 export const modalState = $state({ ...initialState });
 
-export function showAlert(message, title = 'Notification', type = 'info') {
+export function showAlert(message, title, type = 'info') {
     return new Promise((resolve) => {
         modalState.isOpen = true;
-        modalState.title = title;
+        modalState.title = title || t('Notification');
         modalState.message = message;
         modalState.type = type;
         modalState.isConfirm = false;
-        modalState.confirmLabel = 'OK';
+        modalState.confirmLabel = t('OK');
         modalState.onConfirm = () => {
             closeModal();
             resolve(true);
@@ -28,14 +29,14 @@ export function showAlert(message, title = 'Notification', type = 'info') {
     });
 }
 
-export function showConfirm(message, title = 'Confirm', type = 'warning', confirmLabel = 'OK') {
+export function showConfirm(message, title, type = 'warning', confirmLabel) {
     return new Promise((resolve) => {
         modalState.isOpen = true;
-        modalState.title = title;
+        modalState.title = title || t('Confirm');
         modalState.message = message;
         modalState.type = type;
         modalState.isConfirm = true;
-        modalState.confirmLabel = confirmLabel || 'OK';
+        modalState.confirmLabel = confirmLabel || t('OK');
         modalState.onConfirm = () => {
             closeModal();
             resolve(true);
@@ -47,16 +48,16 @@ export function showConfirm(message, title = 'Confirm', type = 'warning', confir
     });
 }
 
-export function showSuccess(message, title = 'Success') {
-    return showAlert(message, title, 'success');
+export function showSuccess(message, title) {
+    return showAlert(message, title || t('Success'), 'success');
 }
 
-export function showError(message, title = 'Error') {
-    return showAlert(message, title, 'error');
+export function showError(message, title) {
+    return showAlert(message, title || t('Error'), 'error');
 }
 
-export function showWarning(message, title = 'Warning') {
-    return showAlert(message, title, 'warning');
+export function showWarning(message, title) {
+    return showAlert(message, title || t('Warning'), 'warning');
 }
 
 export function closeModal() {

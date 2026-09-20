@@ -1,8 +1,71 @@
 import { request, encryptWithPublicKeyToken, isEncryptedToken } from '../utils.js';
 import { getMyConductorPublicKey } from './user.js';
 
+export const BUILTIN_PUBLIC_ACCOUNT_TYPES = ['telegram', 'matrix', 'discord', 'qq', 'whatsapp_cloud'];
+export const CUSTOM_ACCOUNT_TYPE_VALUE = '__custom__';
+export const LOCAL_PLATFORM_TYPE_REGEX = /^[a-z][a-z0-9_-]{0,14}$/;
+export const ACCOUNT_SETUP_DOCS = {
+    telegram: {
+        href: 'https://core.telegram.org/bots',
+        title: 'Bots: An introduction for developers',
+    },
+    matrix: {
+        href: 'https://spec.matrix.org/latest/client-server-api/#login',
+        title: 'Client-Server API',
+    },
+    discord: {
+        href: 'https://discord.com/developers/docs/quick-start/getting-started',
+        title: 'Building your first Discord Bot',
+    },
+    qq: {
+        href: 'https://bot.q.qq.com/wiki/develop/api-v2/',
+        title: '启动接入',
+    },
+    whatsapp_cloud: {
+        href: 'https://developers.facebook.com/docs/whatsapp/cloud-api/get-started/',
+        title: 'WhatsApp Cloud API Get Started',
+    },
+};
+
 function normalizeId(id) {
     return typeof id === 'string' ? id.replace(/-/g, '') : id;
+}
+
+function normalizePlatformType(value) {
+    return String(value ?? '').trim().toLowerCase();
+}
+
+export function isBuiltinPublicAccountType(type) {
+    return BUILTIN_PUBLIC_ACCOUNT_TYPES.includes(normalizePlatformType(type));
+}
+
+export function accountTypeChoice(type, isLocal) {
+    const raw = normalizePlatformType(type);
+    if (isLocal && raw && !isBuiltinPublicAccountType(raw)) return CUSTOM_ACCOUNT_TYPE_VALUE;
+    return raw || 'telegram';
+}
+
+export function resolveAccountTypeChoice(choice, customType, isLocal) {
+    if (isLocal && choice === CUSTOM_ACCOUNT_TYPE_VALUE) {
+        return normalizePlatformType(customType);
+    }
+    return normalizePlatformType(choice);
+}
+
+function validateAccountTypeForScope(type, isLocal) {
+    const normalized = normalizePlatformType(type);
+    if (!normalized) return { ok: false, msg: 'type is required' };
+    if (isLocal) {
+        const bare = normalized.startsWith('qr:') ? normalized.slice(3) : normalized;
+        if (!LOCAL_PLATFORM_TYPE_REGEX.test(bare)) {
+            return { ok: false, msg: 'type must match ^[a-z][a-z0-9_-]{0,14}$' };
+        }
+        return { ok: true, type: normalized.startsWith('qr:') ? `qr:${bare}` : bare };
+    }
+    if (!isBuiltinPublicAccountType(normalized) && normalized !== 'sokoyuku') {
+        return { ok: false, msg: 'Invalid account type' };
+    }
+    return { ok: true, type: normalized };
 }
 
 function normalizeAccountGroup(value) {
@@ -20,6 +83,49 @@ function resolveAccountGroup(type, isLocal, value) {
     return normalizeAccountGroup(value);
 }
 
+function composeQqAccountToken(type, username, token) {
+    if (String(type || '').trim().toLowerCase() !== 'qq') return String(token ?? '');
+    const secret = String(token || '').trim();
+    if (!secret) return '';
+    if (isEncryptedToken(secret) || secret.startsWith('{')) return secret;
+    const appId = String(username || '').trim();
+    if (!appId) return secret;
+    return JSON.stringify({ app_id: appId, client_secret: secret });
+}
+
+export function accountTypeLabel(type) {
+    const raw = String(type || '').trim().toLowerCase();
+    if (raw.startsWith('qr:')) {
+        const inner = accountTypeLabel(raw.slice(3));
+        return inner ? `QR ${inner}` : 'QR';
+    }
+    if (raw === 'whatsapp_cloud') return 'WhatsApp Cloud API';
+    if (raw === 'qq') return 'QQ';
+    if (raw === 'telegram') return 'Telegram';
+    if (raw === 'matrix') return 'Matrix';
+    if (raw === 'discord') return 'Discord';
+    if (raw === 'sokoyuku') return 'Sokoyuku';
+    return String(type || 'account');
+}
+
+export function accountUsernameField(type) {
+    const raw = normalizePlatformType(type);
+    if (raw === 'discord') return { title: 'Application ID', placeholder: 'Enter Application ID' };
+    if (raw === 'whatsapp_cloud') return { title: 'Phone number ID', placeholder: 'Enter phone number ID' };
+    if (raw === 'qq') return { title: 'AppID', placeholder: 'Enter AppID' };
+    if (raw === 'matrix') return { title: 'User ID', placeholder: 'e.g. @user:matrix.org' };
+    if (raw === 'telegram') return { title: 'Bot username', placeholder: 'Enter bot username' };
+    return { title: 'Account Username', placeholder: 'Enter username' };
+}
+
+export function accountTokenField(type) {
+    const raw = normalizePlatformType(type);
+    if (raw === 'whatsapp_cloud' || raw === 'matrix') return { title: 'Access token', placeholder: 'Enter access token' };
+    if (raw === 'qq') return { title: 'AppSecret', placeholder: 'Enter AppSecret' };
+    if (raw === 'telegram' || raw === 'discord') return { title: 'Bot token', placeholder: 'Enter bot token' };
+    return { title: 'Account Token', placeholder: 'Enter token' };
+}
+
 export function getUserAccountList() {
     return request('/api/get_user_account_list');
 }
@@ -34,8 +140,10 @@ export function requestOtpForChat(accountId, modelId) {
 }
 
 export function addAccount(accountData) {
-    const type = accountData.type ?? 'telegram';
     const is_local = Boolean(accountData.is_local ?? false);
+    const scoped = validateAccountTypeForScope(accountData.type ?? 'telegram', is_local);
+    if (!scoped.ok) return Promise.resolve({ result: 1, msg: scoped.msg });
+    const type = scoped.type;
     const body = {
         account_username: accountData.account_username ?? '',
         account_token: accountData.account_token ?? '',
@@ -46,6 +154,7 @@ export function addAccount(accountData) {
         is_local,
         account_group: resolveAccountGroup(type, is_local, accountData.account_group ?? accountData.group),
     };
+    body.account_token = composeQqAccountToken(type, body.account_username, body.account_token);
     return (async () => {
         if (is_local) {
             const key = await getMyConductorPublicKey();
@@ -79,7 +188,9 @@ export function addQrAccount(accountData) {
 
 export function changeAccount(accountData) {
     const is_local = Boolean(accountData.is_local ?? false);
-    const type = accountData.type ?? 'telegram';
+    const scoped = validateAccountTypeForScope(accountData.type ?? 'telegram', is_local);
+    if (!scoped.ok) return Promise.resolve({ result: 1, msg: scoped.msg });
+    const type = scoped.type;
     const body = {
         account_id: normalizeId(accountData.account_id),
         account_token: accountData.account_token ?? '',
@@ -90,6 +201,7 @@ export function changeAccount(accountData) {
         is_local,
         account_group: resolveAccountGroup(type, is_local, accountData.account_group ?? accountData.group),
     };
+    body.account_token = composeQqAccountToken(type, accountData.account_username, body.account_token);
     return (async () => {
         if (is_local) {
             const key = await getMyConductorPublicKey();

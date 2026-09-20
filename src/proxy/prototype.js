@@ -7,6 +7,28 @@ function normalizeBillingInterval(type, billingInterval) {
     return '';
 }
 
+function isHttpHttpsUrl(value) {
+    const text = String(value ?? '').trim();
+    if (!text || /\s/.test(text)) return false;
+    if (!/^https?:\/\//i.test(text)) return false;
+    if (typeof URL.canParse === 'function' && !URL.canParse(text)) return false;
+    const parsed = new URL(text);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    return Boolean((parsed.hostname || '').trim());
+}
+
+function normalizeAccessPoint(value, isLocal) {
+    const text = String(value ?? '').trim().replace(/\/+$/, '');
+    if (!text) {
+        if (isLocal) return { error: 'access_point is required for local prototypes' };
+        return { value: '' };
+    }
+    if (!isHttpHttpsUrl(text)) {
+        return { error: 'access_point must be a valid http or https URL' };
+    }
+    return { value: text };
+}
+
 function normalizePrototypeFields(data = {}) {
     const type = data.type ?? 'token';
     const isLocal = Boolean(data.is_local);
@@ -72,7 +94,11 @@ export async function fetchPrototype(id) {
 }
 
 export function createPrototype(data) {
-    return request('/api/add_prototype', { body: normalizePrototypeFields(data) });
+    const body = normalizePrototypeFields(data);
+    const access = normalizeAccessPoint(body.access_point, body.is_local);
+    if (access.error) return Promise.resolve({ result: 1, msg: access.error });
+    body.access_point = access.value;
+    return request('/api/add_prototype', { body });
 }
 
 export function deletePrototype(prototypeId) {
@@ -90,12 +116,14 @@ export function refreshPrototypeToken(prototypeId) {
 export async function updatePrototype(data) {
     const prototypeId = data?.prototype_id;
     if (!prototypeId) {
-        return request('/api/change_prototype', {
-            body: {
-                prototype_id: data?.prototype_id ?? 0,
-                ...normalizePrototypeFields(data),
-            },
-        });
+        const body = {
+            prototype_id: data?.prototype_id ?? 0,
+            ...normalizePrototypeFields(data),
+        };
+        const access = normalizeAccessPoint(body.access_point, body.is_local);
+        if (access.error) return { result: 1, msg: access.error };
+        body.access_point = access.value;
+        return request('/api/change_prototype', { body });
     }
 
     const requiredKeys = [
@@ -129,6 +157,9 @@ export async function updatePrototype(data) {
         prototype_id: prototypeId,
         ...normalizePrototypeFields(source),
     };
+    const access = normalizeAccessPoint(normalized.access_point, normalized.is_local);
+    if (access.error) return { result: 1, msg: access.error };
+    normalized.access_point = access.value;
     return request('/api/change_prototype', { body: normalized });
 }
 

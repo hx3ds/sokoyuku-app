@@ -4,6 +4,7 @@
     import PageContainer from '../../components/PageContainer.svelte';
     import InfoStack from '../../components/InfoStack/InfoStack.svelte';
     import InfoStackItem from '../../components/InfoStack/InfoStackItem.svelte';
+    import { formatDateTime, formatMoney, t, tStatus } from '../../i18n/locale.svelte.js';
 
     let history = $state([]);
     let loading = $state(true);
@@ -20,22 +21,11 @@
 
     function formatDate(dateString) {
         if (!dateString) return '-';
-        const date = new Date(dateString);
-        return date.toLocaleDateString(undefined, { 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        return formatDateTime(dateString) || '-';
     }
 
     function formatCurrency(amount) {
-        return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD',
-            minimumFractionDigits: 2
-        }).format(amount);
+        return formatMoney(amount, 'USD');
     }
 </script>
 
@@ -53,8 +43,8 @@
                         <div style="display: flex; flex-direction: column; gap: 0.25rem;">
                             <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
                                 <div style="display: flex; align-items: center; gap: 0.5rem;">
-                                    <span style="font-size: 0.875rem; font-weight: 500; color: var(--color-dark);">{item.model_name || 'Unknown Model'}</span>
-                                    <span style="font-size: 0.75rem; color: #586069;">({item.prototype_name || 'Unknown Prototype'})</span>
+                                    <span style="font-size: 0.875rem; font-weight: 500; color: var(--color-dark);">{item.model_name || t('Unknown Model')}</span>
+                                    <span style="font-size: 0.75rem; color: #586069;">({item.prototype_name || t('Unknown Prototype')})</span>
                                 </div>
                                 <span style="font-size: 0.875rem; font-weight: 500; color: {item.status === 'settled' ? '#24292e' : '#586069'};">
                                     -{formatCurrency(item.actual_cost)}
@@ -63,10 +53,10 @@
                             <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: rgba(45, 45, 45, 0.6);">
                                 <span>{formatDate(item.created_at)}</span>
                                 <span>•</span>
-                                <span style="text-transform: capitalize;">{item.status}</span>
+                                <span style="text-transform: capitalize;">{tStatus(item.status)}</span>
                                 {#if item.status === 'reserved'}
                                     <span>•</span>
-                                    <span>Reserved: {formatCurrency(item.reserved_amount)}</span>
+                                    <span>{t('Reserved: {amount}', { amount: formatCurrency(item.reserved_amount) })}</span>
                                 {/if}
                             </div>
                         </div>

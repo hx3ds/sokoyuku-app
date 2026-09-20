@@ -10,6 +10,7 @@
     import InfoStackBadge from '../InfoStack/InfoStackBadge.svelte';
     import { fetchModel, updateModel } from '../../proxy/model.js';
     import { showError } from './state.svelte.js';
+    import { formatDateTime, t, tAccountType, tStatus, yesNo } from '../../i18n/locale.svelte.js';
 
     let {
         modelId = null,
@@ -107,7 +108,7 @@
         try {
             const parsed = JSON.parse(text);
             if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-                settingsJsonError = 'Settings JSON must be an object';
+                settingsJsonError = t('Settings JSON must be an object');
                 return false;
             }
             model.settings = parsed;
@@ -115,7 +116,7 @@
             settingsJsonError = '';
             return true;
         } catch {
-            settingsJsonError = 'Invalid JSON';
+            settingsJsonError = t('Invalid JSON');
             return false;
         }
     }
@@ -212,7 +213,7 @@
             const ok = settingsSource === 'json' ? applyJsonToSettings() : applyFieldsToSettings();
             if (!ok) {
                 saving = false;
-                await showError(settingsJsonError || 'Invalid settings JSON');
+                await showError(settingsJsonError || t('Invalid settings JSON'));
                 return;
             }
         }
@@ -232,13 +233,13 @@
             onupdated(data);
             await loadModel(model.model_id);
         } else {
-            await showError('Failed to update model: ' + res.msg);
+            await showError(t('Failed to update model: {msg}', { msg: res.msg }));
         }
     }
 
     function formatDate(dateString) {
-        if (!dateString) return 'Not specified';
-        return new Date(dateString).toLocaleString();
+        if (!dateString) return t('Not specified');
+        return formatDateTime(dateString) || t('Not specified');
     }
 
     function getEncryptedSettingsToken(settings) {
@@ -251,18 +252,18 @@
     }
 
     function formatAccountLabel(account) {
-        if (!account?.acct_username) return 'Not specified';
+        if (!account?.acct_username) return t('Not specified');
         return account.acct_username;
     }
 
     function formatAccountValue(account) {
-        const type = account?.acct_type || 'account';
-        const group = account?.account_group || 'free';
-        const status = account?.subscription_disabled ? 'Disabled' : 'Active';
-        if (type === 'matrix' && account?.server) {
-            return `${type} on ${account.server} · Group: ${group} · ${status}`;
+        const type = tAccountType(account?.acct_type || 'account');
+        const group = t('Group: {group}', { group: tStatus(account?.account_group || 'free') });
+        const status = account?.subscription_disabled ? t('Disabled') : t('Active');
+        if (String(account?.acct_type || '').toLowerCase() === 'matrix' && account?.server) {
+            return `${t('{platform} on {server}', { platform: type, server: account.server })} · ${group} · ${status}`;
         }
-        return `${type} · Group: ${group} · ${status}`;
+        return `${type} · ${group} · ${status}`;
     }
 
     function getLastUsedModelAccount(value) {
@@ -280,7 +281,7 @@
     <InfoStackBadge class="last-used-badge" label="Last used" />
 {/snippet}
 <Dialog
-    title={model?.name || 'Model Details'}
+    title={model?.name || t('Model Details')}
     {onclose}
     {isEditing}
     onedit={!loading && model ? startEdit : undefined}
@@ -293,15 +294,15 @@
 >
     {#if !loading && !model}
         <InfoStackItem>
-            <div style="text-align: center; padding: 1rem; color: #6b7280;">Model not found</div>
+            <div style="text-align: center; padding: 1rem; color: #6b7280;">{t('Model not found')}</div>
         </InfoStackItem>
     {:else if model}
         {@const isLocal = Boolean(model.is_local)}
         <InfoStackInput title="Name" bind:value={model.name} readonly={!isEditing} />
-        <InfoStackInput title="Status" value={model.status || 'Unknown'} readonly />
+        <InfoStackInput title="Status" value={model.status || t('Unknown')} readonly />
         <InfoStackInput title="Prototype" value={model.prototype_id} readonly>
             {#snippet end()}
-                <Link href="/prototype/{model.prototype_id}" aria-label="Visit Prototype">
+                <Link href="/prototype/{model.prototype_id}" aria-label={t('Visit Prototype')}>
                     <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                     </svg>
@@ -309,10 +310,10 @@
             {/snippet}
         </InfoStackInput>
         <InfoStackTextarea title="Description" id="model-modal-description" bind:value={model.description} readonly={!isEditing} />
-        <InfoStackInput title="Local" value={isLocal ? 'Yes' : 'No'} readonly />
+        <InfoStackInput title="Local" value={yesNo(isLocal)} readonly />
         <InfoStackInput title="Max Chats" value={model.max_chats} readonly />
         <InfoStackInput title="Access Point" value={model.access_point} readonly />
-        <InfoStackInput title="Type" value={model.type} readonly />
+        <InfoStackInput title="Type" value={tStatus(model.type)} readonly />
         {#if model.type === 'subscription'}
             <InfoStackInput title="Tier" value={model.subscription_tier || '—'} readonly />
             <InfoStackInput title="Pro Charge" value={model.charge || '0'} readonly />
@@ -326,12 +327,12 @@
             <InfoStackInput title="Max Charge Per Message" value={model.max_charge_per_message || '0'} readonly />
         {/if}
         <InfoStackInput title="Available until" value={formatDate(model.period)} readonly />
-        <InfoStackInput title="Auto renew" value={model.auto_renew} readonly />
+        <InfoStackInput title="Auto renew" value={yesNo(model.auto_renew)} readonly />
         <InfoStackInput title="Last Used Account" value={formatAccountLabel(getLastUsedModelAccount(model))} readonly />
 
         <InfoStackDivider label="Assigned accounts" />
         {#if getModelAccounts(model).length === 0}
-            <InfoStackInput title="Accounts" value="None" readonly />
+            <InfoStackInput title="Accounts" value={t('None')} readonly />
         {:else}
             {#each getModelAccounts(model) as account (account.acct_id)}
                 <InfoStackInput
@@ -355,7 +356,7 @@
             />
         {:else}
             {#if !isEditing && settingsEntries.length === 0}
-                <InfoStackInput title="Settings" value="None" readonly />
+                <InfoStackInput title="Settings" value={t('None')} readonly />
             {:else}
                 {#each settingsEntries as entry (entry.id)}
                     <InfoStackItem>
@@ -364,22 +365,22 @@
                                 <input
                                     class="setting-key"
                                     bind:value={entry.key}
-                                    placeholder="key"
-                                    aria-label="Setting key"
+                                    placeholder={t('key')}
+                                    aria-label={t('Setting key')}
                                     oninput={onSettingFieldChange}
                                 />
                                 <input
                                     class="setting-value"
                                     bind:value={entry.value}
-                                    placeholder="value or JSON"
-                                    aria-label="Setting value"
+                                    placeholder={t('value or JSON')}
+                                    aria-label={t('Setting value')}
                                     oninput={onSettingFieldChange}
                                 />
                                 <Button
                                     variant="icon-button"
                                     onclick={() => removeSettingEntry(entry.id)}
-                                    aria-label={`Remove setting ${entry.key || ''}`.trim()}
-                                    title="Remove setting"
+                                    aria-label={t('Remove setting')}
+                                    title={t('Remove setting')}
                                 >
                                     <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14" />
@@ -397,8 +398,8 @@
             {#if isEditing}
                 <InfoStackItem>
                     {#snippet actions()}
-                        <Button variant="text-button" onclick={addSettingEntry} aria-label="Add setting">
-                            Add setting
+                        <Button variant="text-button" onclick={addSettingEntry} aria-label={t('Add setting')}>
+                            {t('Add setting')}
                         </Button>
                     {/snippet}
                 </InfoStackItem>

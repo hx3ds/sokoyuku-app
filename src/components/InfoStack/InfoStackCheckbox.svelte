@@ -16,7 +16,7 @@
     } = $props();
 
     function handleItemClick(e) {
-        if (e.target.closest('.checkbox-input')) return;
+        if (e.target.closest('.checkbox-input, a')) return;
         checked = !checked;
     }
 </script>

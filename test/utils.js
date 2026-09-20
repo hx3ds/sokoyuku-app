@@ -129,7 +129,7 @@ export async function createRemotePrototypeViaUi(page, options) {
   if (options.isLocal) {
     await dialog.locator('.list-item').filter({ hasText: 'Local Prototype' }).click();
   }
-  await dialog.getByPlaceholder(/e\.g\. https:\/\/example\.com|e\.g\. localhost:8080/).fill(
+  await dialog.getByPlaceholder(/e\.g\. https:\/\/example\.com|e\.g\. http:\/\/localhost:8080/).fill(
     options.accessPoint || (options.isLocal ? 'http://localhost:8882' : 'https://tgbd.sokoyuku.com')
   );
   await dialog.getByPlaceholder('e.g. /my-account').fill(options.path || 'prototypes.passive');

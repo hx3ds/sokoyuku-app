@@ -3,6 +3,7 @@
     import Dialog from './Dialog.svelte';
     import Button from '../Button/Button.svelte';
     import InfoStackItem from '../InfoStack/InfoStackItem.svelte';
+    import { t } from '../../i18n/locale.svelte.js';
 
     function handleKeydown(event) {
         if (modalState.isOpen && event.key === 'Escape') {
@@ -46,14 +47,14 @@
                             variant="text-button"
                             onclick={modalState.onCancel}
                         >
-                            Cancel
+                            {t('Cancel')}
                         </Button>
                     {/if}
                     <Button 
                         variant="text-button"
                         onclick={modalState.onConfirm}
                     >
-                        {modalState.confirmLabel || 'OK'}
+                        {t(modalState.confirmLabel || 'OK')}
                     </Button>
                 </div>
             {/snippet}

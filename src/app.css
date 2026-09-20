@@ -42,7 +42,7 @@ html {
 }
 
 body {
-    font-family: var(--font-roboto);
+    font-family: var(--font-roboto), "Noto Sans", "Noto Sans CJK SC", "Noto Sans CJK TC", "Hiragino Sans", "Yu Gothic", "Malgun Gothic", "Microsoft YaHei", sans-serif;
     background-color: var(--color-bg-body);
     color: var(--color-text-main);
     margin: 0;
