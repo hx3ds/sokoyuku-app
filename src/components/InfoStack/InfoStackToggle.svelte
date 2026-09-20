@@ -58,7 +58,7 @@
     .toggle-bg {
         width: 2.75rem;
         height: 1.5rem;
-        background-color: var(--color-toggle-off, #e5e7eb);
+        background-color: var(--color-toggle-off);
         border-radius: 9999px;
         position: relative;
         transition: background-color 0.2s;
@@ -67,7 +67,7 @@
     /* Focus styles */
     .peer:focus + .toggle-bg {
         outline: none;
-        box-shadow: 0 0 0 2px var(--color-primary-ring, rgba(3, 102, 214, 0.3));
+        box-shadow: 0 0 0 2px var(--color-primary-ring);
     }
 
     /* Toggle knob (after pseudo-element replacement) */
@@ -76,8 +76,8 @@
         position: absolute;
         top: 2px;
         left: 2px;
-        background-color: var(--color-bg-surface, white);
-        border: 1px solid var(--color-border-subtle, #d1d5db);
+        background-color: var(--color-bg-surface);
+        border: 1px solid var(--color-border-subtle);
         border-radius: 50%;
         height: 1.25rem;
         width: 1.25rem;
@@ -86,11 +86,11 @@
 
     /* Checked state */
     .peer:checked + .toggle-bg {
-        background-color: var(--color-success, #2ea44f);
+        background-color: var(--color-success);
     }
 
     .peer:checked + .toggle-bg::after {
         transform: translateX(100%);
-        border-color: var(--color-bg-surface, white);
+        border-color: var(--color-bg-surface);
     }
 </style>

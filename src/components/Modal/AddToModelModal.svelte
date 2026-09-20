@@ -63,7 +63,7 @@
         icon={modelIcon}
     >
         <InfoStackItem>
-                <p style="color: #666; font-size: 0.9rem; margin: 0;">
+                <p style="color: var(--color-text-secondary); font-size: 0.9rem; margin: 0;">
                 {t('Are you sure you want to add this account to your models?')}
                 </p>
             </InfoStackItem>
@@ -76,7 +76,7 @@
         
         {#if error}
             <InfoStackItem>
-                <div style="font-size: 0.75rem; color: #ef4444;">{error}</div>
+                <div style="font-size: 0.75rem; color: var(--color-danger);">{error}</div>
             </InfoStackItem>
         {/if}
 

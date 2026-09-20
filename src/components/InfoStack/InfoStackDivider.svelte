@@ -38,7 +38,7 @@
 
     .stack-divider-label {
         flex: 0 0 auto;
-        color: #586069;
+        color: var(--color-text-secondary);
         font-size: 0.75rem;
         font-weight: 500;
         letter-spacing: 0.04em;

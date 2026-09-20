@@ -223,7 +223,7 @@
         gap: 0.35rem;
         padding-top: 0.25rem;
         font-size: 0.875rem;
-        color: var(--color-text-secondary, #586069);
+        color: var(--color-text-secondary);
     }
 
     :global(.info-stack-badge.status-badge) {
@@ -232,32 +232,32 @@
     }
 
     :global(.info-stack-badge.status-badge.ok) {
-        background: rgba(16, 185, 129, 0.12);
-        color: rgb(4, 120, 87);
+        background: var(--color-success-soft);
+        color: var(--color-success-soft-text);
     }
 
     :global(.info-stack-badge.status-badge.warning) {
-        background: rgba(245, 158, 11, 0.14);
-        color: rgb(180, 83, 9);
+        background: var(--color-warning-soft);
+        color: var(--color-warning-soft-text);
     }
 
     :global(.info-stack-badge.status-badge.danger) {
-        background: rgba(239, 68, 68, 0.12);
-        color: rgb(185, 28, 28);
+        background: var(--color-danger-soft);
+        color: var(--color-danger-soft-text);
     }
 
     :global(.info-stack-badge.status-badge.locked),
     :global(.info-stack-badge.status-badge.muted) {
-        background: rgba(107, 114, 128, 0.12);
-        color: rgb(75, 85, 99);
+        background: var(--color-muted-soft);
+        color: var(--color-muted-soft-text);
     }
 
     .note-warning {
-        color: rgb(180, 83, 9);
+        color: var(--color-warning-soft-text);
         font-weight: 500;
     }
 
     .note-muted {
-        color: var(--color-text-muted, #6b7280);
+        color: var(--color-text-muted);
     }
 </style>

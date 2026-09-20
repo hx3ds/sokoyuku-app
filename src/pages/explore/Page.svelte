@@ -6,6 +6,7 @@
     import InfoStackItem from '../../components/InfoStack/InfoStackItem.svelte';
     import InfoStackInput from '../../components/InfoStack/InfoStackInput.svelte';
     import AddToModelButton from '../../components/Button/AddToModelButton.svelte';
+    import Button from '../../components/Button/Button.svelte';
     import Loading from '../../components/Loading.svelte';
     import NotFound from '../../components/NotFound.svelte';
     import { t } from '../../i18n/locale.svelte.js';
@@ -64,7 +65,7 @@
     <InfoStack 
         id="exploreStack"
     >
-        <div style="border-bottom: 1px solid #e1e4e8; margin-bottom: 0.5rem;">
+        <div style="border-bottom: 1px solid var(--color-border); margin-bottom: 0.5rem;">
             <InfoStackInput 
                 id="explore-search-input"
                 type="text" 
@@ -74,20 +75,11 @@
                 inputClass="search-input"
             >
                 {#snippet end()}
-                    <button
-                        type="button"
-                        onclick={focusSearchInput}
-                        aria-label={t('Focus search')}
-                        style="display: inline-flex; align-items: center; justify-content: center; padding: 0; background: transparent; border: none; cursor: pointer; color: var(--color-primary);"
-                    >
-                        <svg style="width: 1rem; height: 1rem;" 
-                                fill="none" 
-                                stroke="currentColor"
-                                stroke-width="1.5"
-                                viewBox="0 0 24 24">
+                    <Button variant="icon-button" onclick={focusSearchInput} aria-label={t('Focus search')} iconSize="1rem">
+                        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
                         </svg>
-                    </button>
+                    </Button>
                 {/snippet}
             </InfoStackInput>
         </div>
@@ -105,7 +97,7 @@
                 >
                     {#snippet titleSuffix()}
                         {#if prototype.certified}
-                            <svg style="width: 1rem; height: 1rem; color: #0366d6;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                            <svg style="width: 1rem; height: 1rem; color: var(--color-primary);" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
                             </svg>
                         {/if}

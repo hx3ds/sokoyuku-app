@@ -2,86 +2,157 @@
     import { LOCALES, locale, setLocale, t } from '../i18n/locale.svelte.js';
 
     let { floating = false } = $props();
+    let open = $state(false);
+    let root = $state(/** @type {HTMLElement | null} */ (null));
 
-    function handleChange(event) {
-        setLocale(event.currentTarget.value);
+    const current = $derived(LOCALES.find((item) => item.id === locale.current) || LOCALES[0]);
+
+    function toggle() {
+        open = !open;
+    }
+
+    function choose(id) {
+        setLocale(id);
+        open = false;
+    }
+
+    function onWindowClick(event) {
+        if (!open) return;
+        if (root && root.contains(event.target)) return;
+        open = false;
+    }
+
+    function onWindowKeydown(event) {
+        if (event.key === 'Escape') open = false;
     }
 </script>
 
-<label class="language-picker" class:floating>
-    <span class="visually-hidden">{t('Language')}</span>
-    <span class="control">
-        <select value={locale.current} onchange={handleChange} aria-label={t('Language')}>
-            {#each LOCALES as item (item.id)}
-                <option value={item.id}>{item.nativeLabel}</option>
-            {/each}
-        </select>
+<svelte:window onclick={onWindowClick} onkeydown={onWindowKeydown} />
+
+<div class="language-picker" class:floating bind:this={root}>
+    <button
+        type="button"
+        class="trigger"
+        aria-label={t('Language')}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onclick={toggle}
+    >
+        <span>{current.nativeLabel}</span>
         <svg class="chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
         </svg>
-    </span>
-</label>
+    </button>
+    {#if open}
+        <ul class="menu" role="listbox" aria-label={t('Language')}>
+            {#each LOCALES as item (item.id)}
+                <li>
+                    <button
+                        type="button"
+                        class="option"
+                        class:selected={item.id === locale.current}
+                        role="option"
+                        aria-selected={item.id === locale.current}
+                        onclick={() => choose(item.id)}
+                    >
+                        {item.nativeLabel}
+                    </button>
+                </li>
+            {/each}
+        </ul>
+    {/if}
+</div>
 
 <style>
     .language-picker {
+        position: relative;
         display: flex;
         align-items: center;
         margin-left: auto;
     }
 
-    .control {
-        position: relative;
-        display: flex;
+    .trigger {
+        display: inline-flex;
         align-items: center;
-        min-width: 0;
-    }
-
-    .language-picker select {
-        appearance: none;
-        background: transparent;
+        gap: 0.25rem;
+        margin: 0;
+        padding: 0.15rem 0;
         border: none;
-        border-radius: 0;
+        border-radius: 4px;
+        background: transparent;
         color: var(--color-text-main);
         font-family: var(--font-roboto), "Noto Sans", "Noto Sans CJK SC", "Noto Sans CJK TC", "Hiragino Sans", "Yu Gothic", "Malgun Gothic", "Microsoft YaHei", sans-serif;
         font-size: 0.8125rem;
         font-weight: 400;
         line-height: 1.25;
-        padding: 0.15rem 1.15rem 0.15rem 0;
         cursor: pointer;
     }
 
     .chevron {
-        position: absolute;
-        right: 0;
         width: 0.75rem;
         height: 0.75rem;
-        pointer-events: none;
-        color: var(--color-text-main);
+        color: var(--color-text-secondary);
     }
 
-    .language-picker select:hover,
-    .language-picker select:focus {
-        color: var(--color-text-main);
-        background: transparent;
+    .trigger:focus {
         outline: none;
-        box-shadow: none;
     }
 
-    .language-picker select:focus-visible {
-        outline: none;
-        color: var(--color-text-main);
+    .trigger:focus-visible {
+        outline: 2px solid var(--color-primary);
+        outline-offset: 2px;
     }
 
-    .visually-hidden {
+    .menu {
         position: absolute;
-        width: 1px;
-        height: 1px;
+        top: calc(100% + 0.5rem);
+        right: 0;
+        left: auto;
+        z-index: 60;
+        margin: 0;
+        padding: 6px;
+        list-style: none;
+        min-width: max-content;
+        background-color: var(--color-bg-surface);
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        box-shadow: var(--shadow-md);
+    }
+
+    .menu li {
+        margin: 0;
         padding: 0;
-        margin: -1px;
-        overflow: hidden;
-        clip: rect(0, 0, 0, 0);
+    }
+
+    .option {
+        display: flex;
+        width: 100%;
+        align-items: center;
+        margin: 0;
+        padding: 0.5rem 0.75rem;
+        border: none;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--color-text-main);
+        font-family: inherit;
+        font-size: 0.875rem;
+        font-weight: 400;
+        line-height: 1.25;
+        text-align: left;
+        cursor: pointer;
         white-space: nowrap;
-        border: 0;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .option:hover {
+            background-color: var(--color-bg-hover);
+        }
+    }
+
+    .option.selected {
+        background-color: var(--color-primary-soft);
+        color: var(--color-primary);
+        font-weight: 500;
     }
 
     .floating {
@@ -96,7 +167,21 @@
         padding-right: calc(16px + env(safe-area-inset-right, 0px));
     }
 
+    .floating .menu {
+        bottom: auto;
+        top: calc(100% - 12px);
+        left: auto;
+        right: 0;
+    }
+
     @media (min-width: 768px) {
+        .menu {
+            top: auto;
+            right: auto;
+            left: 0;
+            bottom: calc(100% + 0.5rem);
+        }
+
         .floating {
             top: auto;
             right: auto;
@@ -106,6 +191,13 @@
             width: auto;
             padding: 16px 24px;
             padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+        }
+
+        .floating .menu {
+            top: auto;
+            right: auto;
+            left: 0;
+            bottom: calc(100% - 8px);
         }
     }
 </style>

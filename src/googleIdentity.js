@@ -1,4 +1,5 @@
 import { GOOGLE_CLIENT_ID } from './config.js';
+import { theme } from './store/theme.svelte.js';
 
 let googleScriptPromise = null;
 
@@ -60,7 +61,7 @@ export async function renderGoogleSignInButton(container, onCredential) {
     });
     googleIdentity.renderButton(container, {
         type: 'standard',
-        theme: 'outline',
+        theme: theme.resolved === 'night' ? 'filled_black' : 'outline',
         size: 'large',
         text: 'signin_with',
         shape: 'pill',

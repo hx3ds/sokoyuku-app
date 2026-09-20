@@ -121,7 +121,7 @@
     {#if loading}
         <Loading />
     {:else if error}
-        <div style="text-align: center; padding-top: 2rem; padding-bottom: 2rem; color: #ef4444;">{error}</div>
+        <div style="text-align: center; padding-top: 2rem; padding-bottom: 2rem; color: var(--color-danger);">{error}</div>
     {:else}
         <!-- Platform Subscription -->
         <InfoStack 
@@ -149,7 +149,7 @@
                         <span style="font-weight: 500;">{t('Next Payment:')}</span> {formatDate(platformSub!.current_period_end)}
                         
                         {#if platformSub!.cancel_at_period_end}
-                            <div style="padding-top: 0.25rem; color: #d97706; font-weight: 500;">
+                            <div style="padding-top: 0.25rem; color: var(--color-warning-soft-text); font-weight: 500;">
                                 {t('Cancels at end of period')}
                             </div>
                         {/if}
@@ -189,7 +189,7 @@
                         <span style="font-weight: 500;">{t('Available Until:')}</span> {formatDate(sub.period)}
                         
                         {#if !sub.auto_renew && sub.status === 'active'}
-                            <div style="padding-top: 0.25rem; color: #d97706; font-weight: 500;">
+                            <div style="padding-top: 0.25rem; color: var(--color-warning-soft-text); font-weight: 500;">
                                 {t('Auto-renew disabled')}
                             </div>
                         {/if}
@@ -227,13 +227,13 @@
     }
 
     :global(.info-stack-badge.past-due-badge) {
-        background-color: #fee2e2;
-        color: #991b1b;
+        background-color: var(--color-danger-soft);
+        color: var(--color-danger-soft-text);
     }
 
     :global(.info-stack-badge.trial-badge) {
-        background-color: #dbeafe;
-        color: #1e40af;
+        background-color: var(--color-info-soft);
+        color: var(--color-info-soft-text);
     }
 </style>
 

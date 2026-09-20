@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures.js';
-import { cleanupAccountByUsername, createLocalTelegramBotToken, uniqueSuffix } from './utils.js';
+import { addAccountButton, cleanupAccountByUsername, createLocalTelegramBotToken, uniqueSuffix } from './utils.js';
 
 test.describe('Models', () => {
   test('should create and remove an account', async ({ page, request }) => {
@@ -13,7 +13,7 @@ test.describe('Models', () => {
       await expect(page.getByRole('heading', { name: 'Models' })).toBeVisible();
       await expect(page.getByRole('heading', { name: 'Accounts' })).toBeVisible();
 
-      await page.getByRole('button', { name: 'Add account' }).click();
+      await addAccountButton(page).click();
       await expect(page.getByRole('heading', { name: 'Add New Account' })).toBeVisible();
 
       await page.getByPlaceholder('Enter name').fill(accountName);
@@ -46,7 +46,7 @@ test.describe('Models', () => {
     const accountUsername = bot.username;
     try {
       await page.goto('/models');
-      await page.getByRole('button', { name: 'Add account' }).click();
+      await addAccountButton(page).click();
       await expect(page.getByRole('heading', { name: 'Add New Account' })).toBeVisible();
       await page.getByPlaceholder('Enter name').fill(accountName);
       await page.getByPlaceholder('Enter bot username').fill(accountUsername);
@@ -81,7 +81,7 @@ test.describe('Models', () => {
 
     test('should fill Matrix, Discord, QQ, and WhatsApp account forms', async ({ page }) => {
     await page.goto('/models');
-    await page.getByRole('button', { name: 'Add account' }).click();
+    await addAccountButton(page).click();
     const dialog = page.locator('.dialog-wrapper').filter({
       has: page.getByRole('heading', { name: 'Add New Account' }),
     });

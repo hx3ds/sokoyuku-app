@@ -1,3 +1,5 @@
+import { theme } from './store/theme.svelte.js';
+
 let turnstileScriptPromise;
 
 function getTurnstileGlobal() {
@@ -54,7 +56,10 @@ export async function renderTurnstile(container, options) {
         throw new Error('Turnstile did not initialize');
     }
 
-    return turnstile.render(container, options);
+    return turnstile.render(container, {
+        theme: theme.resolved === 'night' ? 'dark' : 'light',
+        ...options,
+    });
 }
 
 /**

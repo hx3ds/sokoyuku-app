@@ -18,10 +18,10 @@
   }
 </script>
 
-<div style="background-color: #f6f8fa; min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: var(--font-roboto); padding: 1rem;">
-  <div style="background-color: white; padding: 2rem; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); width: 100%; max-width: 28rem;">
+<div style="background-color: var(--color-bg-body); min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: var(--font-roboto); padding: 1rem;">
+  <div style="background-color: var(--color-bg-surface); padding: 2rem; border-radius: 0.5rem; box-shadow: var(--shadow-sm); width: 100%; max-width: 28rem;">
     <h1 style="font-size: 1.875rem; line-height: 2.25rem; font-weight: 700; text-align: center; color: var(--color-dark); padding-bottom: 0.5rem; margin: 0;">404</h1>
-    <p style="text-align: center; color: #4b5563; padding-bottom: 2rem; margin: 0;">{t('Page Not Found')}</p>
+    <p style="text-align: center; color: var(--color-text-secondary); padding-bottom: 2rem; margin: 0;">{t('Page Not Found')}</p>
     <div style="padding-top: 1rem; text-align: center; display: flex; justify-content: center;">
         <Button variant="text-button" onclick={handleGoBack}>{t('Go Back')}</Button>
     </div>

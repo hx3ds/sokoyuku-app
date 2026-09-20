@@ -165,7 +165,7 @@
             <!-- Prototype Link -->
             <InfoStackInput title="Prototype" value={model!.prototype_id} readonly>
                 {#snippet end()}
-                    <Link href="/prototype/{model!.prototype_id}" aria-label={t('Visit Prototype')}>
+                    <Link href="/prototype/{model!.prototype_id}" icon aria-label={t('Visit Prototype')}>
                         <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                         </svg>
@@ -247,7 +247,7 @@
                 />
             {:else}
                 {#if !model!.settings || Object.keys(model!.settings).length === 0}
-                    <div style="color: #65676b; padding: 0.5rem; font-size: 0.875rem; text-align: center; width: 100%;">{t('No settings configured')}</div>
+                    <div style="color: var(--color-text-secondary); padding: 0.5rem; font-size: 0.875rem; text-align: center; width: 100%;">{t('No settings configured')}</div>
                 {:else}
                     {#each Object.entries(model!.settings) as [key, value]}
                         <InfoStackInput title={key} 
@@ -272,7 +272,7 @@
 
 <style>
     .empty-accounts {
-        color: #65676b;
+        color: var(--color-text-secondary);
         padding: 0.5rem;
         font-size: 0.875rem;
         text-align: center;
@@ -284,12 +284,12 @@
         flex-wrap: wrap;
         gap: 0.75rem;
         font-size: 0.75rem;
-        color: var(--color-text-muted, #586069);
+        color: var(--color-text-muted);
         padding-top: 0.125rem;
     }
 
     :global(.info-stack-badge.last-used-badge) {
-        background: #dcfce7;
-        color: #166534;
+        background: var(--color-success-soft);
+        color: var(--color-success-soft-text);
     }
 </style>

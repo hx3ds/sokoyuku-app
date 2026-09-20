@@ -166,12 +166,12 @@
             placeholder="Enter your email"
             bind:value={email}
             required
-            style={errors.email ? 'border-color: #ef4444;' : ''}
+            style={errors.email ? 'border-color: var(--color-danger);' : ''}
             inputClass="boxed-input"
             className="clean-item"
           />
           {#if errors.email}
-            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #ef4444;">{errors.email}</p>
+            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: var(--color-danger);">{errors.email}</p>
           {/if}
         </div>
 
@@ -183,13 +183,13 @@
                 required 
                 bind:value={code}
                 placeholder="Enter 6-digit code"
-                style={errors.code ? 'border-color: #ef4444;' : ''}
-                actions={codeActions}
+                style={errors.code ? 'border-color: var(--color-danger);' : ''}
+                side={codeActions}
                 inputClass="boxed-input"
-                className="clean-item code-with-action"
+                className="clean-item"
             />
             {#if errors.code}
-                <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #ef4444;">{errors.code}</p>
+                <p style="padding-top: 0.25rem; font-size: 0.75rem; color: var(--color-danger);">{errors.code}</p>
             {/if}
         </div>
 
@@ -201,12 +201,12 @@
             placeholder="Enter your new password"
             bind:value={newPassword}
             required
-            style={errors.newPassword ? 'border-color: #ef4444;' : ''}
+            style={errors.newPassword ? 'border-color: var(--color-danger);' : ''}
             inputClass="boxed-input"
             className="clean-item"
           />
           {#if errors.newPassword}
-            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #ef4444;">{errors.newPassword}</p>
+            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: var(--color-danger);">{errors.newPassword}</p>
           {/if}
         </div>
 
@@ -223,10 +223,10 @@
             <div bind:this={turnstileContainer}></div>
           </div>
           {#if !turnstileLoaded && !turnstileError}
-            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #6b7280;">{t('Loading verification challenge...')}</p>
+            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: var(--color-text-secondary);">{t('Loading verification challenge...')}</p>
           {/if}
           {#if turnstileError}
-            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #ef4444;">{turnstileError}</p>
+            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: var(--color-danger);">{turnstileError}</p>
           {/if}
         </div>
         
@@ -251,26 +251,13 @@
         border: 1px solid var(--color-border) !important;
         border-radius: 6px !important;
         padding: 0.5rem 0.75rem !important;
-        background-color: var(--color-bg-surface) !important;
+        background-color: var(--color-bg-secondary) !important;
     }
     :global(.clean-item) {
         padding: 0 !important;
     }
     :global(.clean-item .input-wrapper) {
         padding-top: 0.25rem !important;
-    }
-    :global(.code-with-action) {
-        align-items: flex-end !important;
-        gap: 0.5rem !important;
-    }
-    :global(.code-with-action .content-block) {
-        padding-bottom: 0 !important;
-        padding-right: 0 !important;
-    }
-    :global(.code-with-action .actions) {
-        padding: 0 !important;
-        height: auto !important;
-        align-self: flex-end;
     }
     .turnstile-wrap {
         padding-bottom: 0.5rem;

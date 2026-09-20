@@ -127,25 +127,25 @@
     }
 
     .overview-card {
-        background: rgba(255, 255, 255, 0.95);
+        background: var(--color-bg-surface);
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
-        border: 1px solid rgba(0, 0, 0, 0.08);
+        border: 1px solid var(--color-border);
         border-radius: 8px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.05);
+        box-shadow: var(--shadow-md);
         padding: 1.5rem;
     }
 
     .overview-title {
         font-size: 1.125rem;
         font-weight: 600;
-        color: #24292e;
+        color: var(--color-text-main);
     }
 
     .overview-copy {
         font-size: 0.875rem;
         line-height: 1.5;
-        color: #586069;
+        color: var(--color-text-secondary);
         padding-top: 0.5rem;
     }
 
@@ -159,20 +159,20 @@
     .overview-section {
         border-radius: 8px;
         padding: 0.75rem;
-        background: rgba(15, 23, 42, 0.02);
-        border: 1px solid rgba(15, 23, 42, 0.06);
+        background: var(--color-bg-secondary);
+        border: 1px solid var(--color-border);
     }
 
     .overview-section-title {
         font-size: 0.9375rem;
         font-weight: 600;
-        color: #24292e;
+        color: var(--color-text-main);
     }
 
     .overview-section-body {
         font-size: 0.8125rem;
         line-height: 1.45;
-        color: #586069;
+        color: var(--color-text-secondary);
         padding-top: 0.25rem;
     }
 

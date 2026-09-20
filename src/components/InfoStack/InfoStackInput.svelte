@@ -16,6 +16,7 @@
         start: startProp = undefined,
         inputStart = undefined,
         end: endProp = undefined,
+        side: sideProp = undefined,
         actions = undefined,
         hover = false,
         isLabel = true,
@@ -36,39 +37,48 @@
 >
     {#snippet children()}
         <div class="input-wrapper">
-            {#if inputStart}
-                <div class="start-slot">
-                    {@render inputStart()}
+            <div class="field-row" class:with-side={!!sideProp}>
+                <div class="field-box">
+                    {#if inputStart}
+                        <div class="start-slot">
+                            {@render inputStart()}
+                        </div>
+                    {/if}
+                    {#if readonly && href}
+                        <div 
+                            class="input-field {inputClass}"
+                            class:pl-10={inputStart}
+                            class:pr-10={endProp}
+                        >
+                            {value}
+                        </div>
+                    {:else}
+                        <input 
+                            {type} 
+                            bind:value 
+                            {required}
+                            {readonly}
+                            {disabled}
+                            class="input-field {inputClass}"
+                            class:pl-10={inputStart}
+                            class:pr-10={endProp}
+                            class:editing={!readonly && !disabled}
+                            placeholder={t(placeholder)}
+                            {...rest}
+                        >
+                    {/if}
+                    {#if endProp}
+                        <div class="end-slot">
+                            {@render endProp()}
+                        </div>
+                    {/if}
                 </div>
-            {/if}
-            {#if readonly && href}
-                <div 
-                    class="input-field {inputClass}"
-                    class:pl-10={inputStart}
-                    class:pr-10={endProp}
-                >
-                    {value}
-                </div>
-            {:else}
-                <input 
-                    {type} 
-                    bind:value 
-                    {required}
-                    {readonly}
-                    {disabled}
-                    class="input-field {inputClass}"
-                    class:pl-10={inputStart}
-                    class:pr-10={endProp}
-                    class:editing={!readonly && !disabled}
-                    placeholder={t(placeholder)}
-                    {...rest}
-                >
-            {/if}
-            {#if endProp}
-                    <div class="end-slot">
-                    {@render endProp()}
-                </div>
-            {/if}
+                {#if sideProp}
+                    <div class="side-slot">
+                        {@render sideProp()}
+                    </div>
+                {/if}
+            </div>
         </div>
     {/snippet}
 </InfoStackItem>
@@ -78,6 +88,41 @@
         position: relative;
         padding-top: 0.5rem;
         width: 100%;
+    }
+
+    .field-row {
+        width: 100%;
+    }
+
+    .field-row.with-side {
+        display: flex;
+        align-items: stretch;
+        gap: 0.5rem;
+    }
+
+    .field-box {
+        position: relative;
+        width: 100%;
+        min-width: 0;
+    }
+
+    .field-row.with-side .field-box {
+        flex: 1;
+    }
+
+    .side-slot {
+        display: flex;
+        align-items: stretch;
+        flex-shrink: 0;
+    }
+
+    .side-slot :global(.button-container) {
+        display: flex;
+        align-self: stretch;
+    }
+
+    .side-slot :global(.btn) {
+        height: 100%;
     }
 
     .start-slot, .end-slot {
@@ -101,7 +146,7 @@
         background: linear-gradient(
             to right,
             transparent,
-            var(--color-bg-surface, #fff) 0.35rem
+            var(--color-bg-surface) 0.35rem
         );
     }
 

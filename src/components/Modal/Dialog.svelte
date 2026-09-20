@@ -36,7 +36,7 @@
             {icon}
             showTitle={!!title}
             className="dialog-stack"
-            style="box-shadow: 0 10px 40px rgba(0,0,0,0.15); max-height: calc(100vh - 2rem); display: flex; flex-direction: column;"
+            style="box-shadow: var(--shadow-md); max-height: calc(100vh - 2rem); display: flex; flex-direction: column;"
             {...rest}
         >
             {#snippet headerActions()}
@@ -70,7 +70,7 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
+        background-color: var(--color-overlay);
         backdrop-filter: blur(2px);
     }
 

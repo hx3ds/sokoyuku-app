@@ -90,7 +90,7 @@
             {#if assignedModelText}
                 <span class={getAssignedModelBadgeClass(account)}>{assignedModelText}</span>
             {/if}
-            <div style="color: #586069; font-size: 0.875rem;">
+            <div style="color: var(--color-text-secondary); font-size: 0.875rem;">
                 <span>{account.account_username}</span>
             </div>
         {/snippet}
@@ -140,8 +140,8 @@
         justify-content: center;
         padding: 0.125rem 0.5rem;
         border-radius: 999px;
-        background: #eef2ff;
-        color: #4338ca;
+        background: var(--color-primary-soft);
+        color: var(--color-primary);
         font-size: 0.75rem;
         font-weight: 500;
         white-space: nowrap;
@@ -149,14 +149,14 @@
     }
 
     .current-model-badge {
-        background: #e8f7ee;
-        color: #1f8f55;
+        background: var(--color-success-soft);
+        color: var(--color-success-soft-text);
     }
 
     .empty-hint {
         text-align: center;
         padding: 1rem;
-        color: #6b7280;
+        color: var(--color-text-secondary);
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -170,6 +170,6 @@
     .empty-desc {
         margin: 0;
         font-size: 0.875rem;
-        color: #9ca3af;
+        color: var(--color-text-tertiary);
     }
 </style>

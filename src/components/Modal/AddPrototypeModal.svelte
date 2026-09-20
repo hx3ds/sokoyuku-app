@@ -259,7 +259,7 @@
         
         {#if createError}
             <InfoStackItem>
-                <div style="padding: 0.75rem; background-color: #fef2f2; color: #dc2626; border-radius: 0.375rem; font-size: 0.875rem; border: 1px solid #fee2e2;">
+                <div style="padding: 0.75rem; background-color: var(--color-danger-soft); color: var(--color-danger-soft-text); border-radius: 0.375rem; font-size: 0.875rem; border: 1px solid var(--color-danger-soft);">
                     {createError}
                 </div>
             </InfoStackItem>
@@ -267,22 +267,15 @@
 
         <InfoStackItem>
             {#snippet actions()}
-                <div style="display: flex; gap: 0.75rem;">
-                    <Button variant="icon-button" onclick={close} disabled={creating} aria-label={t('Cancel')}>
+                <Button variant="icon-button" onclick={handleCreatePrototype} disabled={creating} loading={creating} aria-label={t('Create Prototype')}>
+                    {#if creating}
+                        {t('Creating...')}
+                    {:else}
                         <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                         </svg>
-                    </Button>
-                    <Button variant="icon-button" onclick={handleCreatePrototype} disabled={creating} loading={creating} aria-label={t('Create Prototype')}>
-                        {#if creating}
-                            {t('Creating...')}
-                        {:else}
-                            <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                            </svg>
-                        {/if}
-                    </Button>
-                </div>
+                    {/if}
+                </Button>
             {/snippet}
         </InfoStackItem>
     </Dialog>

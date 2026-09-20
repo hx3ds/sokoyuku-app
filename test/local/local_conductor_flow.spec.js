@@ -2,7 +2,7 @@ import { test, expect } from '../fixtures.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { addToMyModels, createLocalTelegramBotToken, uniqueSuffix } from '../utils.js';
+import { addToMyModels, addAccountButton, createLocalTelegramBotToken, uniqueSuffix } from '../utils.js';
 import { getContactByUserId, getUserAccountByUsername, getModelByUserAndName, cleanupAccount } from '../db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -145,7 +145,7 @@ test.describe('Local Conductor E2E', () => {
       accountUsername = bot.username;
 
       await page.goto('/models');
-      await page.getByRole('button', { name: 'Add account' }).click();
+      await addAccountButton(page).click();
       await expect(page.getByRole('heading', { name: 'Add New Account' })).toBeVisible({ timeout: 15000 });
       await page.getByPlaceholder('Enter name').fill(accountName);
       await page.getByPlaceholder('Enter bot username').fill(accountUsername);

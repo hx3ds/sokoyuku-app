@@ -28,10 +28,10 @@
     }
 
     .card {
-        background-color: white;
+        background-color: var(--color-bg-surface);
         padding: 2.5rem;
         border-radius: 10px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05);
+        box-shadow: var(--shadow-md);
         width: 100%;
         max-width: 28rem;
     }
@@ -56,7 +56,7 @@
 
     .subtitle {
         text-align: center;
-        color: #4b5563;
+        color: var(--color-text-secondary);
         padding-bottom: 2rem;
     }
 </style>

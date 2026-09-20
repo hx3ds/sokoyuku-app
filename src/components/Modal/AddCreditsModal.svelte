@@ -70,7 +70,7 @@
         />
         {#if checkoutError}
             <InfoStackItem>
-                <div style="font-size: 0.75rem; color: #ef4444;">{checkoutError}</div>
+                <div style="font-size: 0.75rem; color: var(--color-danger);">{checkoutError}</div>
             </InfoStackItem>
         {/if}
 

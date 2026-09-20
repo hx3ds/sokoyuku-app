@@ -48,22 +48,22 @@
             >
                 {#snippet start()}
                     {#if tx.status === 'success' || tx.status === 'completed'}
-                        <svg style="width: 1rem; height: 1rem; color: #22c55e;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <svg style="width: 1rem; height: 1rem; color: var(--color-success);" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     {:else if tx.status === 'failed'}
-                        <svg style="width: 1rem; height: 1rem; color: #ef4444;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <svg style="width: 1rem; height: 1rem; color: var(--color-danger);" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9.401 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
                         </svg>
                     {:else if tx.status === 'pending'}
-                        <svg style="width: 1rem; height: 1rem; color: #eab308;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <svg style="width: 1rem; height: 1rem; color: var(--color-warning);" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     {/if}
                 {/snippet}
 
                 {#snippet actions()}
-                    <div style="font-size: 0.875rem; font-weight: 500; color: {(tx.transaction_type === 'credit' || tx.amount > 0) ? '#16a34a' : '#dc2626'};">
+                    <div style="font-size: 0.875rem; font-weight: 500; color: {(tx.transaction_type === 'credit' || tx.amount > 0) ? 'var(--color-success)' : 'var(--color-danger)'};">
                         {formatCurrency(Math.abs(tx.amount))}
                     </div>
                 {/snippet}

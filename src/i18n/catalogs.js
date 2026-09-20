@@ -12,6 +12,11 @@ function pack(rows) {
 
 export const catalogs = pack([
     ['Language', '言語', '语言', '語言'],
+    ['Appearance', '外観', '外观', '外觀'],
+    ['Night Mode', 'ナイトモード', '夜间模式', '夜間模式'],
+    ['Day', 'デイ', '日间', '日間'],
+    ['Night', 'ナイト', '夜间', '夜間'],
+    ['System', 'システム', '系统', '系統'],
     ['Options', 'オプション', '选项', '選項'],
     ['Explore', '探索', '探索', '探索'],
     ['Models', 'モデル', '模型', '模型'],

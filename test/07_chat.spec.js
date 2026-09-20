@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures.js';
 import {
   addToMyModels,
+  addAccountButton,
   cleanupAccountByUsername,
   cleanupModelByName,
   cleanupPrototypeByName,
@@ -23,7 +24,7 @@ test.describe('Chat Flow', () => {
     try {
       await page.goto('/models');
       await expect(page).toHaveURL(/\/models/);
-      await page.getByRole('button', { name: 'Add account' }).click();
+      await addAccountButton(page).click();
       await page.getByPlaceholder('Enter name').fill(accountName);
       await page.getByPlaceholder('Enter bot username').fill(accountUsername);
       await page.getByPlaceholder('Enter bot token').fill(bot.token);

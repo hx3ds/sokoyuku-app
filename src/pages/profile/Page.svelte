@@ -14,7 +14,9 @@
     import InfoStackItem from '../../components/InfoStack/InfoStackItem.svelte';
     import InfoStackInput from '../../components/InfoStack/InfoStackInput.svelte';
     import InfoStackTextarea from '../../components/InfoStack/InfoStackTextarea.svelte';
+    import InfoStackSelect from '../../components/InfoStack/InfoStackSelect.svelte';
     import { formatDate as formatLocaleDate, t } from '../../i18n/locale.svelte.js';
+    import { theme, setTheme } from '../../store/theme.svelte.js';
 
     type Profile = {
         full_name: string;
@@ -311,6 +313,11 @@
     const showPlatformSubscriptionAction = $derived(
         !isPlatformSubscriptionActive || Boolean(platformSubscription?.cancel_at_period_end)
     );
+
+    function handleThemeChange(event: Event) {
+        const target = event.currentTarget as HTMLSelectElement;
+        setTheme(target.value);
+    }
 </script>
 
 <PageContainer id="page-profile">
@@ -428,7 +435,19 @@
             </InfoStackInput>
         </InfoStack>
 
-        <!-- Sign Out -->
+        <InfoStack title="Appearance">
+            <InfoStackSelect
+                id="themeNightMode"
+                title="Night Mode"
+                value={theme.preference}
+                onchange={handleThemeChange}
+            >
+                <option value="day">{t('Day')}</option>
+                <option value="night">{t('Night')}</option>
+                <option value="system">{t('System')}</option>
+            </InfoStackSelect>
+        </InfoStack>
+
         <InfoStack title="Sign Out" showTitle={false}>
             <InfoStackItem title={t('Sign Out')}>
                 {#snippet actions()}
@@ -441,7 +460,7 @@
             </InfoStackItem>
         </InfoStack>
     {:else}
-        <div style="color: #ff3b30; text-align: center; padding: 2rem;">{t('Failed to load profile.')}</div>
+        <div style="color: var(--color-danger); text-align: center; padding: 2rem;">{t('Failed to load profile.')}</div>
     {/if}
 </PageContainer>
 

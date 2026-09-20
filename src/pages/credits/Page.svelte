@@ -56,7 +56,7 @@
                 description={t('View your chat deduction history')}
             >
                 {#snippet actions()}
-                    <div style="padding: 0.375rem; color: #586069;">
+                    <div style="padding: 0.375rem; color: var(--color-text-secondary);">
                          <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
                         </svg>
@@ -65,7 +65,7 @@
             </InfoStackItem>
         </InfoStack>
     {:else}
-        <div style="text-align: center; padding: 2rem; color: #ef4444;">{t('Failed to load credits.')}</div>
+        <div style="text-align: center; padding: 2rem; color: var(--color-danger);">{t('Failed to load credits.')}</div>
     {/if}
 </PageContainer>
 

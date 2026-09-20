@@ -56,6 +56,10 @@ export async function clickAppNav(page, path) {
   await nav.click();
 }
 
+export function addAccountButton(page) {
+  return page.locator('#page-models .header-actions').getByRole('button', { name: 'Add account' });
+}
+
 export function isWideDesktop(page) {
   const viewport = page.viewportSize();
   return !!viewport && viewport.width >= 1280;

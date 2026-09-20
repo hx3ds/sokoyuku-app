@@ -78,16 +78,20 @@
                             </svg>
                         </Button>
                     {:else}
-                        <Button variant="icon-button" onclick={oncancel} aria-label={t('Cancel')}>
-                            <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </Button>
-                        <Button variant="icon-button" onclick={onsave} aria-label={t('Save')}>
-                            <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                            </svg>
-                        </Button>
+                        {#if oncancel}
+                            <Button variant="icon-button" onclick={oncancel} aria-label={t('Cancel')}>
+                                <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </Button>
+                        {/if}
+                        {#if onsave}
+                            <Button variant="icon-button" onclick={onsave} aria-label={t('Save')}>
+                                <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                </svg>
+                            </Button>
+                        {/if}
                     {/if}
                 {/if}
                 
@@ -123,10 +127,10 @@
 
 <style>
     .list-section {
-        background-color: var(--color-bg-surface, white);
+        background-color: var(--color-bg-surface);
         border-radius: 8px;
-        border: 1px solid var(--color-border, #dadce0);
-        box-shadow: var(--shadow-sm, 0 2px 6px rgba(0, 0, 0, 0.08));
+        border: 1px solid var(--color-border);
+        box-shadow: var(--shadow-sm);
         padding: 0.5rem;
     }
 
@@ -137,7 +141,7 @@
         padding-top: 0.25rem;
         padding-bottom: 0.5rem;
         padding-right: 0.5rem;
-        border-bottom: 1px solid var(--color-border-muted, #e1e4e8);
+        border-bottom: 1px solid var(--color-border-muted);
     }
 
     .header-button {
@@ -161,7 +165,7 @@
 
     @media (hover: hover) and (pointer: fine) {
         .header-button:hover {
-            background-color: var(--color-bg-subtle, #f6f8fa);
+            background-color: var(--color-bg-subtle);
         }
     }
 
@@ -183,7 +187,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        color: var(--color-text-secondary, #6b7280);
+        color: var(--color-text-secondary);
     }
 
     .header-title {

@@ -4,6 +4,7 @@
     import InfoStackInput from '../InfoStack/InfoStackInput.svelte';
     import InfoStackSelect from '../InfoStack/InfoStackSelect.svelte';
     import InfoStackTextarea from '../InfoStack/InfoStackTextarea.svelte';
+    import Button from '../Button/Button.svelte';
     import { formatDate, t, tAccountType, yesNo } from '../../i18n/locale.svelte.js';
     import {
         CUSTOM_ACCOUNT_TYPE_VALUE,
@@ -76,22 +77,6 @@
         isEditing = true;
     }
 
-    function handleCancel() {
-        isEditing = false;
-        editForm = {
-            account_id: null,
-            account_username: '',
-            name: '',
-            description: '',
-            account_token: '',
-            type: 'telegram',
-            custom_type: '',
-            server: '',
-            is_local: false,
-            account_group: 'free',
-        };
-    }
-
     async function handleSave() {
         const requiresPro = !editForm.is_local && resolvedType !== 'telegram' && resolvedType !== 'whatsapp_cloud' && resolvedType !== 'sokoyuku';
         await onsave({
@@ -119,8 +104,6 @@
     {onclose}
     {isEditing}
     onedit={handleEdit}
-    oncancel={handleCancel}
-    onsave={handleSave}
     icon={accountIcon}
 >
     {#if account}
@@ -210,12 +193,24 @@
                 <InfoStackItem onclick={() => onnavigate(model.model_id)}>
                     <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
                         <span style="font-weight: 500;">{model.name}</span>
-                        <svg style="width: 1.25rem; height: 1.25rem; color: #9ca3af;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg style="width: 1.25rem; height: 1.25rem; color: var(--color-text-tertiary);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                         </svg>
                     </div>
                 </InfoStackItem>
             {/each}
+        {/if}
+
+        {#if isEditing}
+            <InfoStackItem>
+                {#snippet actions()}
+                    <Button variant="icon-button" onclick={handleSave} aria-label={t('Save Account')}>
+                        <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                        </svg>
+                    </Button>
+                {/snippet}
+            </InfoStackItem>
         {/if}
     {/if}
 </Dialog>

@@ -54,6 +54,12 @@
         color: var(--color-text-main);
         outline: none;
         transition: border-color 0.15s;
+        color-scheme: inherit;
+    }
+
+    .select-field :global(option) {
+        background-color: var(--color-bg-surface);
+        color: var(--color-text-main);
     }
 
     .select-field:focus {

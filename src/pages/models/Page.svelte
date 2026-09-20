@@ -672,7 +672,7 @@
                     <MenuItem onclick={() => handleDeleteModel(model.model_id)}>{t('Delete')}</MenuItem>
                 {/if}
                 
-                <div style="height: 1px; background-color: #e1e4e8; margin: 4px 0;"></div>
+                <div style="height: 1px; background-color: var(--color-border); margin: 4px 0;"></div>
                 <MenuItem onclick={() => openModal('chatManage', model)}>{t('Manage Chats')}</MenuItem>
                         
                 {#if model.type !== 'token'}
@@ -702,7 +702,7 @@
             {#if assignedModelBadgeText}
                 <span class="account-count-badge">{assignedModelBadgeText}</span>
             {/if}
-            <div style="color: #586069; font-size: 0.875rem;">
+            <div style="color: var(--color-text-secondary); font-size: 0.875rem;">
                 <span>{account.account_username} · {tAccountType(account.type)} · {t('Group: {group}', { group: tStatus(account.account_group || 'free') })} · {account.subscription_disabled ? t('Disabled') : t('Active')}</span>
             </div>
         {/snippet}
@@ -883,16 +883,16 @@
         justify-content: center;
         padding: 0.125rem 0.5rem;
         border-radius: 999px;
-        background: #eef2ff;
-        color: #4338ca;
+        background: var(--color-primary-soft);
+        color: var(--color-primary);
         font-size: 0.75rem;
         font-weight: 500;
         white-space: nowrap;
     }
 
     :global(.info-stack-badge.in-call-badge) {
-        background: #ecfdf5;
-        color: #047857;
+        background: var(--color-success-soft);
+        color: var(--color-success-soft-text);
     }
 
     .empty-hint {

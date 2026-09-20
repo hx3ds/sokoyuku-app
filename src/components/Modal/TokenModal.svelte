@@ -136,23 +136,23 @@
         align-items: flex-start;
         padding: 1rem;
         border-radius: 0.5rem;
-        border: 1px solid var(--color-border, #e5e7eb);
+        border: 1px solid var(--color-border);
     }
 
     .description-container.warning-bg {
-        background-color: var(--color-bg-secondary, #f9fafb);
+        background-color: var(--color-bg-secondary);
     }
 
     .warning-icon {
         flex-shrink: 0;
         width: 1.5rem;
         height: 1.5rem;
-        color: var(--color-warning, #f59e0b);
+        color: var(--color-warning);
     }
 
     .description-text {
         font-size: 0.875rem;
-        color: var(--color-text-secondary, #4b5563);
+        color: var(--color-text-secondary);
         line-height: 1.5;
         margin: 0;
     }
@@ -161,13 +161,13 @@
     .description-text :global(strong), 
     .description-text :global(.highlight) {
         font-weight: 600;
-        color: var(--color-text-main, #111827);
+        color: var(--color-text-main);
     }
 
     .error-message {
         text-align: center;
         padding-top: 1rem;
         padding-bottom: 1rem;
-        color: #ef4444;
+        color: var(--color-danger);
     }
 </style>

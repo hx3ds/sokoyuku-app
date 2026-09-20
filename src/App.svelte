@@ -25,6 +25,7 @@
   import Modal from './components/Modal/Modal.svelte';
   import LanguagePicker from './components/LanguagePicker.svelte';
   import './i18n/locale.svelte.js';
+  import './store/theme.svelte.js';
 
   /**
    * @typedef {object} Route
@@ -204,6 +205,8 @@
     .app-root {
         min-height: 100vh;
         font-family: Roboto, sans-serif;
+        background-color: var(--color-bg-body);
+        color: var(--color-text-main);
     }
 
     .hidden {

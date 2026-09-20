@@ -110,7 +110,7 @@
     .chevron-icon {
         width: 1.25rem;
         height: 1.25rem;
-        color: #9ca3af;
+        color: var(--color-text-tertiary);
     }
 
     .list-item {
@@ -134,7 +134,7 @@
 
     @media (hover: hover) and (pointer: fine) {
         .list-item.hoverable:hover {
-            background-color: #f6f8fa;
+            background-color: var(--color-bg-hover);
         }
     }
 
@@ -199,7 +199,7 @@
 
     .description {
         font-size: 0.75rem;
-        color: var(--color-text-muted, #586069);
+        color: var(--color-text-muted);
         padding-top: 0.125rem;
         line-height: 1.375;
         
@@ -233,7 +233,7 @@
 
     @media (hover: hover) and (pointer: fine) {
         .main-content-wrapper.hoverable:hover {
-            background-color: #f6f8fa;
+            background-color: var(--color-bg-hover);
         }
     }
 </style>

@@ -9,7 +9,7 @@
 
 <Button
     variant="icon-button"
-    style="width: {size}; height: {size}; {active ? 'color: #059669;' : ''}"
+    style="width: {size}; height: {size}; {active ? 'color: var(--color-success);' : ''}"
     {onclick}
     aria-label={active ? t('Return to call') : t('Call')}
     className="{active ? 'call-active' : ''} {className}"

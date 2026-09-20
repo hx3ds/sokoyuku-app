@@ -128,19 +128,22 @@ test.describe('Authentication Flow', () => {
 
   test('should localize legal agreement links', async ({ page }) => {
     await page.goto('/signin');
-    const picker = page.locator('.language-picker.floating select');
-    await picker.selectOption('jp');
+    const picker = page.locator('.language-picker.floating');
+    await picker.getByRole('button', { name: 'Language' }).click();
+    await picker.getByRole('option', { name: '日本語' }).click();
     await expect(page.getByRole('link', { name: '利用規約' })).toHaveAttribute('href', 'https://sokoyuku.com/legal/terms');
     await expect(page.getByRole('link', { name: 'プライバシーポリシー' })).toHaveAttribute('href', 'https://sokoyuku.com/legal/privacy');
     await expect(page.getByRole('link', { name: 'Cookieポリシー' })).toHaveAttribute('href', 'https://sokoyuku.com/legal/cookies');
     await expect(page.getByText('を読み、同意します。')).toBeVisible();
 
-    await picker.selectOption('zh-Hans');
+    await picker.getByRole('button', { name: '言語' }).click();
+    await picker.getByRole('option', { name: '简体中文' }).click();
     await expect(page.getByRole('link', { name: '服务条款' })).toBeVisible();
     await expect(page.getByRole('link', { name: '隐私政策' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Cookie 政策' })).toBeVisible();
 
-    await picker.selectOption('zh-Hant');
+    await picker.getByRole('button', { name: '语言' }).click();
+    await picker.getByRole('option', { name: '繁體中文' }).click();
     await expect(page.getByRole('link', { name: '服務條款' })).toBeVisible();
     await expect(page.getByRole('link', { name: '隱私權政策' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Cookie 政策' })).toBeVisible();

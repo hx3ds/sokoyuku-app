@@ -25,9 +25,9 @@
         justify-content: center;
         width: 2.5rem;
         height: 2.5rem;
-        background-color: #e0e7ff;
+        background-color: var(--color-primary-soft);
         border-radius: 0.5rem;
-        color: #4f46e5;
+        color: var(--color-primary);
     }
 
     .icon {

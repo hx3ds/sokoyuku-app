@@ -12,6 +12,7 @@
   import { renderGoogleSignInButton } from '../../googleIdentity.js';
   import { t } from '../../i18n/locale.svelte.js';
   import LegalAgree from '../../components/LegalAgree.svelte';
+  import { theme } from '../../store/theme.svelte.js';
 
   let identifier = $state('');
   let password = $state('');
@@ -128,7 +129,12 @@
     if (telegramContainer) {
       mountTelegramLogin(telegramContainer, buttonWidth);
     }
+  });
 
+  $effect(() => {
+    theme.resolved;
+    const googleContainer = document.getElementById('google-login-container');
+    if (!googleContainer) return;
     renderGoogleSignInButton(googleContainer, handleGoogleCredential).catch((error) => {
       console.error('Google sign-in initialization failed:', error);
       identifierError = error?.message || t('Google sign-in is unavailable');
@@ -148,12 +154,12 @@
             placeholder="Enter your email or username"
             bind:value={identifier}
             required
-            style={identifierError ? 'border-color: #ef4444 !important;' : ''}
+            style={identifierError ? 'border-color: var(--color-danger) !important;' : ''}
             inputClass="boxed-input"
             className="clean-item"
           />
           {#if identifierError}
-            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #ef4444;">{identifierError}</p>
+            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: var(--color-danger);">{identifierError}</p>
           {/if}
         </div>
         
@@ -186,9 +192,9 @@
     </form>
     
     <div style="padding-top: 0.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
-         <span style="flex: 1; border-bottom: 1px solid #e5e7eb;"></span>
-         <span style="font-size: 0.75rem; text-align: center; color: #6b7280; text-transform: uppercase;">{t('or')}</span>
-         <span style="flex: 1; border-bottom: 1px solid #e5e7eb;"></span>
+         <span style="flex: 1; border-bottom: 1px solid var(--color-border);"></span>
+         <span style="font-size: 0.75rem; text-align: center; color: var(--color-text-secondary); text-transform: uppercase;">{t('or')}</span>
+         <span style="flex: 1; border-bottom: 1px solid var(--color-border);"></span>
     </div>
 
     <div class="social-login" class:social-login-disabled={!termsAccepted}>
@@ -206,10 +212,10 @@
 
     <div style="padding-top: 1rem; text-align: center; display: flex; flex-direction: column; gap: 0.25rem;">
       <div style="display: block; font-size: 0.875rem;">
-        <Link href="/signup" style="color: #0366d6; transition: color 0.2s; font-weight: 500; text-decoration: none;">{t('Create Account')}</Link>
+        <Link href="/signup" style="color: var(--color-primary); transition: color 0.2s; font-weight: 500; text-decoration: none;">{t('Create Account')}</Link>
       </div>
       <div style="display: block; font-size: 0.875rem;">
-        <Link href="/change-password" style="color: #0366d6; transition: color 0.2s; font-weight: 500; text-decoration: none;">{t('Forgot Password?')}</Link>
+        <Link href="/change-password" style="color: var(--color-primary); transition: color 0.2s; font-weight: 500; text-decoration: none;">{t('Forgot Password?')}</Link>
       </div>
     </div>
     </InfoStack>
@@ -220,7 +226,7 @@
         border: 1px solid var(--color-border) !important;
         border-radius: 6px !important;
         padding: 0.5rem 0.75rem !important;
-        background-color: var(--color-bg-surface) !important;
+        background-color: var(--color-bg-secondary) !important;
     }
     :global(.clean-item) {
         padding: 0 !important;
@@ -232,10 +238,12 @@
         flex-direction: row-reverse !important;
         justify-content: flex-end !important;
         gap: 0 !important;
+        line-height: 1.375;
     }
     :global(.checkbox-reverse .actions) {
-        padding: 0.5rem 0 0 0.5rem !important;
+        padding: calc(0.5rem + (1lh - 1rem) / 2) 0 0 0.5rem !important;
         align-items: flex-start !important;
+        height: auto !important;
     }
     .social-login {
         position: relative;

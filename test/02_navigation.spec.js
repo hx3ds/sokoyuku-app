@@ -6,14 +6,17 @@ test.describe('Navigation', () => {
     await page.goto('/models');
     await expect(page.getByRole('heading', { name: 'Models' })).toBeVisible({ timeout: 15000 });
     const picker = isMobileViewport(page)
-      ? page.locator('.mobile-header select')
-      : page.locator('.sidebar-footer select');
-    await expect(picker).toBeVisible();
+      ? page.locator('.mobile-header .language-picker')
+      : page.locator('.sidebar-footer .language-picker');
+    const trigger = picker.locator('button.trigger');
+    await expect(trigger).toBeVisible();
     try {
-      await picker.selectOption('jp');
+      await trigger.click();
+      await picker.getByRole('option', { name: '日本語' }).click();
       await expect(page.getByRole('heading', { name: 'モデル' })).toBeVisible();
     } finally {
-      await picker.selectOption('en');
+      await trigger.click();
+      await picker.getByRole('option', { name: 'English' }).click();
     }
     await expect(page.getByRole('heading', { name: 'Models' })).toBeVisible();
   });

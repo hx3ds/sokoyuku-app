@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures.js';
 import {
   addToMyModels,
+  addAccountButton,
   cleanupAccountByUsername,
   cleanupModelByName,
   cleanupPrototypeByName,
@@ -55,7 +56,7 @@ test.describe('Model actions', () => {
 
       await page.goto('/models');
       for (let i = 0; i < bots.length; i++) {
-        await page.getByRole('button', { name: 'Add account' }).click();
+        await addAccountButton(page).click();
         await expect(page.getByRole('heading', { name: 'Add New Account' })).toBeVisible();
         await page.getByPlaceholder('Enter name').fill(`Share Account ${suffix} ${i}`);
         await page.getByPlaceholder('Enter bot username').fill(bots[i].username);

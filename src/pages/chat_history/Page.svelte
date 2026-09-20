@@ -35,7 +35,7 @@
             <InfoStackItem>
                 <div style="display: flex; align-items: flex-start; gap: 0.5rem; width: 100%;">
                     <div style="padding-top: 0.125rem;">
-                        <svg style="width: 1rem; height: 1rem; color: #586069;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <svg style="width: 1rem; height: 1rem; color: var(--color-text-secondary);" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
@@ -44,13 +44,13 @@
                             <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
                                 <div style="display: flex; align-items: center; gap: 0.5rem;">
                                     <span style="font-size: 0.875rem; font-weight: 500; color: var(--color-dark);">{item.model_name || t('Unknown Model')}</span>
-                                    <span style="font-size: 0.75rem; color: #586069;">({item.prototype_name || t('Unknown Prototype')})</span>
+                                    <span style="font-size: 0.75rem; color: var(--color-text-secondary);">({item.prototype_name || t('Unknown Prototype')})</span>
                                 </div>
-                                <span style="font-size: 0.875rem; font-weight: 500; color: {item.status === 'settled' ? '#24292e' : '#586069'};">
+                                <span style="font-size: 0.875rem; font-weight: 500; color: {item.status === 'settled' ? 'var(--color-text-main)' : 'var(--color-text-secondary)'};">
                                     -{formatCurrency(item.actual_cost)}
                                 </span>
                             </div>
-                            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: rgba(45, 45, 45, 0.6);">
+                            <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: var(--color-text-secondary);">
                                 <span>{formatDate(item.created_at)}</span>
                                 <span>•</span>
                                 <span style="text-transform: capitalize;">{tStatus(item.status)}</span>

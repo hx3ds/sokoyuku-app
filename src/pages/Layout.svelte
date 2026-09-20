@@ -65,8 +65,8 @@
     .content-wrapper {
         width: 100%;
         max-width: 600px;
-        padding-left: 0.5rem;
-        padding-right: 0.5rem;
+        padding-left: 0;
+        padding-right: 0;
         padding-bottom: 2rem;
     }
 
@@ -89,6 +89,8 @@
 
         .content-wrapper {
             max-width: 700px;
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
             padding-bottom: 2rem;
         }
     }

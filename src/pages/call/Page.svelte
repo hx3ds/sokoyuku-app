@@ -387,7 +387,7 @@
         background: var(--color-bg-surface);
         border: 1px solid var(--color-border);
         border-radius: 16px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        box-shadow: var(--shadow-sm);
         min-height: min(36rem, calc(100dvh - 10rem));
         display: flex;
         flex-direction: column;

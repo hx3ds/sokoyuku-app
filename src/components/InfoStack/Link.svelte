@@ -7,6 +7,8 @@
         activeClassName = '',
         title = '',
         block = false,
+        icon = false,
+        accent = false,
         children,
         ...rest
     } = $props();
@@ -45,7 +47,7 @@
 
 <a 
     {href} 
-    class="{className} {isActive ? activeClassName : ''} {block ? 'link-block' : ''}" 
+    class="{className} {isActive ? activeClassName : ''} {block ? 'link-block' : ''} {icon ? 'icon-link' : ''} {icon && accent ? 'accent' : ''}" 
     aria-current={isActive ? 'page' : undefined} 
     {title} 
     onclick={handleClick} 
@@ -71,7 +73,36 @@
     }
     @media (hover: hover) and (pointer: fine) {
         .link-block:hover {
-            color: var(--color-primary, #0088cc);
+            color: var(--color-primary);
+        }
+    }
+
+    .icon-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: inherit;
+        padding: 0;
+        background: transparent;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        line-height: 0;
+    }
+
+    .icon-link.accent {
+        color: var(--color-primary);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .icon-link:hover {
+            color: var(--color-primary);
+            text-decoration: none;
+            background-color: color-mix(in srgb, var(--color-primary), transparent 80%);
+        }
+
+        .icon-link.accent:hover {
+            color: var(--color-primary-hover);
         }
     }
 </style>

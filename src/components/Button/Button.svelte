@@ -14,6 +14,7 @@
 
     export let tooltip = '';
     export let tooltipPosition = 'top';
+    export let accent = false;
 
     let showTooltip = false;
     let tooltipTimeout;
@@ -47,7 +48,8 @@
 >
     <button 
         type="button"
-        class="btn {variant} {className}" 
+        class="btn {variant} {className}"
+        class:accent 
         style="{padding ? `padding: ${padding} !important;` : ''}{iconSize ? ` --icon-size: ${iconSize};` : ''}{$$restProps.style ? ` ${$$restProps.style}` : ''}"
         disabled={disabled || loading}
         aria-busy={loading}
@@ -102,16 +104,22 @@
         background-color: transparent;
         border: none;
         padding: 0;
+        color: inherit;
+    }
+
+    .btn.icon-button.accent {
+        color: var(--color-primary);
     }
 
     @media (hover: hover) and (pointer: fine) {
         .btn.icon-button:hover:not(:disabled) {
             background-color: color-mix(in srgb, var(--color-primary), transparent 80%);
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            color: var(--color-primary);
         }
 
-        .btn.icon-button:hover:not(:disabled) :global(svg) {
-            color: var(--color-primary);
+        .btn.icon-button.accent:hover:not(:disabled) {
+            color: var(--color-primary-hover);
         }
     }
     
@@ -123,13 +131,14 @@
         width: var(--icon-size, 1.25em);
         height: var(--icon-size, 1.25em);
         flex-shrink: 0;
+        color: currentColor;
         transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .btn.text-button {
         display: inline-flex;
-        background-color: var(--color-primary, #0088cc);
-        color: var(--color-primary-contrast, #ffffff);
+        background-color: var(--color-primary);
+        color: var(--color-primary-contrast);
         padding: 0.25rem 0.75rem;
         border-radius: 6px;
         font-weight: 500;
@@ -199,7 +208,7 @@
         background-color: var(--color-bg-surface);
         border: 1px solid var(--color-border);
         border-radius: 8px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0,0,0,0.05);
+        box-shadow: var(--shadow-md);
         z-index: 50;
         display: flex;
         flex-direction: column;
@@ -223,8 +232,8 @@
     /* Tooltip styles */
     .tooltip {
         position: absolute;
-        background-color: var(--color-text-main, #333);
-        color: var(--color-text-inverse, #fff);
+        background-color: var(--color-text-main);
+        color: var(--color-text-inverse);
         padding: 4px 8px;
         border-radius: 4px;
         font-size: 0.75rem;

@@ -189,12 +189,12 @@
             placeholder="Enter your email"
             bind:value={email}
             required
-            style={errors.email ? 'border-color: #ef4444 !important;' : ''}
+            style={errors.email ? 'border-color: var(--color-danger) !important;' : ''}
             inputClass="boxed-input"
             className="clean-item"
           />
           {#if errors.email}
-            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #ef4444;">{errors.email}</p>
+            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: var(--color-danger);">{errors.email}</p>
           {/if}
         </div>
 
@@ -206,13 +206,13 @@
                 required 
                 bind:value={code}
                 placeholder="Enter 6-digit code"
-                style={errors.code ? 'border-color: #ef4444 !important;' : ''}
-                actions={codeActions}
+                style={errors.code ? 'border-color: var(--color-danger) !important;' : ''}
+                side={codeActions}
                 inputClass="boxed-input"
-                className="clean-item code-with-action"
+                className="clean-item"
             />
             {#if errors.code}
-                <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #ef4444;">{errors.code}</p>
+                <p style="padding-top: 0.25rem; font-size: 0.75rem; color: var(--color-danger);">{errors.code}</p>
             {/if}
         </div>
 
@@ -238,12 +238,12 @@
             bind:value={username}
             onblur={checkUsername}
             required
-            style={errors.username ? 'border-color: #ef4444 !important;' : ''}
+            style={errors.username ? 'border-color: var(--color-danger) !important;' : ''}
             inputClass="boxed-input"
             className="clean-item"
           />
           {#if errors.username}
-            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #ef4444;">{errors.username}</p>
+            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: var(--color-danger);">{errors.username}</p>
           {/if}
         </div>
 
@@ -255,12 +255,12 @@
             placeholder="Enter your password"
             bind:value={password}
             required
-            style={errors.password ? 'border-color: #ef4444 !important;' : ''}
+            style={errors.password ? 'border-color: var(--color-danger) !important;' : ''}
             inputClass="boxed-input"
             className="clean-item"
           />
           {#if errors.password}
-            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #ef4444;">{errors.password}</p>
+            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: var(--color-danger);">{errors.password}</p>
           {/if}
         </div>
 
@@ -283,10 +283,10 @@
             <div bind:this={turnstileContainer}></div>
           </div>
           {#if !turnstileLoaded && !turnstileError}
-            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #6b7280;">{t('Loading verification challenge...')}</p>
+            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: var(--color-text-secondary);">{t('Loading verification challenge...')}</p>
           {/if}
           {#if turnstileError}
-            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: #ef4444;">{turnstileError}</p>
+            <p style="padding-top: 0.25rem; font-size: 0.75rem; color: var(--color-danger);">{turnstileError}</p>
           {/if}
         </div>
         
@@ -300,7 +300,7 @@
     </form>
     <div style="padding-top: 1rem; text-align: center; display: flex; flex-direction: column; gap: 0.25rem;">
       <div style="display: block; font-size: 0.875rem;">
-        <Link href="/signin" style="color: #0366d6; transition: color 0.2s; font-weight: 500; text-decoration: none;">{t('Already have an account? Sign In')}</Link>
+        <Link href="/signin" style="color: var(--color-primary); transition: color 0.2s; font-weight: 500; text-decoration: none;">{t('Already have an account? Sign In')}</Link>
       </div>
     </div>
 </AuthLayout>
@@ -310,7 +310,7 @@
         border: 1px solid var(--color-border) !important;
         border-radius: 6px !important;
         padding: 0.5rem 0.75rem !important;
-        background-color: var(--color-bg-surface) !important;
+        background-color: var(--color-bg-secondary) !important;
     }
     :global(.clean-item) {
         padding: 0 !important;
@@ -318,27 +318,16 @@
     :global(.clean-item .input-wrapper) {
         padding-top: 0.25rem !important;
     }
-    :global(.code-with-action) {
-        align-items: flex-end !important;
-        gap: 0.5rem !important;
-    }
-    :global(.code-with-action .content-block) {
-        padding-bottom: 0 !important;
-        padding-right: 0 !important;
-    }
-    :global(.code-with-action .actions) {
-        padding: 0 !important;
-        height: auto !important;
-        align-self: flex-end;
-    }
     :global(.checkbox-reverse) {
         flex-direction: row-reverse !important;
         justify-content: flex-end !important;
         gap: 0 !important;
+        line-height: 1.375;
     }
     :global(.checkbox-reverse .actions) {
-        padding: 0.5rem 0 0 0.5rem !important;
+        padding: calc(0.5rem + (1lh - 1rem) / 2) 0 0 0.5rem !important;
         align-items: flex-start !important;
+        height: auto !important;
     }
     .turnstile-wrap {
         padding-bottom: 0.5rem;

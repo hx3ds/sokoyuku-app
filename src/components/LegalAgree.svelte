@@ -38,8 +38,12 @@
 </span>
 
 <style>
+    .legal-agree {
+        line-height: 1.375;
+    }
+
     .legal-agree a {
-        color: #0366d6;
+        color: var(--color-primary);
         font-weight: 500;
         text-decoration: none;
         transition: color 0.2s;

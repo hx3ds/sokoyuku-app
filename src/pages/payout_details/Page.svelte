@@ -256,7 +256,7 @@
                     <span style="font-weight: 500;">{t('Fees:')}</span> {formatCurrency(payout.platform_fee_amount, payout.currency)}
                 </div>
                 {#if payout.last_error}
-                    <div style="font-size: 0.875rem; color: #b91c1c; line-height: 1.5;">
+                    <div style="font-size: 0.875rem; color: var(--color-danger); line-height: 1.5;">
                         {payout.last_error}
                     </div>
                 {/if}
@@ -285,7 +285,7 @@
                     {/if}
                 </div>
                 {#if event.last_error}
-                    <div style="font-size: 0.875rem; color: #b91c1c; line-height: 1.5;">
+                    <div style="font-size: 0.875rem; color: var(--color-danger); line-height: 1.5;">
                         {event.last_error}
                     </div>
                 {/if}
@@ -352,7 +352,7 @@
                         <span style="font-weight: 500;">{t('Fees:')}</span> {formatCurrency(payout.platform_fee_amount, payout.currency)}
                     </div>
                     {#if payout.last_error}
-                        <div style="font-size: 0.875rem; color: #b91c1c; line-height: 1.5;">
+                        <div style="font-size: 0.875rem; color: var(--color-danger); line-height: 1.5;">
                             {payout.last_error}
                         </div>
                     {/if}
@@ -381,7 +381,7 @@
                         {/if}
                     </div>
                     {#if event.last_error}
-                        <div style="font-size: 0.875rem; color: #b91c1c; line-height: 1.5;">
+                        <div style="font-size: 0.875rem; color: var(--color-danger); line-height: 1.5;">
                             {event.last_error}
                         </div>
                     {/if}
