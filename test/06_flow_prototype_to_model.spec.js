@@ -19,14 +19,20 @@ test.describe('Prototype to Model Flow', () => {
       await page.getByPlaceholder('e.g. /my-account').fill('prototypes.passive');
       await page.getByPlaceholder('Describe what this prototype does...').fill(protoDesc);
 
-      await page.locator('.dialog-wrapper').getByRole('button', { name: 'Create Prototype' }).click();
+      const [createRes] = await Promise.all([
+        page.waitForResponse(
+          (r) => r.url().includes('/api/add_prototype') && r.request().method() === 'POST'
+        ),
+        page.locator('.dialog-wrapper').getByRole('button', { name: 'Create Prototype' }).click(),
+      ]);
+      expect((await createRes.json()).result).toBe(0);
 
       await expect(page.getByRole('heading', { name: 'Create New Prototype' })).toBeHidden({ timeout: 15000 });
       await expect(page.getByText(protoName)).toBeVisible();
 
       await page.goto('/explore');
       await page.getByPlaceholder('Search prototypes...').fill(protoName);
-      await expect(page.getByText(protoName)).toBeVisible();
+      await expect(page.locator('.list-item').filter({ hasText: protoName }).first()).toBeVisible();
 
       const item = page.locator('.list-item').filter({ hasText: protoName });
       await addToMyModels(page, item.locator('.actions'));

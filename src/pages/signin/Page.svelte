@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { signIn, signInWithGoogle } from '../../proxy/auth.js';
-  import { validateEmail, showFieldHint } from '../../utils.js';
+  import { validateEmail, showFieldHint, consumeReturnTo } from '../../utils.js';
   import Link from '../../components/InfoStack/Link.svelte';
   import AuthLayout from '../../components/AuthLayout.svelte';
   import InfoStack from '../../components/InfoStack/InfoStack.svelte';
@@ -19,8 +19,8 @@
   let identifierError = $state('');
   let termsAccepted = $state(false);
 
-  function navigateToModels() {
-    history.pushState(null, '', '/models');
+  function navigateAfterSignIn() {
+    history.pushState(null, '', consumeReturnTo());
     window.dispatchEvent(new PopStateEvent('popstate'));
   }
 
@@ -41,7 +41,7 @@
     const data = await signInWithGoogle(credential);
 
     if (data.result === 0) {
-      navigateToModels();
+      navigateAfterSignIn();
     } else {
       identifierError = data.msg;
     }
@@ -67,7 +67,7 @@
     const data = await signIn(identifier, password);
     
     if (data.result === 0) {
-        navigateToModels();
+        navigateAfterSignIn();
     } else {
         identifierError = data.msg;
     }
@@ -88,7 +88,7 @@
         const data = await signIn(null, null, user);
         
         if (data.result === 0) {
-            navigateToModels();
+            navigateAfterSignIn();
         } else {
             identifierError = data.msg;
         }

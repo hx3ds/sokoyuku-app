@@ -8,36 +8,12 @@ function normalizeCheckoutBody(data = {}) {
     };
 }
 
-export function createCheckoutSession(data) {
-    const body = normalizeCheckoutBody(data);
-    return request('/api/create_checkout_session', {
-        body: {
-            amount: body.amount ?? 0,
-            success_url: body.success_url,
-            cancel_url: body.cancel_url,
-        },
-    });
-}
-
 export async function fetchTransactionHistory() {
     const data = await request('/api/get_transaction_history');
     return data.result === 0 ? data.data : [];
 }
 
-export async function fetchWalletDeductionHistory(limit = 100, offset = 0) {
-    const data = await request('/api/get_wallet_deduction_history', {
-        body: { limit: limit ?? 0, offset: offset ?? 0 }
-    });
-    return data.result === 0 ? data.data.history : [];
-}
-
-export function fetchModelSubscription(modelId) {
-    return request('/api/get_model_subscription', {
-        body: { model_id: modelId ?? '' }
-    });
-}
-
-export function createModelSubscriptionCheckout(data) {
+export function createModelPaymentCheckout(data) {
     const body = normalizeCheckoutBody(data);
     const payload = {
         model_id: body.model_id ?? '',
@@ -47,14 +23,11 @@ export function createModelSubscriptionCheckout(data) {
     if (body.subscription_tier) {
         payload.subscription_tier = body.subscription_tier;
     }
-    return request('/api/create_model_subscription_checkout', {
+    if (body.periods) {
+        payload.periods = body.periods;
+    }
+    return request('/api/create_model_payment_checkout', {
         body: payload,
-    });
-}
-
-export function cancelModelSubscription(modelId) {
-    return request('/api/cancel_model_subscription', {
-        body: { model_id: modelId ?? '' }
     });
 }
 
@@ -75,6 +48,15 @@ export function createPlatformSubscriptionCheckout(data) {
 
 export function cancelPlatformSubscription() {
     return request('/api/cancel_platform_subscription');
+}
+
+export function createPlatformBillingPortal({ return_url, flow } = {}) {
+    return request('/api/create_platform_billing_portal', {
+        body: {
+            return_url: return_url ?? '',
+            flow: flow ?? 'manage',
+        },
+    });
 }
 
 export async function fetchAllSubscriptions() {

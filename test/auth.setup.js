@@ -15,7 +15,7 @@ async function authenticateInto(page, authFile) {
   console.log(`Creating user (${path.basename(authFile)}):`, user.email);
 
   await installTurnstileMock(page);
-  await page.goto('/signup');
+  await page.goto('/signup', { waitUntil: 'domcontentloaded' });
 
   await page.locator('#signupEmail').fill(user.email);
   await page.getByRole('button', { name: 'Get Code' }).click();

@@ -31,16 +31,16 @@ test.describe('Miscellaneous Pages', () => {
           result: 0,
           data: [
             {
-              description: 'Credits added',
+              description: 'Platform subscription',
               status: 'success',
-              amount: 10,
+              amount: 1000,
               transaction_type: 'credit',
               created_at: new Date().toISOString(),
             },
             {
               description: 'Card declined',
               status: 'failed',
-              amount: -12,
+              amount: -1200,
               transaction_type: 'debit',
               created_at: new Date().toISOString(),
             },
@@ -49,7 +49,7 @@ test.describe('Miscellaneous Pages', () => {
       });
     });
     await page.goto('/payment-history');
-    await expect(page.locator('.list-item').filter({ hasText: 'Credits added' })).toBeVisible();
+    await expect(page.locator('.list-item').filter({ hasText: 'Platform subscription' })).toBeVisible();
     await expect(page.locator('.list-item').filter({ hasText: 'Card declined' })).toBeVisible();
     await expect(page.locator('.list-item').filter({ hasText: 'Card declined' })).toContainText('$12.00');
   });
@@ -58,83 +58,75 @@ test.describe('Miscellaneous Pages', () => {
     await page.goto('/payout-details');
     await expect(page).toHaveURL(/\/payout-details/);
     await expect(page.getByRole('heading', { name: 'Payout Details' })).toBeVisible();
-    const empty = page.locator('.not-found-text', { hasText: "You haven't created any prototypes yet." });
+    const empty = page.locator('.not-found-text');
     const items = page.locator('#page-payout-details .list-item');
     await expect.poll(async () => (await empty.count()) + (await items.count())).toBeGreaterThan(0);
   });
 
-  test('should drill into payout details for a prototype', async ({ page }) => {
+  test('should say no prototypes when the creator has none', async ({ page }) => {
+    await page.route('**/api/get_my_prototype_payout_details', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ result: 0, data: { prototypes: [] } }),
+      });
+    });
+    await page.route('**/api/stripe/connect/status', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ result: 0, data: { connected: true, payouts_enabled: true, tax_ready: true } }),
+      });
+    });
+    await page.goto('/payout-details');
+    await expect(page.locator('.not-found-text')).toHaveText('No prototypes');
+  });
+
+  test('should say not connected when Stripe Connect is not connected', async ({ page }) => {
     await page.route('**/api/get_my_prototype_payout_details', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({
           result: 0,
-          data: {
-            prototypes: [
-              {
-                prototype_id: 4242,
-                name: 'E2E Payout Proto',
-                description: 'payout drill-down',
-                payout_details: {
-                  has_data: true,
-                  summary_by_currency: [
-                    {
-                      currency: 'usd',
-                      event_count: 2,
-                      gross_amount: 20,
-                      platform_fee_amount: 2,
-                      net_amount: 18,
-                      paid_net_amount: 10,
-                      pending_net_amount: 5,
-                      failed_net_amount: 3,
-                      paid_event_count: 1,
-                      pending_event_count: 1,
-                      failed_event_count: 1,
-                      last_event_at: new Date().toISOString(),
-                    },
-                  ],
-                  payouts: [
-                    {
-                      payout_id: 'po_e2e',
-                      currency: 'usd',
-                      gross_amount: 10,
-                      platform_fee_amount: 1,
-                      net_amount: 9,
-                      event_count: 1,
-                      status: 'paid',
-                      created_at: new Date().toISOString(),
-                      paid_at: new Date().toISOString(),
-                    },
-                  ],
-                  events: [
-                    {
-                      event_id: 'evt_e2e',
-                      source_type: 'subscription',
-                      source_id: 'sub_e2e',
-                      currency: 'usd',
-                      gross_amount: 10,
-                      platform_fee_amount: 1,
-                      net_amount: 9,
-                      status: 'paid',
-                      payout_id: 'po_e2e_long',
-                      created_at: new Date().toISOString(),
-                    },
-                  ],
-                },
-              },
-            ],
-          },
+          data: { prototypes: [{ prototype_id: 4242, name: 'E2E Payout Proto' }] },
+        }),
+      });
+    });
+    await page.route('**/api/stripe/connect/status', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ result: 0, data: { connected: false } }),
+      });
+    });
+    await page.goto('/payout-details');
+    await expect(page.locator('.not-found-text')).toHaveText('Not connected');
+  });
+
+  test('should say the Connect status when the account is connected', async ({ page }) => {
+    await page.route('**/api/get_my_prototype_payout_details', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          result: 0,
+          data: { prototypes: [{ prototype_id: 4242, name: 'E2E Payout Proto' }] },
+        }),
+      });
+    });
+    await page.route('**/api/stripe/connect/status', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          result: 0,
+          data: { connected: true, payouts_enabled: true, tax_ready: false },
         }),
       });
     });
     await page.goto('/payout-details');
-    await expect(page.getByText('Summary · USD').first()).toBeVisible();
-    await expect(page.getByText('Paid payout').first()).toBeVisible();
-    await expect(page.getByText('Subscription sub_e2e').first()).toBeVisible();
-    await page.getByRole('button', { name: /E2E Payout Proto/ }).click();
-    await page.getByText('Open Prototype').click();
-    await expect(page).toHaveURL(/\/prototype\/4242/);
+    await expect(page.locator('.not-found-text')).toHaveText('Connected · Payouts enabled · Tax setup needed');
   });
 
 });

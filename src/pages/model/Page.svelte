@@ -9,7 +9,7 @@
     import { fetchModel, updateModel } from '../../proxy/model.js';
     import { modelStore } from '../../store/models.svelte.js';
     import { showError } from '../../components/Modal/state.svelte.js';
-    import { formatDateTime, t, tAccountType, tStatus, yesNo } from '../../i18n/locale.svelte.js';
+    import { formatDateTime, formatMoney, t, tAccountType, tStatus, yesNo } from '../../i18n/locale.svelte.js';
     import PageContainer from '../../components/PageContainer.svelte';
     import InfoStackBadge from '../../components/InfoStack/InfoStackBadge.svelte';
 
@@ -30,14 +30,12 @@
         description?: string | null;
         status?: string | null;
         period?: string | null;
-        auto_renew?: boolean | null;
         settings?: Record<string, unknown> | null;
         access_point?: string | null;
         max_chats?: number | null;
         charge?: number | null;
         has_free_tier?: boolean | null;
         max_tier_charge?: number | null;
-        max_charge_per_message?: number | null;
         subscription_tier?: string | null;
         type?: string | null;
         is_local?: boolean | null;
@@ -181,18 +179,12 @@
             <InfoStackInput title="Type" value={tStatus(model!.type)} readonly />
             {#if model!.type === 'subscription'}
                 <InfoStackInput title="Tier" value={model!.subscription_tier || '—'} readonly />
-                <InfoStackInput title="Pro Charge" value={model!.charge || '0'} readonly />
+                <InfoStackInput title="Pro Charge" value={formatMoney(model!.charge || 0)} readonly />
                 {#if Number(model!.max_tier_charge || 0) > 0}
-                    <InfoStackInput title="Max Tier Charge" value={model!.max_tier_charge} readonly />
+                    <InfoStackInput title="Max Tier Charge" value={formatMoney(model!.max_tier_charge)} readonly />
                 {/if}
-                {#if Number(model!.max_charge_per_message || 0) > 0}
-                    <InfoStackInput title="Max Charge Per Message" value={model!.max_charge_per_message} readonly />
-                {/if}
-            {:else}
-                <InfoStackInput title="Max Charge Per Message" value={model!.max_charge_per_message || '0'} readonly />
             {/if}
             <InfoStackInput title="Available until" value={formatDate(model!.period)} readonly />
-            <InfoStackInput title="Auto renew" value={yesNo(model!.auto_renew)} readonly />
             <InfoStackInput
                 title="Last Used Account"
                 value={formatAccountLabel(getLastUsedModelAccount(model))}

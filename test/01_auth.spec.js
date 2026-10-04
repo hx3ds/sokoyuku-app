@@ -81,7 +81,7 @@ test.describe('Authentication Flow', () => {
       });
     });
 
-    await page.goto('/signin');
+    await page.goto('/signin', { waitUntil: 'domcontentloaded' });
     await page.locator('#signinIdentifier').fill('bad@example.com');
     await page.locator('#signinPassword').fill('badpassword');
     await page.locator('#signinTerms').check();
@@ -147,6 +147,63 @@ test.describe('Authentication Flow', () => {
     await expect(page.getByRole('link', { name: '服務條款' })).toBeVisible();
     await expect(page.getByRole('link', { name: '隱私權政策' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Cookie 政策' })).toBeVisible();
+  });
+
+  test('should return to the original url after sign-in', async ({ page }) => {
+    let signedIn = false;
+    await page.route('**/api/get_my_profile', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(signedIn
+          ? { result: 0, data: { username: 'ada', full_name: 'Ada' } }
+          : { result: 1, msg: 'unauthorized' }),
+      });
+    });
+    await page.route('**/api/sign_in', async (route) => {
+      signedIn = true;
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ result: 0 }),
+      });
+    });
+
+    await page.goto('/notifications?tab=unread#top');
+    await expect(page).toHaveURL(/\/signin$/);
+
+    await page.locator('#signinIdentifier').fill('ada@example.com');
+    await page.locator('#signinPassword').fill('password');
+    await page.locator('#signinTerms').check();
+    await page.getByRole('button', { name: 'Enter' }).click();
+
+    await expect(page).toHaveURL(/\/notifications\?tab=unread#top$/);
+  });
+
+  test('should ignore an unsafe saved return url', async ({ page }) => {
+    await page.route('**/api/get_my_profile', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ result: 0, data: { username: 'ada', full_name: 'Ada' } }),
+      });
+    });
+    await page.route('**/api/sign_in', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ result: 0 }),
+      });
+    });
+
+    await page.goto('/signin');
+    await page.evaluate(() => sessionStorage.setItem('returnTo', '//evil.example'));
+    await page.locator('#signinIdentifier').fill('ada@example.com');
+    await page.locator('#signinPassword').fill('password');
+    await page.locator('#signinTerms').check();
+    await page.getByRole('button', { name: 'Enter' }).click();
+
+    await expect(page).toHaveURL(/\/models$/);
   });
 
   test('should reject unavailable username on blur', async ({ page }) => {

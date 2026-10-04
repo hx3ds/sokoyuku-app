@@ -7,7 +7,7 @@
     import InfoStackSelect from '../InfoStack/InfoStackSelect.svelte';
     import InfoStackToggle from '../InfoStack/InfoStackToggle.svelte';
     import InfoStackItem from '../InfoStack/InfoStackItem.svelte';
-    import { t } from '../../i18n/locale.svelte.js';
+    import { dollarsToCents, t } from '../../i18n/locale.svelte.js';
 
     let { 
         show = $bindable(false), 
@@ -24,13 +24,11 @@
         access_point: '',
         path: '',
         max_chats: 1,
-        type: 'token',
+        type: 'subscription',
         billing_interval: 'monthly',
         charge: 0,
         has_free_tier: false,
         max_tier_charge: 0,
-        max_charge_per_message: 0,
-        reply_window: 600,
         private: false,
         is_local: false,
         call_support: false,
@@ -38,7 +36,6 @@
         privacy_policy: ''
     });
 
-    // Reset form when modal opens
     $effect(() => {
         if (show) {
             resetForm();
@@ -50,10 +47,7 @@
             newPrototype.private = true;
             newPrototype.charge = 0;
             newPrototype.max_tier_charge = 0;
-            newPrototype.max_charge_per_message = 0;
-            if (newPrototype.type === 'subscription') {
-                newPrototype.has_free_tier = true;
-            }
+            newPrototype.has_free_tier = true;
         }
     });
 
@@ -64,13 +58,11 @@
             access_point: '',
             path: '',
             max_chats: 1,
-            type: 'token',
+            type: 'subscription',
             billing_interval: 'monthly',
             charge: 0,
             has_free_tier: false,
             max_tier_charge: 0,
-            max_charge_per_message: 0,
-            reply_window: 600,
             private: false,
             is_local: false,
             call_support: false,
@@ -89,14 +81,12 @@
             ...newPrototype,
             status: newPrototype.status || 'active',
             qr_platforms: Array.isArray(newPrototype.qr_platforms) ? newPrototype.qr_platforms : [],
-            billing_interval: newPrototype.type === 'subscription' ? (newPrototype.billing_interval || 'monthly') : '',
-            call_support: newPrototype.type === 'subscription' ? Boolean(newPrototype.call_support) : false,
-            charge: newPrototype.is_local ? 0 : (newPrototype.type === 'subscription' ? (Number(newPrototype.charge) || 0) : 0),
-            has_free_tier: newPrototype.type === 'subscription'
-                ? (newPrototype.is_local ? true : Boolean(newPrototype.has_free_tier))
-                : false,
-            max_tier_charge: newPrototype.is_local ? 0 : (newPrototype.type === 'subscription' ? (Number(newPrototype.max_tier_charge) || 0) : 0),
-            max_charge_per_message: newPrototype.is_local ? 0 : (Number(newPrototype.max_charge_per_message) || 0),
+            type: 'subscription',
+            billing_interval: newPrototype.billing_interval || 'monthly',
+            call_support: Boolean(newPrototype.call_support),
+            charge: newPrototype.is_local ? 0 : dollarsToCents(newPrototype.charge),
+            has_free_tier: newPrototype.is_local ? true : Boolean(newPrototype.has_free_tier),
+            max_tier_charge: newPrototype.is_local ? 0 : dollarsToCents(newPrototype.max_tier_charge),
             private: newPrototype.is_local ? true : newPrototype.private
         };
         const res = await createPrototype(payload);
@@ -168,30 +158,13 @@
             bind:value={newPrototype.max_chats} 
             min="1" 
         />
-        <InfoStackInput
-            type="number"
-            title="Reply Window (sec)"
-            bind:value={newPrototype.reply_window}
-            min="0"
-        />
         <InfoStackSelect 
-            title="Type" 
-            bind:value={newPrototype.type}
+            title="Billing Interval" 
+            bind:value={newPrototype.billing_interval}
         >
-            <option value="token">{t('token')}</option>
-            <option value="subscription">{t('subscription')}</option>
+            <option value="daily">{t('daily')}</option>
+            <option value="monthly">{t('monthly')}</option>
         </InfoStackSelect>
-        {#if newPrototype.type === 'subscription'}
-            <InfoStackSelect 
-                title="Billing Interval" 
-                bind:value={newPrototype.billing_interval}
-            >
-                <option value="daily">{t('daily')}</option>
-                <option value="weekly">{t('weekly')}</option>
-                <option value="monthly">{t('monthly')}</option>
-                <option value="yearly">{t('yearly')}</option>
-            </InfoStackSelect>
-        {/if}
         {#if newPrototype.is_local}
             <InfoStackInput title="Private Visibility" value={t('Yes (required for local)')} readonly />
         {:else}
@@ -206,13 +179,11 @@
             description={newPrototype.is_local ? 'Private local Conductor access point' : 'Use a remote Station access point'}
             bind:checked={newPrototype.is_local}
         />
-        {#if newPrototype.type === 'subscription'}
-            <InfoStackToggle
-                title="Call Support"
-                description={newPrototype.call_support ? 'Voice calls enabled on all platforms' : 'Voice calls disabled'}
-                bind:checked={newPrototype.call_support}
-            />
-        {/if}
+        <InfoStackToggle
+            title="Call Support"
+            description={newPrototype.call_support ? 'Voice calls enabled on all platforms' : 'Voice calls disabled'}
+            bind:checked={newPrototype.call_support}
+        />
 
         <InfoStackItem>
             <h4 style="font-weight: 600; color: var(--color-dark);">{t('Pricing')}</h4>
@@ -220,7 +191,7 @@
 
         {#if newPrototype.is_local}
             <InfoStackInput title="Pricing" value={t('Free (required for local)')} readonly />
-        {:else if newPrototype.type === 'subscription'}
+        {:else}
             <InfoStackToggle
                 title="Free Tier"
                 description={newPrototype.has_free_tier ? 'Optional free tier enabled' : 'No free tier'}
@@ -237,21 +208,6 @@
                 type="number" 
                 title="Max Tier Charge" 
                 bind:value={newPrototype.max_tier_charge} 
-                min="0" 
-                step="0.01" 
-            />
-            <InfoStackInput 
-                type="number" 
-                title="Max Charge Per Message" 
-                bind:value={newPrototype.max_charge_per_message} 
-                min="0" 
-                step="0.01" 
-            />
-        {:else}
-            <InfoStackInput 
-                type="number" 
-                title="Max Charge Per Message" 
-                bind:value={newPrototype.max_charge_per_message} 
                 min="0" 
                 step="0.01" 
             />

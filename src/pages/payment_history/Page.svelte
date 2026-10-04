@@ -63,7 +63,7 @@
                 {/snippet}
 
                 {#snippet actions()}
-                    <div style="font-size: 0.875rem; font-weight: 500; color: {(tx.transaction_type === 'credit' || tx.amount > 0) ? 'var(--color-success)' : 'var(--color-danger)'};">
+                    <div style="font-size: 0.875rem; font-weight: 500; color: {tx.amount > 0 ? 'var(--color-success)' : 'var(--color-danger)'};">
                         {formatCurrency(Math.abs(tx.amount))}
                     </div>
                 {/snippet}

@@ -87,12 +87,6 @@ export async function fetchModel(modelId) {
     return data.result === 0 ? normalizeModel(data.data) : null;
 }
 
-export function removeModelFromUserModelList(modelId) {
-    return request('/api/remove_model_from_user_model_list', {
-        body: { model_id: modelId }
-    });
-}
-
 export function updateModel(data) {
     return (async () => {
         const body = {

@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { fetchAllSubscriptions, cancelPlatformSubscription, cancelModelSubscription } from '../../proxy/subscription.js';
-    import { showError, showConfirm } from '../../components/Modal/state.svelte.js';
+    import { fetchAllSubscriptions, createPlatformBillingPortal } from '../../proxy/subscription.js';
+    import { showError } from '../../components/Modal/state.svelte.js';
     import { formatDate as formatLocaleDate, formatMoney, t } from '../../i18n/locale.svelte.js';
     import PageContainer from '../../components/PageContainer.svelte';
     import Loading from '../../components/Loading.svelte';
@@ -35,7 +35,6 @@
     type ModelSubscription = {
         model_id: string;
         period?: string | null;
-        auto_renew?: boolean;
         status?: string;
         subscription_tier?: string | null;
         prototype: ModelPrototype;
@@ -70,42 +69,27 @@
         }
     }
 
-    async function handleCancelPlatform() {
-        if (!await showConfirm(t('Are you sure you want to cancel your platform subscription? You will lose access to premium features at the end of the current period.'))) return;
-        
-        processingId = 'platform';
+    async function openPlatformPortal() {
+        processingId = 'platform-portal';
         try {
-            const res = await cancelPlatformSubscription();
-            if (res.result === 0) {
-                // Refresh data
-                await loadData();
-            } else {
-                await showError(t('Failed to cancel subscription: {msg}', { msg: res.msg }));
+            const res = await createPlatformBillingPortal({
+                return_url: `${window.location.origin}/my-subscriptions`,
+                flow: 'manage',
+            });
+            if (res.result !== 0) {
+                await showError(t('Failed to open billing portal: {msg}', { msg: res.msg }));
+                return;
+            }
+            if (res.data?.url) {
+                window.location.href = res.data.url;
             }
         } catch (err) {
-            await showError(t('Error cancelling subscription'));
+            await showError(t('Failed to open billing portal'));
         } finally {
             processingId = null;
         }
     }
 
-    async function handleCancelModel(modelId: string) {
-        if (!await showConfirm(t('Are you sure you want to cancel this model subscription? Auto-renewal will be disabled.'))) return;
-
-        processingId = modelId;
-        try {
-            const res = await cancelModelSubscription(modelId);
-            if (res.result === 0) {
-                await loadData();
-            } else {
-                await showError(t('Failed to cancel subscription: {msg}', { msg: res.msg }));
-            }
-        } catch (err) {
-            await showError(t('Error cancelling subscription'));
-        } finally {
-            processingId = null;
-        }
-    }
 
     function formatDate(dateString?: string | null) {
         if (!dateString) return t('N/A');
@@ -156,23 +140,21 @@
                     </div>
 
                     {#snippet actions()}
-                        {#if !platformSub!.cancel_at_period_end}
-                            <Button 
-                                variant="text-button"
-                                className="compact-action"
-                                onclick={handleCancelPlatform} 
-                                disabled={processingId === 'platform'}
-                            >
-                                {processingId === 'platform' ? t('Processing...') : t('Cancel Subscription')}
-                            </Button>
-                        {/if}
+                        <Button
+                            variant="text-button"
+                            className="compact-action"
+                            onclick={() => openPlatformPortal()}
+                            disabled={processingId === 'platform-portal'}
+                        >
+                            {processingId === 'platform-portal' ? t('Processing...') : t('Manage')}
+                        </Button>
                     {/snippet}
                 </InfoStackItem>
             {/if}
         </InfoStack>
 
         <!-- Model Subscriptions -->
-        <InfoStack title="Model Subscriptions" empty={modelSubs.length === 0} emptyText="No active model subscriptions.">
+        <InfoStack title="Model access" empty={modelSubs.length === 0} emptyText="No model access.">
             {#each modelSubs as sub}
                 <InfoStackItem 
                     title={sub.prototype.name} 
@@ -187,29 +169,7 @@
                         <span style="font-weight: 500;">{t('Price:')}</span> {formatCurrency(sub.prototype.interval_charge)}/{t(sub.prototype.billing_interval || 'monthly')}
                         <span style="padding-left: 0.5rem; padding-right: 0.5rem;">•</span>
                         <span style="font-weight: 500;">{t('Available Until:')}</span> {formatDate(sub.period)}
-                        
-                        {#if !sub.auto_renew && sub.status === 'active'}
-                            <div style="padding-top: 0.25rem; color: var(--color-warning-soft-text); font-weight: 500;">
-                                {t('Auto-renew disabled')}
-                            </div>
-                        {/if}
                     </div>
-
-                    {#snippet actions()}
-                        {#if sub.auto_renew}
-                            <Button 
-                                variant="text-button"
-                                className="compact-action"
-                                onclick={(e: MouseEvent) => {
-                                    e.preventDefault();
-                                    handleCancelModel(sub.model_id);
-                                }}
-                                disabled={processingId === sub.model_id}
-                            >
-                                {processingId === sub.model_id ? t('Processing...') : t('Cancel Subscription')}
-                            </Button>
-                        {/if}
-                    {/snippet}
                 </InfoStackItem>
             {/each}
         </InfoStack>

@@ -32,6 +32,10 @@
         details_submitted?: boolean;
         charges_enabled?: boolean;
         payouts_enabled?: boolean;
+        tax_ready?: boolean;
+        tax_settings_status?: string;
+        tax_settings_active?: boolean;
+        tax_has_registration?: boolean;
     };
 
     type PlatformPlan = {
@@ -89,14 +93,16 @@
     ]);
 
     const billingItems = $derived([
-        { href: '/credits', title: t('Credits') },
         { href: '/my-subscriptions', title: t('My Subscriptions') },
         { href: '/payment-history', title: t('Payment History') }
     ]);
 
     const payoutItems = $derived([
-        { href: '/payout-details', title: t('Payout Details'), description: t('Check payout details for each prototype') }
+        { href: '/payout-details', title: t('Payout Details'), description: t('Stripe Connect Standard · manage payouts in Stripe') }
     ]);
+    const connectSetupComplete = $derived(
+        !!connectStatus?.connected && !!connectStatus?.details_submitted
+    );
 
     onMount(async () => {
         await loadProfile();
@@ -184,7 +190,14 @@
     function connectStatusLabel(status: ConnectStatus | null, loading: boolean) {
         if (loading) return t('Checking status...');
         if (status?.connected) {
-            return status?.payouts_enabled ? t('Connected · Payouts enabled') : t('Connected');
+            if (status?.tax_ready) {
+                return status?.payouts_enabled
+                    ? t('Connected · Payouts enabled · Tax ready')
+                    : t('Connected · Tax ready');
+            }
+            return status?.payouts_enabled
+                ? t('Connected · Payouts enabled · Tax setup needed')
+                : t('Connected · Tax setup needed');
         }
         if (status?.invalid_account) return t('Not connected · Setup needed');
         return t('Not connected');
@@ -219,6 +232,11 @@
     }
 
     async function handleStripeConnect() {
+        if (connectSetupComplete) {
+            const tab = window.open('https://dashboard.stripe.com', '_blank');
+            if (tab) tab.opener = null;
+            return;
+        }
         connectSubmitting = true;
         try {
             await startStripeConnectOnboarding(false);
@@ -401,7 +419,7 @@
                         onclick={handleStripeConnect}
                         loading={connectSubmitting}
                     >
-                        {connectStatus?.connected ? t('Update') : t('Connect')}
+                        {connectSetupComplete ? t('Manage') : connectStatus?.connected ? t('Update') : t('Connect')}
                     </Button>
                 {/snippet}
             </InfoStackInput>

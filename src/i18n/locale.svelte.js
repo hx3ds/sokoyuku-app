@@ -96,8 +96,6 @@ const STATUS_KEYS = {
     paid: 'Paid',
     pending: 'Pending',
     failed: 'Failed',
-    reserved: 'Reserved',
-    settled: 'Settled',
     free: 'Free',
     pro: 'Pro',
     success: 'Success',
@@ -173,17 +171,35 @@ export function formatDateTime(value) {
     return date.toLocaleString(intlLocale());
 }
 
-export function formatMoney(amount, currency = 'USD') {
-    const numericAmount = Number(amount ?? 0);
+const ZERO_DECIMAL_CURRENCIES = new Set([
+    'BIF', 'CLP', 'DJF', 'GNF', 'JPY', 'KMF', 'KRW', 'MGA', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF',
+]);
+
+export function dollarsToCents(amount) {
+    const n = Number(amount ?? 0);
+    return Number.isFinite(n) ? Math.round(n * 100) : 0;
+}
+
+export function centsToDollars(amountCents) {
+    const n = Number(amountCents ?? 0);
+    return Number.isFinite(n) ? n / 100 : 0;
+}
+
+export function formatMoney(amountCents, currency = 'USD') {
+    const cents = Number(amountCents ?? 0);
     const normalized = String(currency || 'USD').toUpperCase();
+    const major = Number.isFinite(cents)
+        ? (ZERO_DECIMAL_CURRENCIES.has(normalized) ? cents : cents / 100)
+        : 0;
+    const fractionDigits = ZERO_DECIMAL_CURRENCIES.has(normalized) ? 0 : 2;
     try {
         return new Intl.NumberFormat(intlLocale(), {
             style: 'currency',
             currency: normalized,
-            minimumFractionDigits: 2,
-        }).format(Number.isFinite(numericAmount) ? numericAmount : 0);
+            minimumFractionDigits: fractionDigits,
+        }).format(major);
     } catch {
-        return `${normalized} ${(Number.isFinite(numericAmount) ? numericAmount : 0).toFixed(2)}`;
+        return `${normalized} ${major.toFixed(fractionDigits)}`;
     }
 }
 

@@ -16,7 +16,7 @@
     import { fetchPrototype, updatePrototype, getPrototypeToken, refreshPrototypeToken } from '../../proxy/prototype.js';
     import { prototypeStore } from '../../store/prototypes.svelte.js';
     import { showError } from '../../components/Modal/state.svelte.js';
-    import { t, yesNo } from '../../i18n/locale.svelte.js';
+    import { centsToDollars, dollarsToCents, t, yesNo } from '../../i18n/locale.svelte.js';
     import { LEGAL_CREATOR_CONTRACT_URL, LEGAL_MODEL_PRIVACY_URL } from '../../config.js';
 
     type Prototype = {
@@ -34,10 +34,8 @@
         charge?: number | string | null;
         has_free_tier?: boolean;
         max_tier_charge?: number | string | null;
-        max_charge_per_message?: number | string | null;
         subscription_tiers?: Array<{ name: string; charge: number }>;
         has_active_models?: boolean;
-        reply_window?: number | string | null;
         certified?: boolean;
         next_prototype_id?: number | null;
         is_author?: boolean;
@@ -61,11 +59,9 @@
 
     const hasActiveModels = $derived(Boolean(prototype?.has_active_models));
     const isFreePrototype = $derived(
-        prototype?.type === 'subscription'
-            ? Number(prototype?.charge || 0) === 0 && Number(prototype?.max_tier_charge || 0) === 0
-            : Number(prototype?.max_charge_per_message || 0) === 0
+        Number(prototype?.charge || 0) === 0 && Number(prototype?.max_tier_charge || 0) === 0
     );
-    const lockTiers = $derived(hasActiveModels || (prototype?.type === 'subscription' && isFreePrototype));
+    const lockTiers = $derived(hasActiveModels || isFreePrototype);
     const termsUrl = $derived((prototype?.terms_of_use || '').trim() || LEGAL_CREATOR_CONTRACT_URL);
     const privacyUrl = $derived((prototype?.privacy_policy || '').trim() || LEGAL_MODEL_PRIVACY_URL);
     const termsLabel = $derived((prototype?.terms_of_use || '').trim() ? t('Custom Terms of Use') : t('Standard Contract'));
@@ -79,17 +75,9 @@
 
     $effect(() => {
         if (!prototype) return;
-        if (prototype.type === 'subscription') {
-            if (!prototype.billing_interval) prototype.billing_interval = 'monthly';
-            if (prototype.has_free_tier == null) prototype.has_free_tier = Number(prototype.charge || 0) === 0 && Number(prototype.max_tier_charge || 0) === 0;
-            if (prototype.max_tier_charge == null) prototype.max_tier_charge = 0;
-        } else {
-            if (prototype.billing_interval) prototype.billing_interval = '';
-            if (prototype.call_support) prototype.call_support = false;
-            if (prototype.charge) prototype.charge = 0;
-            if (prototype.max_tier_charge) prototype.max_tier_charge = 0;
-            if (prototype.has_free_tier) prototype.has_free_tier = false;
-        }
+        if (!prototype.billing_interval) prototype.billing_interval = 'monthly';
+        if (prototype.has_free_tier == null) prototype.has_free_tier = Number(prototype.charge || 0) === 0 && Number(prototype.max_tier_charge || 0) === 0;
+        if (prototype.max_tier_charge == null) prototype.max_tier_charge = 0;
     });
 
     async function loadPrototype() {
@@ -99,7 +87,8 @@
             data.terms_of_use = data.terms_of_use ?? '';
             data.privacy_policy = data.privacy_policy ?? '';
             data.has_free_tier = Boolean(data.has_free_tier);
-            data.max_tier_charge = data.max_tier_charge ?? 0;
+            data.max_tier_charge = centsToDollars(data.max_tier_charge ?? 0);
+            data.charge = centsToDollars(data.charge ?? 0);
         }
         prototype = data;
         loading = false;
@@ -124,30 +113,18 @@
             name: prototype.name ?? '',
             description: prototype.description ?? '',
             max_chats: Number.parseInt(String(prototype.max_chats ?? ''), 10) || 1,
-            charge: Boolean(prototype.is_local)
-                ? 0
-                : ((prototype.type ?? 'token') === 'subscription' ? (Number.parseFloat(String(prototype.charge ?? '')) || 0) : 0),
-            has_free_tier: (prototype.type ?? 'token') === 'subscription'
-                ? (Boolean(prototype.is_local) ? true : Boolean(prototype.has_free_tier))
-                : false,
-            max_tier_charge: Boolean(prototype.is_local)
-                ? 0
-                : ((prototype.type ?? 'token') === 'subscription' ? (Number.parseFloat(String(prototype.max_tier_charge ?? '')) || 0) : 0),
-            max_charge_per_message: Boolean(prototype.is_local)
-                ? 0
-                : (Number.parseFloat(String(prototype.max_charge_per_message ?? '')) || 0),
+            charge: Boolean(prototype.is_local) ? 0 : dollarsToCents(prototype.charge),
+            has_free_tier: Boolean(prototype.is_local) ? true : Boolean(prototype.has_free_tier),
+            max_tier_charge: Boolean(prototype.is_local) ? 0 : dollarsToCents(prototype.max_tier_charge),
             private: prototype.private ?? false,
             access_point: prototype.access_point ?? '',
             path: prototype.path ?? '',
             status: prototype.status ?? '',
-            type: prototype.type ?? 'token',
-            billing_interval: (prototype.type ?? 'token') === 'subscription'
-                ? (prototype.billing_interval ?? 'monthly')
-                : '',
-            reply_window: Number.parseInt(String(prototype.reply_window ?? ''), 10) || 0,
+            type: prototype.type ?? 'subscription',
+            billing_interval: prototype.billing_interval ?? 'monthly',
             is_local: Boolean(prototype.is_local),
             qr_platforms: Array.isArray(prototype.qr_platforms) ? prototype.qr_platforms : [],
-            call_support: (prototype.type ?? 'token') === 'subscription' ? Boolean(prototype.call_support) : false,
+            call_support: Boolean(prototype.call_support),
             terms_of_use: (prototype.terms_of_use ?? '').trim(),
             privacy_policy: (prototype.privacy_policy ?? '').trim(),
         };
@@ -276,31 +253,26 @@
             </InfoStackSelect>
             
             <InfoStackSelect title="Type" id="protoType" bind:value={prototype!.type} disabled={!isEditing || hasActiveModels}>
-                <option value="token">{t('Token')}</option>
                 <option value="subscription">{t('Subscription')}</option>
             </InfoStackSelect>
 
-            {#if prototype!.type === 'subscription'}
-                <InfoStackSelect title="Billing Interval" id="protoBillingInterval" bind:value={prototype!.billing_interval} disabled={!isEditing || hasActiveModels}>
-                    <option value="daily">{t('Daily')}</option>
-                    <option value="weekly">{t('Weekly')}</option>
-                    <option value="monthly">{t('Monthly')}</option>
-                    <option value="yearly">{t('Yearly')}</option>
-                </InfoStackSelect>
-                {#if isEditing}
-                    <InfoStackToggle
-                        title="Call Support"
-                        description={prototype!.call_support ? 'Voice calls enabled on all platforms' : 'Voice calls disabled'}
-                        bind:checked={prototype!.call_support}
-                    />
-                {:else}
-                    <InfoStackInput title="Call Support" value={yesNo(prototype!.call_support)} readonly />
-                {/if}
+            <InfoStackSelect title="Billing Interval" id="protoBillingInterval" bind:value={prototype!.billing_interval} disabled={!isEditing || hasActiveModels}>
+                <option value="daily">{t('Daily')}</option>
+                <option value="monthly">{t('Monthly')}</option>
+            </InfoStackSelect>
+            {#if isEditing}
+                <InfoStackToggle
+                    title="Call Support"
+                    description={prototype!.call_support ? 'Voice calls enabled on all platforms' : 'Voice calls disabled'}
+                    bind:checked={prototype!.call_support}
+                />
+            {:else}
+                <InfoStackInput title="Call Support" value={yesNo(prototype!.call_support)} readonly />
             {/if}
             
             {#if Boolean(prototype!.is_local)}
                 <InfoStackInput title="Pricing" value={t('Free (required for local)')} readonly />
-            {:else if prototype!.type === 'subscription'}
+            {:else}
                 {#if isEditing && !lockTiers}
                     <InfoStackToggle
                         title="Free Tier"
@@ -312,13 +284,8 @@
                 {/if}
                 <InfoStackInput title="Pro Charge" type="number" id="protoCharge" bind:value={prototype!.charge} readonly={!isEditing || lockTiers} step="0.01" min="0" />
                 <InfoStackInput title="Max Tier Charge" type="number" id="protoMaxTierCharge" bind:value={prototype!.max_tier_charge} readonly={!isEditing || lockTiers} step="0.01" min="0" />
-                <InfoStackInput title="Max Charge Per Message" type="number" id="protoMaxCharge" bind:value={prototype!.max_charge_per_message} readonly={!isEditing || hasActiveModels} step="0.01" min="0" />
-            {:else}
-                <InfoStackInput title="Max Charge Per Message" type="number" id="protoMaxCharge" bind:value={prototype!.max_charge_per_message} readonly={!isEditing || hasActiveModels || isFreePrototype} step="0.01" min="0" />
             {/if}
             
-            <InfoStackInput title="Reply Window (sec)" type="number" id="replyWindow" bind:value={prototype!.reply_window} readonly={!isEditing} min="0" />
-
             {#if prototype!.certified}
                 <InfoStackInput title="Certification Status" value={t('Certified')} readonly />
             {/if}

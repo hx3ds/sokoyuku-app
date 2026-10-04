@@ -2,7 +2,7 @@
   import SignIn from './pages/signin/Page.svelte';
   import SignUp from './pages/signup/Page.svelte';
   import ChangePassword from './pages/change_password/Page.svelte';
-  import { fetchProfile } from './proxy/user.js';
+  import { rememberReturnTo, request } from './utils.js';
   import { onMount } from 'svelte';
   import Layout from './pages/Layout.svelte';
   import Explore from './pages/explore/Page.svelte';
@@ -13,10 +13,8 @@
   import MySubscriptions from './pages/my_subscriptions/Page.svelte';
   import Notifications from './pages/notifications/Page.svelte';
   import PaymentHistory from './pages/payment_history/Page.svelte';
-  import ChatHistory from './pages/chat_history/Page.svelte';
   import PayoutDetails from './pages/payout_details/Page.svelte';
   import User from './pages/user/Page.svelte';
-  import Credits from './pages/credits/Page.svelte';
   import Model from './pages/model/Page.svelte';
   import Prototype from './pages/prototype/Page.svelte';
   import Prototypes from './pages/prototypes/Page.svelte';
@@ -58,14 +56,12 @@
     { path: '/my-subscriptions', component: MySubscriptions },
     { path: '/notifications', component: Notifications },
     { path: '/payment-history', component: PaymentHistory },
-    { path: '/chat-history', component: ChatHistory },
     { path: '/payout-details', component: PayoutDetails },
     { path: '/user/:username', component: User },
     { path: '/model/:modelId', component: Model },
     { path: '/prototypes/:username', component: Prototypes },
     { path: '/prototype/:prototypeId', component: Prototype },
-    { path: '/call/:modelId', component: Call },
-    { path: '/credits', component: Credits }
+    { path: '/call/:modelId', component: Call }
   ];
 
   /** @type {Route} */
@@ -123,18 +119,25 @@
 
     if (match && !match.public) {
         if (!isAuthenticated) {
-            try {
-                const profile = await fetchProfile();
-                console.log("Profile:", profile);
-                if (profile) {
-                    isAuthenticated = true;
-                } else {
-                    history.replaceState(null, '', '/signin');
-                    match = routes.find(r => r.path === '/signin') || null;
+            let profile = null;
+            let reachedServer = false;
+            for (let attempt = 0; attempt < 3; attempt++) {
+                const data = await request('/api/get_my_profile');
+                if (data.result === -1) {
+                    console.error(data.msg);
+                    continue;
                 }
-            } catch (e) {
-                 history.replaceState(null, '', '/signin');
-                 match = routes.find(r => r.path === '/signin') || null;
+                reachedServer = true;
+                profile = data.result === 0 ? data.data : null;
+                break;
+            }
+            if (profile) {
+                console.log("Profile:", profile);
+                isAuthenticated = true;
+            } else if (reachedServer) {
+                rememberReturnTo();
+                history.replaceState(null, '', '/signin');
+                match = routes.find(r => r.path === '/signin') || null;
             }
         }
     }

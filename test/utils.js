@@ -41,12 +41,15 @@ export async function prepareTrackedUser() {
 }
 
 export async function submitAuthForm(page, buttonName, apiPath) {
-  const responsePromise = page.waitForResponse(
-    (res) => res.url().includes(apiPath) && res.request().method() === 'POST',
-    { timeout: 30000 }
-  );
-  await page.getByRole('button', { name: buttonName }).click();
-  const res = await responsePromise;
+  const button = page.getByRole('button', { name: buttonName });
+  await expect(button).toBeEnabled();
+  const [res] = await Promise.all([
+    page.waitForResponse(
+      (r) => r.url().includes(apiPath) && r.request().method() === 'POST',
+      { timeout: 30000 }
+    ),
+    button.click(),
+  ]);
   return res.json();
 }
 
@@ -140,22 +143,26 @@ export async function createRemotePrototypeViaUi(page, options) {
   if (options.description) {
     await dialog.getByPlaceholder('Describe what this prototype does...').fill(options.description);
   }
-  if (options.type === 'subscription') {
-    await dialog.locator('.list-item').filter({ hasText: 'Type' }).locator('select').selectOption('subscription');
-    if (options.callSupport) {
-      await dialog.locator('.list-item').filter({ hasText: 'Call Support' }).click();
-    }
-    if (options.charge != null) {
-      await dialog.locator('.list-item').filter({ hasText: 'Pro Charge' }).locator('input').fill(String(options.charge));
-    }
+  if (options.callSupport) {
+    await dialog.locator('.list-item').filter({ hasText: 'Call Support' }).click();
+  }
+  if (options.charge != null) {
+    await dialog.locator('.list-item').filter({ hasText: 'Pro Charge' }).locator('input').fill(String(options.charge));
+  }
+  if (options.freeTier) {
+    await dialog.locator('.list-item').filter({ hasText: 'Free Tier' }).click();
   }
   if (options.maxChats != null) {
     await dialog.locator('.list-item').filter({ hasText: 'Max Chats' }).locator('input').fill(String(options.maxChats));
   }
-  if (options.replyWindow != null) {
-    await dialog.locator('.list-item').filter({ hasText: 'Reply Window (sec)' }).locator('input').fill(String(options.replyWindow));
-  }
-  await dialog.getByRole('button', { name: 'Create Prototype' }).click();
+  const [createRes] = await Promise.all([
+    page.waitForResponse(
+      (r) => r.url().includes('/api/add_prototype') && r.request().method() === 'POST'
+    ),
+    dialog.getByRole('button', { name: 'Create Prototype' }).click(),
+  ]);
+  const createBody = await createRes.json();
+  expect(createBody.result, `add_prototype: ${JSON.stringify(createBody)}`).toBe(0);
   await expect(page.getByRole('heading', { name: 'Create New Prototype' })).toBeHidden({ timeout: 15000 });
   await expect(page.locator('.list-item').filter({ hasText: name }).first()).toBeVisible({ timeout: 15000 });
 }

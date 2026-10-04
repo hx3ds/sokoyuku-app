@@ -33,7 +33,89 @@ test.describe('Profile Page', () => {
         }),
       });
     });
+
+    await page.route('**/api/stripe/connect/status', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ result: 0, data: { connected: false } }),
+      });
+    });
+
+    await page.route('**/api/stripe/connect/account_session', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          result: 1,
+          msg: 'account session skipped in test',
+        }),
+      });
+    });
   }
+
+  test('should update Stripe Connect without country when already connected', async ({ page, baseURL }) => {
+    await mockSokoyukuSubscription(page);
+    const stripeConnectInput = page
+      .locator('.list-item')
+      .filter({ hasText: 'Stripe Connect' })
+      .locator('input');
+
+    await page.route('**/api/stripe/connect/status', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          result: 0,
+          data: {
+            connected: true,
+            account_id: 'acct_test_connected',
+            details_submitted: false,
+            charges_enabled: false,
+            payouts_enabled: false,
+            tax_ready: false,
+          },
+        }),
+      });
+    });
+
+    await page.route('**/api/stripe/connect/onboarding_link', async route => {
+      const body = route.request().postDataJSON();
+      expect(body.return_url).toContain('/profile');
+      expect(body.refresh_url).toContain('/profile');
+      expect(body.country).toBeUndefined();
+      expect(body.entity_type).toBeUndefined();
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          result: 0,
+          data: {
+            url: `${baseURL}/profile?stripe_connect_update=1`,
+            account_id: 'acct_test_connected',
+          },
+        }),
+      });
+    });
+
+    await page.route('**/api/stripe/connect/account_session', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          result: 1,
+          msg: 'account session skipped in test',
+        }),
+      });
+    });
+
+    await page.goto('/profile', { waitUntil: 'domcontentloaded' });
+    await expect(stripeConnectInput).toHaveValue(/Connected/, { timeout: 15000 });
+    await expect(page.locator('#stripeConnectCountry')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Update' }).click();
+    await expect(page).toHaveURL(/\/profile\?stripe_connect_update=1/);
+  });
 
   test('should run the Stripe Connect button flow', async ({ page, baseURL }) => {
     let connectStatusCalls = 0;
@@ -71,6 +153,8 @@ test.describe('Profile Page', () => {
       const body = route.request().postDataJSON();
       expect(body.return_url).toContain('/profile');
       expect(body.refresh_url).toContain('/profile');
+      expect(body.country).toBeUndefined();
+      expect(body.entity_type).toBeUndefined();
 
       await route.fulfill({
         status: 200,
@@ -85,14 +169,46 @@ test.describe('Profile Page', () => {
       });
     });
 
-    await page.goto('/profile');
+    await page.route('**/api/stripe/connect/account_session', async route => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          result: 1,
+          msg: 'account session skipped in test',
+        }),
+      });
+    });
+
+    await page.goto('/profile', { waitUntil: 'domcontentloaded' });
 
     await expect(stripeConnectInput).toHaveValue('Not connected');
+    await expect(page.locator('#stripeConnectCountry')).toHaveCount(0);
+    await expect(page.locator('#stripeConnectEntityType')).toHaveCount(0);
     await page.getByRole('button', { name: 'Connect' }).click();
 
     await expect(page).toHaveURL(/\/profile\?stripe_connect_return=1/);
     await expect(page.getByRole('heading', { name: 'Stripe Connect' })).toBeVisible({ timeout: 15000 });
-    await expect(stripeConnectInput).toHaveValue('Connected · Payouts enabled', { timeout: 15000 });
+    await expect(stripeConnectInput).toHaveValue('Connected · Payouts enabled · Tax setup needed', {
+      timeout: 15000,
+    });
+    await expect(page.getByText('Stripe Dashboard')).toHaveCount(0);
+
+    await page.context().route('https://dashboard.stripe.com/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'text/html',
+        body: '<html><body>dashboard</body></html>',
+      });
+    });
+    const popupPromise = page.waitForEvent('popup');
+    await page
+      .locator('.list-item')
+      .filter({ hasText: 'Stripe Connect' })
+      .getByRole('button', { name: 'Manage' })
+      .click();
+    const popup = await popupPromise;
+    await expect(popup).toHaveURL(/dashboard\.stripe\.com/);
   });
 
   test('should show upgrade action for the free plan and start checkout', async ({ page, baseURL }) => {
@@ -152,7 +268,9 @@ test.describe('Profile Page', () => {
     });
 
     await page.goto('/profile');
-    await expect(page.locator('#page-profile')).toContainText('Sokoyuku Subscription');
+    await expect(page.locator('#page-profile')).toContainText('Sokoyuku Subscription', {
+      timeout: 15000,
+    });
     await expect(
       page.locator('.list-item').filter({ hasText: 'Sokoyuku Subscription' }).locator('input')
     ).toHaveValue('Free');
@@ -196,7 +314,6 @@ test.describe('Profile Page', () => {
     await expect(profilePage.getByRole('link', { name: /Overview/ })).toBeVisible();
     await expect(profilePage.getByRole('link', { name: 'My Prototypes' })).toBeVisible();
     await expect(profilePage.getByRole('link', { name: 'Notifications' })).toBeVisible();
-    await expect(profilePage.getByRole('link', { name: 'Credits' })).toBeVisible();
     await expect(profilePage.getByRole('link', { name: 'My Subscriptions' })).toBeVisible();
     await expect(profilePage.getByRole('link', { name: 'Payment History' })).toBeVisible();
     await expect(profilePage.getByRole('link', { name: 'Payout Details' })).toBeVisible();
@@ -205,7 +322,6 @@ test.describe('Profile Page', () => {
   const profileLinks = [
     ['My Prototypes', /\/my-prototypes/],
     ['Notifications', /\/notifications/],
-    ['Credits', /\/credits/],
     ['My Subscriptions', /\/my-subscriptions/],
     ['Payment History', /\/payment-history/],
     ['Payout Details', /\/payout-details/],

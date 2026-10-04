@@ -10,7 +10,7 @@
     import InfoStackBadge from '../InfoStack/InfoStackBadge.svelte';
     import { fetchModel, updateModel } from '../../proxy/model.js';
     import { showError } from './state.svelte.js';
-    import { formatDateTime, t, tAccountType, tStatus, yesNo } from '../../i18n/locale.svelte.js';
+    import { formatDateTime, formatMoney, t, tAccountType, tStatus, yesNo } from '../../i18n/locale.svelte.js';
 
     let {
         modelId = null,
@@ -314,20 +314,14 @@
         <InfoStackInput title="Max Chats" value={model.max_chats} readonly />
         <InfoStackInput title="Access Point" value={model.access_point} readonly />
         <InfoStackInput title="Type" value={tStatus(model.type)} readonly />
-        {#if model.type === 'subscription'}
+            {#if model.type === 'subscription'}
             <InfoStackInput title="Tier" value={model.subscription_tier || '—'} readonly />
-            <InfoStackInput title="Pro Charge" value={model.charge || '0'} readonly />
+            <InfoStackInput title="Pro Charge" value={formatMoney(model.charge || 0)} readonly />
             {#if Number(model.max_tier_charge || 0) > 0}
-                <InfoStackInput title="Max Tier Charge" value={model.max_tier_charge} readonly />
+                <InfoStackInput title="Max Tier Charge" value={formatMoney(model.max_tier_charge)} readonly />
             {/if}
-            {#if Number(model.max_charge_per_message || 0) > 0}
-                <InfoStackInput title="Max Charge Per Message" value={model.max_charge_per_message} readonly />
-            {/if}
-        {:else}
-            <InfoStackInput title="Max Charge Per Message" value={model.max_charge_per_message || '0'} readonly />
         {/if}
         <InfoStackInput title="Available until" value={formatDate(model.period)} readonly />
-        <InfoStackInput title="Auto renew" value={yesNo(model.auto_renew)} readonly />
         <InfoStackInput title="Last Used Account" value={formatAccountLabel(getLastUsedModelAccount(model))} readonly />
 
         <InfoStackDivider label="Assigned accounts" />

@@ -1,10 +1,7 @@
 import { request } from '../utils.js';
 
 function normalizeBillingInterval(type, billingInterval) {
-    if (type === 'subscription') {
-        return billingInterval || 'monthly';
-    }
-    return '';
+    return billingInterval || 'monthly';
 }
 
 function isHttpHttpsUrl(value) {
@@ -30,14 +27,12 @@ function normalizeAccessPoint(value, isLocal) {
 }
 
 function normalizePrototypeFields(data = {}) {
-    const type = data.type ?? 'token';
+    const type = 'subscription';
     const isLocal = Boolean(data.is_local);
-    const charge = isLocal ? 0 : (type === 'subscription' ? (data.charge ?? 0) : 0);
-    const maxTierCharge = isLocal ? 0 : (type === 'subscription' ? (data.max_tier_charge ?? 0) : 0);
+    const charge = isLocal ? 0 : (data.charge ?? 0);
+    const maxTierCharge = isLocal ? 0 : (data.max_tier_charge ?? 0);
     let hasFreeTier = Boolean(data.has_free_tier);
-    if (type !== 'subscription') {
-        hasFreeTier = false;
-    } else if (isLocal) {
+    if (isLocal) {
         hasFreeTier = true;
     } else if (Number(charge) === 0 && Number(maxTierCharge) === 0 && data.has_free_tier == null) {
         hasFreeTier = true;
@@ -53,15 +48,13 @@ function normalizePrototypeFields(data = {}) {
         charge,
         has_free_tier: hasFreeTier,
         max_tier_charge: maxTierCharge,
-        max_charge_per_message: isLocal ? 0 : (data.max_charge_per_message ?? 0),
         type,
         billing_interval: normalizeBillingInterval(type, data.billing_interval),
-        reply_window: data.reply_window ?? 0,
         is_local: isLocal,
         qr_platforms: Array.isArray(data.qr_platforms) ? data.qr_platforms : [],
         terms_of_use: data.terms_of_use ?? '',
         privacy_policy: data.privacy_policy ?? '',
-        call_support: type === 'subscription' ? Boolean(data.call_support) : false,
+        call_support: Boolean(data.call_support),
     };
 }
 
@@ -135,10 +128,8 @@ export async function updatePrototype(data) {
         'private',
         'max_chats',
         'charge',
-        'max_charge_per_message',
         'type',
         'billing_interval',
-        'reply_window',
         'qr_platforms',
         'terms_of_use',
         'privacy_policy',
@@ -175,8 +166,14 @@ export async function fetchMyPrototypes() {
 }
 
 export async function fetchMyPrototypePayoutDetails() {
-    const data = await request('/api/get_my_prototype_payout_details');
-    return data.result === 0 ? data.data.prototypes : [];
+    try {
+        const data = await request('/api/get_my_prototype_payout_details');
+        if (data.result !== 0) return [];
+        const prototypes = data.data?.prototypes;
+        return Array.isArray(prototypes) ? prototypes : [];
+    } catch {
+        return [];
+    }
 }
 
 export async function fetchUserPrototypes(username) {

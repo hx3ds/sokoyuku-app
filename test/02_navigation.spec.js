@@ -94,10 +94,4 @@ test.describe('Navigation', () => {
     await page.getByRole('button', { name: 'Go Back' }).click();
     await expect(page).toHaveURL(/\/models/);
   });
-
-  test('should show user balance/credits', async ({ page }) => {
-    await page.goto('/credits');
-    await expect(page).toHaveURL(/\/credits/);
-    await expect(page.getByRole('heading', { name: 'Credits' })).toBeVisible({ timeout: 15000 });
-  });
 });

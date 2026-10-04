@@ -12,6 +12,15 @@ export const test = base.extend({
   storageState: async ({}, use, workerInfo) => {
     await use(path.join(authDir, `user-${workerInfo.parallelIndex}.json`));
   },
+  page: async ({ page }, use) => {
+    await page.route('**/connect-js.stripe.com/**', (route) => route.abort());
+    await page.route('**/js.stripe.com/**', (route) => route.abort());
+    const originalGoto = page.goto.bind(page);
+    page.goto = (url, options) =>
+      originalGoto(url, { waitUntil: 'domcontentloaded', ...(options || {}) });
+    await use(page);
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
+  },
 });
 
 export { expect };

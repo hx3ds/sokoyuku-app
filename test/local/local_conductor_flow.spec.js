@@ -80,15 +80,14 @@ test.describe('Local Conductor E2E', () => {
           private: true,
           max_chats: 1,
           charge: 0,
-          max_charge_per_message: 0,
-          type: 'token',
-          billing_interval: '',
-          reply_window: 600,
+          type: 'subscription',
+          billing_interval: 'monthly',
           is_local: true,
           qr_platforms: [],
           terms_of_use: '',
           privacy_policy: '',
           call_support: false,
+          has_free_tier: true,
         },
       });
       expect(addProtoResp.ok()).toBeTruthy();

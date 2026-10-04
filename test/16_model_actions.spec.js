@@ -17,16 +17,23 @@ async function patchModelList(page, patchFn) {
       await route.continue();
       return;
     }
-    const res = await route.fetch();
-    const body = await res.json();
-    if (body?.result === 0 && Array.isArray(body?.data?.models)) {
-      body.data.models = patchFn(body.data.models);
+    try {
+      const res = await route.fetch();
+      const body = await res.json();
+      if (body?.result === 0 && Array.isArray(body?.data?.models)) {
+        body.data.models = patchFn(body.data.models);
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(body),
+      });
+    } catch (err) {
+      if (page.isClosed()) return;
+      const msg = String(err?.message || err);
+      if (msg.includes('disposed') || msg.includes('has been closed')) return;
+      throw err;
     }
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(body),
-    });
   });
 }
 
@@ -164,7 +171,11 @@ test.describe('Model actions', () => {
       await expect(modal.getByText('chat-e2e-1')).toBeVisible();
       await modal.getByRole('button', { name: 'Delete chat' }).click();
       await expect(page.getByText('Remove this chat?')).toBeVisible();
+      const removePromise = page.waitForResponse(
+        (r) => r.url().includes('/api/remove_chat_from_model') && r.request().method() === 'POST'
+      );
       await page.getByRole('button', { name: 'OK' }).click();
+      expect((await (await removePromise).json()).result).toBe(0);
       await expect(page.getByText('Chat removed')).toBeVisible();
       await page.getByRole('button', { name: 'OK' }).click();
       await expect(modal.getByText('No chats found for this model')).toBeVisible();
@@ -174,13 +185,12 @@ test.describe('Model actions', () => {
     }
   });
 
-  test('should subscribe, unsubscribe, and resubscribe from the model menu', async ({ page, baseURL }) => {
+  test('should subscribe from the model menu and hide it while free access is active', async ({ page, baseURL }) => {
     const protoName = `E2E SubMenu ${uniqueSuffix()}`;
     try {
       await createRemotePrototypeViaUi(page, {
         name: protoName,
-        type: 'subscription',
-        charge: 1,
+        freeTier: true,
       });
       await page.goto('/explore');
       await page.getByPlaceholder('Search prototypes...').fill(protoName);
@@ -189,15 +199,14 @@ test.describe('Model actions', () => {
       await addToMyModels(page, exploreItem.locator('.actions'));
 
       let period = null;
-      let autoRenew = false;
       await patchModelList(page, (models) =>
         models.map((model) => {
           if (model.name !== protoName) return model;
-          return { ...model, type: 'subscription', period, auto_renew: autoRenew };
+          return { ...model, type: 'subscription', period, charge: 0, max_tier_charge: 0 };
         })
       );
 
-      await page.route('**/api/create_model_subscription_checkout', async (route) => {
+      await page.route('**/api/create_model_payment_checkout', async (route) => {
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -213,39 +222,9 @@ test.describe('Model actions', () => {
       await expect(page).toHaveURL(/subscription=success/, { timeout: 15000 });
 
       period = new Date(Date.now() + 86400000).toISOString();
-      autoRenew = true;
-      await page.route('**/api/cancel_model_subscription', async (route) => {
-        autoRenew = false;
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ result: 0 }),
-        });
-      });
-
+      await page.goto('/models');
       await openModelOptions(page, protoName);
-      await page.getByRole('button', { name: 'Unsubscribe' }).click();
-      await expect(page.getByText('Cancel subscription?')).toBeVisible();
-      const cancel = page.waitForResponse((res) => res.url().includes('/api/cancel_model_subscription'));
-      await page.getByRole('button', { name: 'OK' }).click();
-      await cancel;
-
-      await openModelOptions(page, protoName);
-      await expect(page.getByRole('button', { name: 'Resubscribe' })).toBeVisible();
-      await page.unroute('**/api/create_model_subscription_checkout');
-      await page.route('**/api/create_model_subscription_checkout', async (route) => {
-        autoRenew = true;
-        await route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ result: 0, data: { subscribed: true } }),
-        });
-      });
-      const resub = page.waitForResponse((res) => res.url().includes('/api/create_model_subscription_checkout'));
-      await page.getByRole('button', { name: 'Resubscribe' }).click();
-      await resub;
-      await openModelOptions(page, protoName);
-      await expect(page.getByRole('button', { name: 'Unsubscribe' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Subscribe' })).toHaveCount(0);
     } finally {
       await cleanupModelByName(page, protoName);
       await cleanupPrototypeByName(page, protoName);

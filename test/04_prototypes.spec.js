@@ -6,6 +6,7 @@ import {
   createRemotePrototypeViaUi,
   loadStationConductorPublicKey,
   mockClipboard,
+  openCreatePrototypeDialog,
   saveConductorPublicKeyViaUi,
   uniqueSuffix,
 } from './utils.js';
@@ -40,16 +41,13 @@ test.describe('Prototypes', () => {
     }
   });
 
-  test('should create a subscription prototype with pricing and call support', async ({ page }) => {
+  test('should create a subscription prototype with call support', async ({ page }) => {
     const name = `E2E Sub Proto ${uniqueSuffix()}`;
     try {
       await createRemotePrototypeViaUi(page, {
         name,
-        type: 'subscription',
         callSupport: true,
-        charge: 2.5,
         maxChats: 3,
-        replyWindow: 120,
         description: 'subscription e2e',
       });
       await page.locator('.list-item').filter({ hasText: name }).first().click();
@@ -60,12 +58,30 @@ test.describe('Prototypes', () => {
       await expect(page.locator('.list-item').filter({ hasText: 'Call Support' }).locator('input')).toHaveValue(
         'Yes'
       );
-      await expect(page.locator('#protoCharge')).toHaveValue('2.5');
+      await expect(page.locator('#protoCharge')).toHaveValue('0');
       await expect(page.locator('#maxChats')).toHaveValue('3');
-      await expect(page.locator('#replyWindow')).toHaveValue('120');
     } finally {
       await cleanupPrototypeByName(page, name);
     }
+  });
+
+  test('should refuse a paid prototype without a Stripe connected account', async ({ page }) => {
+    const dialog = await openCreatePrototypeDialog(page);
+    await dialog.getByPlaceholder('e.g. my-awesome-account').fill(`E2E Paid Gate ${uniqueSuffix()}`);
+    await dialog.getByPlaceholder(/e\.g\. https:\/\/example\.com|e\.g\. http:\/\/localhost:8080/).fill(
+      'https://tgbd.sokoyuku.com'
+    );
+    await dialog.getByPlaceholder('e.g. /my-account').fill('prototypes.passive');
+    await dialog.locator('.list-item').filter({ hasText: 'Pro Charge' }).locator('input').fill('2.5');
+    const [createRes] = await Promise.all([
+      page.waitForResponse(
+        (r) => r.url().includes('/api/add_prototype') && r.request().method() === 'POST'
+      ),
+      dialog.getByRole('button', { name: 'Create Prototype' }).click(),
+    ]);
+    const createBody = await createRes.json();
+    expect(createBody.result).not.toBe(0);
+    await expect(dialog.getByText('Paid prototypes require a Stripe connected account')).toBeVisible();
   });
 
   test('should edit fields beyond name and show refresh token', async ({ page }) => {
@@ -78,14 +94,12 @@ test.describe('Prototypes', () => {
       await page.getByRole('button', { name: 'Edit prototype' }).click();
       await page.locator('#protoDescription').fill('after description');
       await page.locator('#maxChats').fill('4');
-      await page.locator('#replyWindow').fill('90');
       await page.locator('#protoTermsOfUse').fill('https://example.com/terms');
       await page.locator('#protoPrivacyPolicy').fill('https://example.com/privacy');
       await page.getByRole('button', { name: 'Save changes' }).click();
       await expect(page.getByRole('button', { name: 'Edit prototype' })).toBeVisible({ timeout: 15000 });
       await expect(page.locator('#protoDescription')).toHaveValue('after description');
       await expect(page.locator('#maxChats')).toHaveValue('4');
-      await expect(page.locator('#replyWindow')).toHaveValue('90');
       await expect(page.locator('.list-item').filter({ hasText: 'Terms of Use' }).locator('input')).toHaveValue(
         'Custom Terms of Use'
       );
@@ -120,7 +134,16 @@ test.describe('Prototypes', () => {
       const item = page.locator('.list-item').filter({ hasText: name }).first();
       await expect(item).toBeVisible({ timeout: 15000 });
       await addToMyModels(page, item.locator('.actions'));
-      await item.locator('.actions').getByRole('button', { name: 'Add to my models' }).click();
+
+      const addBtn = item.locator('.actions').getByRole('button', { name: 'Add to my models' });
+      await expect(addBtn).toBeEnabled();
+      const dupPromise = page.waitForResponse(
+        (r) => r.url().includes('/api/add_prototype_to_user_model_list') && r.request().method() === 'POST'
+      );
+      await addBtn.click();
+      const dupBody = await (await dupPromise).json();
+      expect(dupBody.result).not.toBe(0);
+
       const renameModal = page.locator('.dialog-wrapper').filter({
         has: page.getByRole('heading', { name: 'Add to My Models' }),
       });

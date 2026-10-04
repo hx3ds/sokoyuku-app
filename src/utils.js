@@ -4,6 +4,45 @@ import { t } from './i18n/locale.svelte.js';
 
 const PUBLIC_KEY_TOKEN_PREFIX = 'lcpk1:';
 const ENCRYPTED_TOKEN_PREFIX = 'lcenc1:';
+const RETURN_TO_KEY = 'returnTo';
+const AUTH_PATHS = new Set(['/signin', '/signup', '/change-password']);
+
+function safeReturnPath(value) {
+    if (typeof value !== 'string' || value.length === 0 || value.length > 2048) {
+        return '';
+    }
+    if (!value.startsWith('/') || value.startsWith('//') || value.includes('\\') || value.includes('://')) {
+        return '';
+    }
+    const path = value.split(/[?#]/, 1)[0];
+    if (!path.startsWith('/') || AUTH_PATHS.has(path)) {
+        return '';
+    }
+    return value;
+}
+
+export function rememberReturnTo() {
+    const next = safeReturnPath(window.location.pathname + window.location.search + window.location.hash);
+    if (!next) {
+        return;
+    }
+    try {
+        sessionStorage.setItem(RETURN_TO_KEY, next);
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+export function consumeReturnTo() {
+    let stored = '';
+    try {
+        stored = sessionStorage.getItem(RETURN_TO_KEY) ?? '';
+        sessionStorage.removeItem(RETURN_TO_KEY);
+    } catch (err) {
+        console.error(err);
+    }
+    return safeReturnPath(stored) || '/models';
+}
 
 export function validateEmail(email) {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -137,12 +176,6 @@ export function parsePublicKeyToken(token) {
 
 export function isEncryptedToken(token) {
     return String(token || '').trim().startsWith(ENCRYPTED_TOKEN_PREFIX);
-}
-
-export function ensureEncryptedTokenPrefix(token) {
-    const t = String(token || '').trim();
-    if (!t) return t;
-    return t.startsWith(ENCRYPTED_TOKEN_PREFIX) ? t : ENCRYPTED_TOKEN_PREFIX + t;
 }
 
 export async function encryptWithPublicKeyToken(publicKeyToken, plaintext) {

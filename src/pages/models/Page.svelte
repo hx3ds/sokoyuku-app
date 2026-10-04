@@ -19,6 +19,7 @@
     import OpenChatButton from '../../components/Button/OpenChatButton.svelte';
     import CallButton from '../../components/Button/CallButton.svelte';
     import AccountSelectModal from '../../components/Modal/AccountSelectModal.svelte';
+    import OpenChatLinkModal from '../../components/Modal/OpenChatLinkModal.svelte';
     import ChatManagementModal from '../../components/Modal/ChatManagementModal.svelte';
     import CallManagementModal from '../../components/Modal/CallManagementModal.svelte';
     import AddAccountModal from '../../components/Modal/AddAccountModal.svelte';
@@ -47,14 +48,10 @@
         type?: string | null;
         call_support?: boolean;
         period?: string | null;
-        auto_renew?: boolean | null;
-        stripe_subscription_id?: string | null;
-        subscription_status?: string | null;
         subscription_tier?: string | null;
         charge?: number | null;
         has_free_tier?: boolean | null;
         max_tier_charge?: number | null;
-        max_charge_per_message?: number | null;
         is_local?: boolean;
         accts?: ModelAccount[];
     };
@@ -92,6 +89,8 @@
     let isAccountsSectionExpanded: boolean = $state(false);
     let activeCallPoll: ReturnType<typeof setInterval> | null = null;
     let managedCallSessions: any[] = $state([]);
+    let chatLinkFallback: string | null = $state(null);
+    let pendingChatPopup: Window | null = null;
 
     $effect(() => {
         if (accountStore.initialized && accountStore.accounts.length === 0) {
@@ -180,14 +179,7 @@
     });
 
     function getDeleteDisabledReason(model: Model) {
-        if (model.stripe_subscription_id && !['canceled', 'incomplete_expired'].includes(model.subscription_status || '')) {
-            return t('Cannot delete model with active subscription. Please unsubscribe first.');
-        }
         if (model.period && new Date(model.period) > new Date()) {
-            // Token models can be deleted even if they have available time
-            if (model.type === 'token') {
-                return null;
-            }
             return t('Cannot delete model while it is still available.');
         }
         return null;
@@ -356,68 +348,143 @@
         }
     }
 
+    function accountUsesChatPopup(account: Account) {
+        const type = account?.type || 'telegram';
+        return type === 'telegram' || type === 'discord';
+    }
+
+    function isChatPopupOpen(popup: Window | null): popup is Window {
+        if (!popup) return false;
+        try {
+            return !popup.closed;
+        } catch {
+            return false;
+        }
+    }
+
+    function closePendingChatPopup() {
+        const popup = pendingChatPopup;
+        pendingChatPopup = null;
+        if (!isChatPopupOpen(popup)) return;
+        try {
+            popup.close();
+        } catch {
+            // The tab is already gone.
+        }
+    }
+
+    function reserveChatPopup(account: Account) {
+        if (!accountUsesChatPopup(account)) {
+            closePendingChatPopup();
+            return;
+        }
+        if (isChatPopupOpen(pendingChatPopup)) return;
+        pendingChatPopup = null;
+        // Same click turn as the account row, before any await, so the browser still allows the tab.
+        try {
+            pendingChatPopup = window.open('about:blank', '_blank');
+        } catch {
+            pendingChatPopup = null;
+        }
+    }
+
+    function releaseChatPopup(link: string) {
+        const popup = pendingChatPopup;
+        pendingChatPopup = null;
+        if (!isChatPopupOpen(popup)) return false;
+        try {
+            popup.location.href = link;
+        } catch {
+            try {
+                popup.close();
+            } catch {
+                // The tab is already gone.
+            }
+            return false;
+        }
+        try {
+            popup.opener = null;
+        } catch {
+            // Navigation to another site can drop access to the tab.
+        }
+        return true;
+    }
+
     // Chat Logic
     async function handleStartChat(account: Account) {
         const model = modalData as Model | null;
         if (!model || !account) return;
         if (modalLoading) return;
 
-        const accountId = account.account_id;
-        const existingModel = findModelUsingAccount(accountId, model.model_id);
-        if (existingModel) {
-            if (!await showConfirm(t('Account "{account}" is used by "{model}". Reassign?', { account: account.account_username, model: existingModel.name }))) return;
-        }
-
-        modalLoading = true;
-        modalBusyAccountId = accountId;
-        let res;
+        reserveChatPopup(account);
+        let handedOff = false;
         try {
-            res = await AccountAPI.requestOtpForChat(accountId, model.model_id);
-        } finally {
-            modalLoading = false;
-            modalBusyAccountId = null;
-        }
+            const accountId = account.account_id;
+            const existingModel = findModelUsingAccount(accountId, model.model_id);
+            if (existingModel) {
+                if (!await showConfirm(t('Account "{account}" is used by "{model}". Reassign?', { account: account.account_username, model: existingModel.name }))) return;
+            }
 
-        if (res.result !== 0) {
-            if (await offerSubscribeIfNeeded(res, model, () => handleStartChat(account))) return;
+            modalLoading = true;
+            modalBusyAccountId = accountId;
+            let res;
+            try {
+                res = await AccountAPI.requestOtpForChat(accountId, model.model_id);
+            } finally {
+                modalLoading = false;
+                modalBusyAccountId = null;
+            }
+
+            if (res.result !== 0) {
+                const subscription = await offerSubscribeIfNeeded(res, model, () => handleStartChat(account));
+                if (subscription === 'retried') {
+                    handedOff = true;
+                    return;
+                }
+                if (subscription) return;
+                showError(res.msg || t('Failed to start chat'));
+                return;
+            }
+
+            const link = buildOpenChatLink(account, model.model_id, res.data?.otp, res.data?.link);
+            if (link) {
+                const opened = releaseChatPopup(link);
+                handedOff = true;
+                closeModal();
+                chatLinkFallback = opened ? null : link;
+                await loadData();
+                return;
+            }
+
+            if (res.data?.otp) {
+                const startCmd = buildStartCommand(model.model_id, res.data.otp);
+                const copied = await copyTextToClipboard(startCmd);
+                if (!copied) {
+                    prompt(t('Copy start command:'), startCmd);
+                }
+                if ((account?.type || '') === 'whatsapp_cloud') {
+                    const verifyToken = String(res.data?.verify_token || '').trim();
+                    const webhookURL = String(res.data?.webhook_url || '').trim();
+                    const lines = [t('Start command copied!')];
+                    lines.push('');
+                    lines.push(t('Configure Meta WhatsApp webhook settings:'));
+                    if (verifyToken) lines.push(`Verify token: ${verifyToken}`);
+                    if (webhookURL) lines.push(`Webhook URL: ${webhookURL}`);
+                    lines.push('');
+                    lines.push(t('Verify token is derived from this account id. Set both values in Meta before messaging.'));
+                    await showAlert(lines.join('\n'), t('WhatsApp Cloud API'), 'info');
+                } else if (copied) {
+                    showSuccess(t('Start command copied!'));
+                }
+                closeModal();
+                await loadData();
+                return;
+            }
+
             showError(res.msg || t('Failed to start chat'));
-            return;
+        } finally {
+            if (!handedOff) closePendingChatPopup();
         }
-
-        const link = buildOpenChatLink(account, model.model_id, res.data?.otp, res.data?.link);
-        if (link) {
-            window.open(link, '_blank');
-            closeModal();
-            await loadData();
-            return;
-        }
-
-        if (res.data?.otp) {
-            const startCmd = buildStartCommand(model.model_id, res.data.otp);
-            const copied = await copyTextToClipboard(startCmd);
-            if (!copied) {
-                prompt(t('Copy start command:'), startCmd);
-            }
-            if ((account?.type || '') === 'whatsapp_cloud') {
-                const verifyToken = String(res.data?.verify_token || '').trim();
-                const webhookURL = String(res.data?.webhook_url || '').trim();
-                const lines = [t('Start command copied!')];
-                lines.push('');
-                lines.push(t('Configure Meta WhatsApp webhook settings:'));
-                if (verifyToken) lines.push(`Verify token: ${verifyToken}`);
-                if (webhookURL) lines.push(`Webhook URL: ${webhookURL}`);
-                lines.push('');
-                lines.push(t('Verify token is derived from this account id. Set both values in Meta before messaging.'));
-                await showAlert(lines.join('\n'), t('WhatsApp Cloud API'), 'info');
-            } else if (copied) {
-                showSuccess(t('Start command copied!'));
-            }
-            closeModal();
-            await loadData();
-            return;
-        }
-
-        showError(res.msg || t('Failed to start chat'));
     }
 
     async function handleShareWithAccount(account: Account, modelArg: Model | null = modalData as Model | null) {
@@ -482,7 +549,7 @@
     }, id, t('Delete this model? This cannot be undone.'));
 
     async function handleSubscriptionCheckout(modelId: string) {
-        const res = await SubAPI.createModelSubscriptionCheckout({
+        const res = await SubAPI.createModelPaymentCheckout({
             model_id: modelId,
             success_url: `${window.location.origin}/models?subscription=success`,
             cancel_url: `${window.location.origin}/models?subscription=cancelled`
@@ -506,13 +573,14 @@
             t('Subscribe'),
             'warning',
             t('Subscribe')
-        )) return true;
+        )) return 'stopped';
         const outcome = await handleSubscriptionCheckout(model.model_id);
-        if (outcome === 'subscribed') await retry();
-        return true;
+        if (outcome === 'subscribed') {
+            await retry();
+            return 'retried';
+        }
+        return 'stopped';
     }
-
-    const handleUnsubscribe = (id: string) => performAction(SubAPI.cancelModelSubscription, id, t('Cancel subscription?'));
 
     async function handleShare(modelId: string) {
         const model = (modelStoreAny.models as Model[]).find((m) => m.model_id === modelId);
@@ -675,15 +743,9 @@
                 <div style="height: 1px; background-color: var(--color-border); margin: 4px 0;"></div>
                 <MenuItem onclick={() => openModal('chatManage', model)}>{t('Manage Chats')}</MenuItem>
                         
-                {#if model.type !== 'token'}
-                    {@const periodActive = Boolean(model.period && new Date(model.period) > new Date())}
-                    {#if periodActive && model.auto_renew}
-                        <MenuItem onclick={() => handleUnsubscribe(model.model_id)}>{t('Unsubscribe')}</MenuItem>
-                    {:else if periodActive}
-                        <MenuItem onclick={() => handleSubscriptionCheckout(model.model_id)}>{t('Resubscribe')}</MenuItem>
-                    {:else}
-                        <MenuItem onclick={() => handleSubscriptionCheckout(model.model_id)}>{t('Subscribe')}</MenuItem>
-                    {/if}
+                {@const periodActive = Boolean(model.period && new Date(model.period) > new Date())}
+                {#if !periodActive || Number(model.charge || 0) > 0 || Number(model.max_tier_charge || 0) > 0}
+                    <MenuItem onclick={() => handleSubscriptionCheckout(model.model_id)}>{t('Subscribe')}</MenuItem>
                 {/if}
                 <MenuItem onclick={() => handleShare(model.model_id)}>{t('Share')}</MenuItem>
             </ActionMenu>
@@ -873,6 +935,10 @@
             onclose={closeModal}
             onupdated={saveModelChanges}
         />
+    {/if}
+
+    {#if chatLinkFallback}
+        <OpenChatLinkModal url={chatLinkFallback} onclose={() => { chatLinkFallback = null; }} />
     {/if}
 </PageContainer>
 

@@ -93,21 +93,6 @@ function composeQqAccountToken(type, username, token) {
     return JSON.stringify({ app_id: appId, client_secret: secret });
 }
 
-export function accountTypeLabel(type) {
-    const raw = String(type || '').trim().toLowerCase();
-    if (raw.startsWith('qr:')) {
-        const inner = accountTypeLabel(raw.slice(3));
-        return inner ? `QR ${inner}` : 'QR';
-    }
-    if (raw === 'whatsapp_cloud') return 'WhatsApp Cloud API';
-    if (raw === 'qq') return 'QQ';
-    if (raw === 'telegram') return 'Telegram';
-    if (raw === 'matrix') return 'Matrix';
-    if (raw === 'discord') return 'Discord';
-    if (raw === 'sokoyuku') return 'Sokoyuku';
-    return String(type || 'account');
-}
-
 export function accountUsernameField(type) {
     const raw = normalizePlatformType(type);
     if (raw === 'discord') return { title: 'Application ID', placeholder: 'Enter Application ID' };
@@ -171,19 +156,6 @@ export function addAccount(accountData) {
         }
         return request('/api/add_account', { body });
     })();
-}
-
-export function addQrAccount(accountData) {
-    const body = {
-        name: accountData.name ?? '',
-        description: accountData.description ?? '',
-        type: accountData.type ?? '',
-        account_group: normalizeAccountGroup(accountData.account_group ?? accountData.group),
-        prototype_id: accountData.prototype_id ?? 0,
-        account_id: accountData.account_id ? normalizeId(accountData.account_id) : '',
-        qr_timeout_ms: Number(accountData.qr_timeout_ms ?? 0) || 0,
-    };
-    return request('/api/add_qr_account', { body });
 }
 
 export function changeAccount(accountData) {
