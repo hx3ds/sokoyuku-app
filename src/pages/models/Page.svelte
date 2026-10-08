@@ -90,7 +90,6 @@
     let activeCallPoll: ReturnType<typeof setInterval> | null = null;
     let managedCallSessions: any[] = $state([]);
     let chatLinkFallback: string | null = $state(null);
-    let pendingChatPopup: Window | null = null;
 
     $effect(() => {
         if (accountStore.initialized && accountStore.accounts.length === 0) {
@@ -348,66 +347,19 @@
         }
     }
 
-    function accountUsesChatPopup(account: Account) {
-        const type = account?.type || 'telegram';
-        return type === 'telegram' || type === 'discord';
-    }
-
-    function isChatPopupOpen(popup: Window | null): popup is Window {
-        if (!popup) return false;
+    function openChatPopup(link: string) {
         try {
-            return !popup.closed;
-        } catch {
-            return false;
-        }
-    }
-
-    function closePendingChatPopup() {
-        const popup = pendingChatPopup;
-        pendingChatPopup = null;
-        if (!isChatPopupOpen(popup)) return;
-        try {
-            popup.close();
-        } catch {
-            // The tab is already gone.
-        }
-    }
-
-    function reserveChatPopup(account: Account) {
-        if (!accountUsesChatPopup(account)) {
-            closePendingChatPopup();
-            return;
-        }
-        if (isChatPopupOpen(pendingChatPopup)) return;
-        pendingChatPopup = null;
-        // Same click turn as the account row, before any await, so the browser still allows the tab.
-        try {
-            pendingChatPopup = window.open('about:blank', '_blank');
-        } catch {
-            pendingChatPopup = null;
-        }
-    }
-
-    function releaseChatPopup(link: string) {
-        const popup = pendingChatPopup;
-        pendingChatPopup = null;
-        if (!isChatPopupOpen(popup)) return false;
-        try {
-            popup.location.href = link;
-        } catch {
+            const popup = window.open(link, '_blank');
+            if (!popup) return false;
             try {
-                popup.close();
+                popup.opener = null;
             } catch {
-                // The tab is already gone.
+                // Cross-origin navigation can drop access to the tab.
             }
+            return true;
+        } catch {
             return false;
         }
-        try {
-            popup.opener = null;
-        } catch {
-            // Navigation to another site can drop access to the tab.
-        }
-        return true;
     }
 
     // Chat Logic
@@ -416,75 +368,65 @@
         if (!model || !account) return;
         if (modalLoading) return;
 
-        reserveChatPopup(account);
-        let handedOff = false;
-        try {
-            const accountId = account.account_id;
-            const existingModel = findModelUsingAccount(accountId, model.model_id);
-            if (existingModel) {
-                if (!await showConfirm(t('Account "{account}" is used by "{model}". Reassign?', { account: account.account_username, model: existingModel.name }))) return;
-            }
-
-            modalLoading = true;
-            modalBusyAccountId = accountId;
-            let res;
-            try {
-                res = await AccountAPI.requestOtpForChat(accountId, model.model_id);
-            } finally {
-                modalLoading = false;
-                modalBusyAccountId = null;
-            }
-
-            if (res.result !== 0) {
-                const subscription = await offerSubscribeIfNeeded(res, model, () => handleStartChat(account));
-                if (subscription === 'retried') {
-                    handedOff = true;
-                    return;
-                }
-                if (subscription) return;
-                showError(res.msg || t('Failed to start chat'));
-                return;
-            }
-
-            const link = buildOpenChatLink(account, model.model_id, res.data?.otp, res.data?.link);
-            if (link) {
-                const opened = releaseChatPopup(link);
-                handedOff = true;
-                closeModal();
-                chatLinkFallback = opened ? null : link;
-                await loadData();
-                return;
-            }
-
-            if (res.data?.otp) {
-                const startCmd = buildStartCommand(model.model_id, res.data.otp);
-                const copied = await copyTextToClipboard(startCmd);
-                if (!copied) {
-                    prompt(t('Copy start command:'), startCmd);
-                }
-                if ((account?.type || '') === 'whatsapp_cloud') {
-                    const verifyToken = String(res.data?.verify_token || '').trim();
-                    const webhookURL = String(res.data?.webhook_url || '').trim();
-                    const lines = [t('Start command copied!')];
-                    lines.push('');
-                    lines.push(t('Configure Meta WhatsApp webhook settings:'));
-                    if (verifyToken) lines.push(`Verify token: ${verifyToken}`);
-                    if (webhookURL) lines.push(`Webhook URL: ${webhookURL}`);
-                    lines.push('');
-                    lines.push(t('Verify token is derived from this account id. Set both values in Meta before messaging.'));
-                    await showAlert(lines.join('\n'), t('WhatsApp Cloud API'), 'info');
-                } else if (copied) {
-                    showSuccess(t('Start command copied!'));
-                }
-                closeModal();
-                await loadData();
-                return;
-            }
-
-            showError(res.msg || t('Failed to start chat'));
-        } finally {
-            if (!handedOff) closePendingChatPopup();
+        const accountId = account.account_id;
+        const existingModel = findModelUsingAccount(accountId, model.model_id);
+        if (existingModel) {
+            if (!await showConfirm(t('Account "{account}" is used by "{model}". Reassign?', { account: account.account_username, model: existingModel.name }))) return;
         }
+
+        modalLoading = true;
+        modalBusyAccountId = accountId;
+        let res;
+        try {
+            res = await AccountAPI.requestOtpForChat(accountId, model.model_id);
+        } finally {
+            modalLoading = false;
+            modalBusyAccountId = null;
+        }
+
+        if (res.result !== 0) {
+            const subscription = await offerSubscribeIfNeeded(res, model, () => handleStartChat(account));
+            if (subscription === 'retried') return;
+            if (subscription) return;
+            showError(res.msg || t('Failed to start chat'));
+            return;
+        }
+
+        const link = buildOpenChatLink(account, model.model_id, res.data?.otp, res.data?.link);
+        if (link) {
+            const opened = openChatPopup(link);
+            closeModal();
+            chatLinkFallback = opened ? null : link;
+            await loadData();
+            return;
+        }
+
+        if (res.data?.otp) {
+            const startCmd = buildStartCommand(model.model_id, res.data.otp);
+            const copied = await copyTextToClipboard(startCmd);
+            if (!copied) {
+                prompt(t('Copy start command:'), startCmd);
+            }
+            if ((account?.type || '') === 'whatsapp_cloud') {
+                const verifyToken = String(res.data?.verify_token || '').trim();
+                const webhookURL = String(res.data?.webhook_url || '').trim();
+                const lines = [t('Start command copied!')];
+                lines.push('');
+                lines.push(t('Configure Meta WhatsApp webhook settings:'));
+                if (verifyToken) lines.push(`Verify token: ${verifyToken}`);
+                if (webhookURL) lines.push(`Webhook URL: ${webhookURL}`);
+                lines.push('');
+                lines.push(t('Verify token is derived from this account id. Set both values in Meta before messaging.'));
+                await showAlert(lines.join('\n'), t('WhatsApp Cloud API'), 'info');
+            } else if (copied) {
+                showSuccess(t('Start command copied!'));
+            }
+            closeModal();
+            await loadData();
+            return;
+        }
+
+        showError(res.msg || t('Failed to start chat'));
     }
 
     async function handleShareWithAccount(account: Account, modelArg: Model | null = modalData as Model | null) {

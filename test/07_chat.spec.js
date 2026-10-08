@@ -55,11 +55,12 @@ async function startChat(page, request, { blockPopup }) {
 
     await expect(page.getByRole('heading', { name: 'Select Account for Chat' })).toBeVisible();
 
+    const linkPattern = new RegExp(`^https://t\\.me/${accountUsername}\\?start=`);
     await page.evaluate((blocked) => {
       window.__pw_openUrls = [];
       window.__pw_chatPopup = {
         closed: false,
-        location: { href: 'about:blank' },
+        opener: window,
         close() { this.closed = true; },
       };
       window.open = (url) => {
@@ -81,9 +82,8 @@ async function startChat(page, request, { blockPopup }) {
 
     const openUrls = await page.evaluate(() => window.__pw_openUrls);
     expect(openUrls.length).toBeGreaterThan(0);
-    expect(openUrls.every((url) => url === 'about:blank')).toBe(true);
+    expect(openUrls.every((url) => linkPattern.test(url))).toBe(true);
 
-    const linkPattern = new RegExp(`^https://t\\.me/${accountUsername}\\?start=`);
     if (blockPopup) {
       const dialog = page.locator('.dialog-wrapper').filter({
         has: page.getByText('The browser blocked the chat window. Open this link.'),
@@ -92,7 +92,7 @@ async function startChat(page, request, { blockPopup }) {
       await expect(dialog.locator('a')).toHaveAttribute('href', linkPattern);
     } else {
       await expect(page.getByText('The browser blocked the chat window. Open this link.')).toHaveCount(0);
-      const openedUrl = await page.evaluate(() => window.__pw_chatPopup.location.href);
+      const openedUrl = await page.evaluate(() => window.__pw_openUrls[0]);
       expect(openedUrl).toMatch(linkPattern);
       const closed = await page.evaluate(() => window.__pw_chatPopup.closed);
       expect(closed).toBe(false);
