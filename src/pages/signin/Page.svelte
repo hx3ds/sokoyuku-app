@@ -8,11 +8,15 @@
   import InfoStackInput from '../../components/InfoStack/InfoStackInput.svelte';
   import InfoStackCheckbox from '../../components/InfoStack/InfoStackCheckbox.svelte';
   import Button from '../../components/Button/Button.svelte';
-  import { TELEGRAM_LOGIN_USERNAME } from '../../config.js';
+  import { GOOGLE_CLIENT_ID, TELEGRAM_LOGIN_USERNAME } from '../../config.js';
   import { renderGoogleSignInButton } from '../../googleIdentity.js';
   import { t } from '../../i18n/locale.svelte.js';
   import LegalAgree from '../../components/LegalAgree.svelte';
   import { theme } from '../../store/theme.svelte.js';
+
+  const googleSignInEnabled = Boolean(GOOGLE_CLIENT_ID);
+  const telegramSignInEnabled = Boolean(TELEGRAM_LOGIN_USERNAME);
+  const socialSignInEnabled = googleSignInEnabled || telegramSignInEnabled;
 
   let identifier = $state('');
   let password = $state('');
@@ -122,9 +126,13 @@
   }
 
   onMount(() => {
+    if (!telegramSignInEnabled) {
+      return;
+    }
+
     const googleContainer = document.getElementById('google-login-container');
     const telegramContainer = document.getElementById('telegram-login-container');
-    const buttonWidth = Math.max(googleContainer?.clientWidth || 0, 240);
+    const buttonWidth = Math.max(googleContainer?.clientWidth || telegramContainer?.clientWidth || 0, 240);
 
     if (telegramContainer) {
       mountTelegramLogin(telegramContainer, buttonWidth);
@@ -132,6 +140,10 @@
   });
 
   $effect(() => {
+    if (!googleSignInEnabled) {
+      return;
+    }
+
     theme.resolved;
     const googleContainer = document.getElementById('google-login-container');
     if (!googleContainer) return;
@@ -191,6 +203,7 @@
       </div>
     </form>
     
+    {#if socialSignInEnabled}
     <div style="padding-top: 0.5rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
          <span style="flex: 1; border-bottom: 1px solid var(--color-border);"></span>
          <span style="font-size: 0.75rem; text-align: center; color: var(--color-text-secondary); text-transform: uppercase;">{t('or')}</span>
@@ -198,8 +211,12 @@
     </div>
 
     <div class="social-login" class:social-login-disabled={!termsAccepted}>
-      <div id="google-login-container" style="padding-top: 1rem; display: flex; justify-content: center; min-height: 40px;"></div>
-      <div id="telegram-login-container" style="padding-top: 1rem; display: flex; justify-content: center; min-height: 40px;"></div>
+      {#if googleSignInEnabled}
+        <div id="google-login-container" style="padding-top: 1rem; display: flex; justify-content: center; min-height: 40px;"></div>
+      {/if}
+      {#if telegramSignInEnabled}
+        <div id="telegram-login-container" style="padding-top: 1rem; display: flex; justify-content: center; min-height: 40px;"></div>
+      {/if}
       {#if !termsAccepted}
         <button
           type="button"
@@ -209,6 +226,7 @@
         ></button>
       {/if}
     </div>
+    {/if}
 
     <div style="padding-top: 1rem; text-align: center; display: flex; flex-direction: column; gap: 0.25rem;">
       <div style="display: block; font-size: 0.875rem;">

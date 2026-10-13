@@ -7,8 +7,9 @@
 export const BASE_URL =
     import.meta.env.VITE_BASE_URL ||
     (import.meta.env.DEV ? 'https://apid.sokoyuku.com' : 'https://apis.sokoyuku.com');
+// Empty string disables Google sign-in (set VITE_GOOGLE_CLIENT_ID= to hide).
 export const GOOGLE_CLIENT_ID =
-    import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+    import.meta.env.VITE_GOOGLE_CLIENT_ID ??
     '1073852159531-hoob9nn2f9jse3o5eb65s698crl4res6.apps.googleusercontent.com';
 export const TELEGRAM_LOGIN_USERNAME = import.meta.env.DEV ? 'tom_bridge_bot' : 'sam_bridge_bot';
 //export const TELEGRAM_LOGIN_USERNAME = 'david_bridge_bot';

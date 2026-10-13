@@ -12,6 +12,7 @@
         CUSTOM_ACCOUNT_TYPE_VALUE,
         accountTokenField,
         accountUsernameField,
+        requiresProAccountGroup,
         resolveAccountTypeChoice,
     } from '../../proxy/account.js';
 
@@ -32,7 +33,7 @@
     });
 
     const resolvedType = $derived(resolveAccountTypeChoice(form.type, form.custom_type, form.is_local));
-    const requiresPro = $derived(!form.is_local && resolvedType !== 'telegram' && resolvedType !== 'whatsapp_cloud' && resolvedType !== 'sokoyuku');
+    const requiresPro = $derived(requiresProAccountGroup(resolvedType, form.is_local));
     const setupDoc = $derived(ACCOUNT_SETUP_DOCS[form.type] || null);
     const setupDocHelp = $derived(setupDoc ? t('Check {platform} official doc', { platform: tAccountType(form.type) }) : '');
     const usernameField = $derived(accountUsernameField(resolvedType));

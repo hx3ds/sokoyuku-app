@@ -2,6 +2,7 @@ import { modelStore } from './models.svelte.js';
 import { accountStore } from './accounts.svelte.js';
 import { prototypeStore } from './prototypes.svelte.js';
 import { subscriptionStore } from './subscription.svelte.js';
+import { platformSettingsStore } from './platformSettings.svelte.js';
 
 export async function refreshOverview() {
     await Promise.all([
@@ -9,5 +10,6 @@ export async function refreshOverview() {
         accountStore.load(),
         prototypeStore.load(),
         subscriptionStore.load(),
+        platformSettingsStore.load(),
     ]);
 }

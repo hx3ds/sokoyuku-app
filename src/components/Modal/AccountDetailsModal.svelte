@@ -11,6 +11,7 @@
         accountTokenField,
         accountTypeChoice,
         accountUsernameField,
+        requiresProAccountGroup,
         resolveAccountTypeChoice,
     } from '../../proxy/account.js';
 
@@ -78,7 +79,7 @@
     }
 
     async function handleSave() {
-        const requiresPro = !editForm.is_local && resolvedType !== 'telegram' && resolvedType !== 'whatsapp_cloud' && resolvedType !== 'sokoyuku';
+        const requiresPro = requiresProAccountGroup(resolvedType, editForm.is_local);
         await onsave({
             ...editForm,
             type: resolvedType,

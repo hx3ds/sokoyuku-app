@@ -1,5 +1,6 @@
 import { request, encryptWithPublicKeyToken, isEncryptedToken } from '../utils.js';
 import { getMyConductorPublicKey } from './user.js';
+import { platformSettingsStore } from '../store/platformSettings.svelte.js';
 
 export const BUILTIN_PUBLIC_ACCOUNT_TYPES = ['telegram', 'matrix', 'discord', 'qq', 'whatsapp_cloud'];
 export const CUSTOM_ACCOUNT_TYPE_VALUE = '__custom__';
@@ -72,10 +73,11 @@ function normalizeAccountGroup(value) {
     return String(value ?? 'free').trim().toLowerCase() === 'pro' ? 'pro' : 'free';
 }
 
-function requiresProAccountGroup(type, isLocal) {
+export function requiresProAccountGroup(type, isLocal) {
     if (isLocal) return false;
-    const platform = String(type ?? '').trim().toLowerCase();
-    return platform !== '' && platform !== 'telegram' && platform !== 'whatsapp_cloud' && platform !== 'sokoyuku';
+    const platform = normalizePlatformType(type).replace(/^qr:/, '');
+    const required = platformSettingsStore.settings?.pro_required_platforms ?? [];
+    return platform !== '' && required.includes(platform);
 }
 
 function resolveAccountGroup(type, isLocal, value) {

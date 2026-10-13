@@ -3,6 +3,7 @@
     import { accountStore } from '../../store/accounts.svelte.js';
     import { prototypeStore } from '../../store/prototypes.svelte.js';
     import { subscriptionStore } from '../../store/subscription.svelte.js';
+    import { platformSettingsStore } from '../../store/platformSettings.svelte.js';
     import { formatDate as formatLocaleDate, t } from '../../i18n/locale.svelte.js';
 
     type PlatformSubscription = {
@@ -16,38 +17,35 @@
         subscription_disabled?: boolean;
     };
 
-    const FREE_MODEL_LIMIT = 40;
-    const PRO_MODEL_LIMIT = 240;
-    const FREE_PROTOTYPE_LIMIT = 20;
-    const PRO_PROTOTYPE_LIMIT = 120;
-    const FREE_NORMAL_ACCOUNT_LIMIT = 10;
-    const FREE_LOCAL_ACCOUNT_LIMIT = 40;
-    const PRO_NORMAL_ACCOUNT_LIMIT = 60;
-    const PRO_LOCAL_ACCOUNT_LIMIT = 240;
     const ACTIVE_PLATFORM_STATUSES = ['active', 'trialing', 'past_due'];
 
     const loading = $derived(
-        !modelStore.initialized || !accountStore.initialized || !prototypeStore.initialized || !subscriptionStore.initialized
+        !modelStore.initialized || !accountStore.initialized || !prototypeStore.initialized || !subscriptionStore.initialized || !platformSettingsStore.initialized
     );
     const subscription = $derived(subscriptionStore.subscription as PlatformSubscription);
     const models = $derived(modelStore.models);
     const prototypes = $derived(prototypeStore.prototypes);
     const accounts = $derived(accountStore.accounts as Account[]);
 
+    const limits = $derived(platformSettingsStore.settings?.limits);
     const hasPlatformSubscriptionHistory = $derived(Boolean(subscription));
     const isPlatformSubscriptionActive = $derived(
         ACTIVE_PLATFORM_STATUSES.includes(String(subscription?.status || '').toLowerCase())
     );
-    const modelLimit = $derived(hasPlatformSubscriptionHistory ? PRO_MODEL_LIMIT : FREE_MODEL_LIMIT);
-    const prototypeLimit = $derived(hasPlatformSubscriptionHistory ? PRO_PROTOTYPE_LIMIT : FREE_PROTOTYPE_LIMIT);
+    const modelLimit = $derived(Number(hasPlatformSubscriptionHistory ? limits?.models?.pro : limits?.models?.free) || 0);
+    const prototypeLimit = $derived(Number(hasPlatformSubscriptionHistory ? limits?.prototypes?.pro : limits?.prototypes?.free) || 0);
+    const freeNormalLimit = $derived(Number(limits?.accounts?.free?.normal) || 0);
+    const freeLocalLimit = $derived(Number(limits?.accounts?.free?.local) || 0);
+    const proNormalCap = $derived(Number(limits?.accounts?.pro?.normal) || 0);
+    const proLocalCap = $derived(Number(limits?.accounts?.pro?.local) || 0);
     const activeProNormalAccounts = $derived(countAccounts(accounts, { group: 'pro', isLocal: false, disabled: false }));
     const activeProLocalAccounts = $derived(countAccounts(accounts, { group: 'pro', isLocal: true, disabled: false }));
     const disabledProNormalAccounts = $derived(countAccounts(accounts, { group: 'pro', isLocal: false, disabled: true }));
     const disabledProLocalAccounts = $derived(countAccounts(accounts, { group: 'pro', isLocal: true, disabled: true }));
     const freeNormalAccounts = $derived(countAccounts(accounts, { group: 'free', isLocal: false }));
     const freeLocalAccounts = $derived(countAccounts(accounts, { group: 'free', isLocal: true }));
-    const proNormalLimit = $derived(isPlatformSubscriptionActive ? PRO_NORMAL_ACCOUNT_LIMIT : 0);
-    const proLocalLimit = $derived(isPlatformSubscriptionActive ? PRO_LOCAL_ACCOUNT_LIMIT : 0);
+    const proNormalLimit = $derived(isPlatformSubscriptionActive ? Math.max(0, proNormalCap - freeNormalLimit) : 0);
+    const proLocalLimit = $derived(isPlatformSubscriptionActive ? Math.max(0, proLocalCap - freeLocalLimit) : 0);
 
     function countAccounts(
         list: Account[],
@@ -85,8 +83,8 @@
 
     const accountSummary = $derived.by(() => {
         const freeSummary = t('Free {normal} normal, {local} local', {
-            normal: formatQuota(freeNormalAccounts, FREE_NORMAL_ACCOUNT_LIMIT),
-            local: formatQuota(freeLocalAccounts, FREE_LOCAL_ACCOUNT_LIMIT),
+            normal: formatQuota(freeNormalAccounts, freeNormalLimit),
+            local: formatQuota(freeLocalAccounts, freeLocalLimit),
         });
         const proSummary = t('Pro {normal} normal, {local} local', {
             normal: formatQuota(activeProNormalAccounts, proNormalLimit),
