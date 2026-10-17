@@ -1,9 +1,10 @@
 <script>
+    import { t } from '../i18n/locale.svelte.js';
     export let text = 'Not Found';
 </script>
 
 <div class="not-found-container">
-    <p class="not-found-text">{text}</p>
+    <p class="not-found-text">{t(text)}</p>
 </div>
 
 <style>

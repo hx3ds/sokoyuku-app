@@ -1,15 +1,14 @@
 <script>
     import Button from './Button.svelte';
-    export let size = '1.75rem';
+    import { t } from '../../i18n/locale.svelte.js';
     export let onclick = undefined;
     export let className = '';
 </script>
 
 <Button
     variant="icon-button"
-    style="width: {size}; height: {size};"
     {onclick} 
-    aria-label="Open chat" 
+    aria-label={t('Open chat')} 
     {className}
     {...$$restProps}
 >

@@ -1,69 +1,62 @@
 import { test as setup, expect } from '@playwright/test';
-import { generateUser } from './utils';
-import { getVerificationCode, closePool } from './db';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { prepareTrackedUser, submitAuthForm } from './utils.js';
+import { getVerificationCode, closePool } from './db.js';
+import { saveSetupUserEmail } from './cleanup.js';
+import { installTurnstileMock } from './turnstile.js';
+import { WORKER_COUNT } from './constants.js';
 
-const authFile = 'playwright/.auth/user.json';
+const authDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../playwright/.auth');
 
-setup('authenticate', async ({ page }) => {
-  const user = generateUser();
-  console.log('Creating user:', user.email);
+async function authenticateInto(page, authFile) {
+  const user = await prepareTrackedUser();
+  saveSetupUserEmail(user.email);
+  console.log(`Creating user (${path.basename(authFile)}):`, user.email);
 
-  await page.goto('/signup');
-  
-  // Fill email
-  await page.getByPlaceholder('Enter your email').fill(user.email);
-  
-  // Click Get Code
+  await installTurnstileMock(page);
+  await page.goto('/signup', { waitUntil: 'domcontentloaded' });
+
+  await page.locator('#signupEmail').fill(user.email);
   await page.getByRole('button', { name: 'Get Code' }).click();
   await expect(page.getByRole('button', { name: /\d+s/ })).toBeVisible({ timeout: 15000 });
-  
-  // Poll for code
+
   let code = null;
-  for (let i = 0; i < 30; i++) {
-    await page.waitForTimeout(1000);
+  for (let i = 0; i < 40; i++) {
     code = await getVerificationCode(user.email, 'sign_up');
     if (code) break;
+    await page.waitForTimeout(250);
   }
   expect(code, 'Verification code should be generated').toBeTruthy();
   console.log('Got code:', code);
-  
-  // Fill rest
-  await page.getByPlaceholder('Enter 6-digit code').fill(code);
-  await page.getByPlaceholder('Enter your full name').fill(user.fullName);
-  await page.getByPlaceholder('Enter your username').fill(user.username);
-  await page.getByPlaceholder('Enter your password').fill(user.password);
-  
-  // Agree to terms
+
+  await page.locator('#signupVerificationCode').fill(code);
+  await page.locator('#signupFullName').fill(user.fullName);
+  await page.locator('#signupUsername').fill(user.username);
+  await page.locator('#signupPassword').fill(user.password);
   await page.locator('#signupTerms').check();
 
-  // Submit
-  await page.getByRole('button', { name: 'Sign Up' }).click();
-  
-  // Expect redirect to signin or similar (depends on flow)
-  // The signup page says: history.pushState(null, '', '/signin');
+  const signUp = await submitAuthForm(page, 'Sign Up', '/api/sign_up');
+  expect(signUp.result, `sign_up: ${JSON.stringify(signUp)}`).toBe(0);
   await expect(page).toHaveURL(/\/signin/);
-  
-  // Go to password signin
-  await page.goto('/signin-password');
-  
-  await page.getByPlaceholder('Enter your email or username').fill(user.email);
-  await page.getByPlaceholder('Enter your password').fill(user.password);
-  
-  // Agree to terms (checkbox)
-  // The checkbox is custom InfoStackCheckbox.
-  // It usually wraps a real checkbox input.
-  // Let's try checking it by label or role.
-  // The code has: I confirm that I have read and agree...
-  await page.getByRole('checkbox').check();
-  
-  await page.getByRole('button', { name: 'Enter' }).click();
-  
-  // Expect redirect to /models
+
+  await page.locator('#signinIdentifier').fill(user.email);
+  await page.locator('#signinPassword').fill(user.password);
+  await page.locator('#signinTerms').check();
+
+  const signIn = await submitAuthForm(page, 'Enter', '/api/sign_in');
+  expect(signIn.result, `sign_in: ${JSON.stringify(signIn)}`).toBe(0);
   await expect(page).toHaveURL(/\/models/);
-  
-  // Save storage state
+
   await page.context().storageState({ path: authFile });
-});
+}
+
+for (let i = 0; i < WORKER_COUNT; i++) {
+  const workerIndex = i;
+  setup(`authenticate worker ${workerIndex}`, async ({ page }) => {
+    await authenticateInto(page, path.join(authDir, `user-${workerIndex}.json`));
+  });
+}
 
 setup.afterAll(async () => {
   await closePool();

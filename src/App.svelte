@@ -1,62 +1,83 @@
 <script>
   import SignIn from './pages/signin/Page.svelte';
-  import SignInPassword from './pages/signin_password/Page.svelte';
   import SignUp from './pages/signup/Page.svelte';
   import ChangePassword from './pages/change_password/Page.svelte';
-  import { fetchProfile } from './proxy/user.js';
+  import { rememberReturnTo, request } from './utils.js';
   import { onMount } from 'svelte';
   import Layout from './pages/Layout.svelte';
   import Explore from './pages/explore/Page.svelte';
   import Models from './pages/models/Page.svelte';
+  import Overview from './pages/overview/Page.svelte';
   import Profile from './pages/profile/Page.svelte';
   import MyPrototypes from './pages/my_prototypes/Page.svelte';
   import MySubscriptions from './pages/my_subscriptions/Page.svelte';
   import Notifications from './pages/notifications/Page.svelte';
   import PaymentHistory from './pages/payment_history/Page.svelte';
-  import ChatHistory from './pages/chat_history/Page.svelte';
+  import PayoutDetails from './pages/payout_details/Page.svelte';
   import User from './pages/user/Page.svelte';
-  import Credits from './pages/credits/Page.svelte';
   import Model from './pages/model/Page.svelte';
   import Prototype from './pages/prototype/Page.svelte';
   import Prototypes from './pages/prototypes/Page.svelte';
+  import Call from './pages/call/Page.svelte';
   import NotFound from './pages/not_found/Page.svelte';
   import Modal from './components/Modal/Modal.svelte';
+  import LanguagePicker from './components/LanguagePicker.svelte';
+  import ThemePicker from './components/ThemePicker.svelte';
+  import './i18n/locale.svelte.js';
+  import './store/theme.svelte.js';
 
+  /**
+   * @typedef {object} Route
+   * @property {string} path
+   * @property {any} component
+   * @property {boolean=} public
+   * @property {boolean=} noLayout
+   * @property {boolean=} prefix
+   */
+
+  /** @type {Route | null} */
   let activeRoute = null;
+  /** @type {Set<Route>} */
   let visitedRoutes = new Set();
+  /** @type {Map<Route, Record<string, string>>} */
   let routeParamsMap = new Map();
   let isAuthLayout = false;
   let isAuthenticated = false;
 
+  /** @type {Route[]} */
   const routes = [
     { path: '/signin', component: SignIn, public: true, noLayout: true },
-    { path: '/signin-password', component: SignInPassword, public: true, noLayout: true },
     { path: '/signup', component: SignUp, public: true, noLayout: true },
     { path: '/change-password', component: ChangePassword, public: true, noLayout: true },
     { path: '/explore', component: Explore },
     { path: '/models', component: Models },
+    { path: '/overview', component: Overview },
     { path: '/profile', component: Profile },
     { path: '/my-prototypes', component: MyPrototypes },
     { path: '/my-subscriptions', component: MySubscriptions },
     { path: '/notifications', component: Notifications },
     { path: '/payment-history', component: PaymentHistory },
-    { path: '/chat-history', component: ChatHistory },
+    { path: '/payout-details', component: PayoutDetails },
     { path: '/user/:username', component: User },
     { path: '/model/:modelId', component: Model },
     { path: '/prototypes/:username', component: Prototypes },
     { path: '/prototype/:prototypeId', component: Prototype },
-    { path: '/credits', component: Credits }
+    { path: '/call/:modelId', component: Call }
   ];
 
-  const notFoundRoute = { component: NotFound, noLayout: true };
+  /** @type {Route} */
+  const notFoundRoute = { path: '*', component: NotFound, noLayout: true };
 
+  /** @param {string} path */
   async function navigate(path) {
     if (!path || path === '/') {
          path = '/explore';
          history.replaceState(null, '', '/explore');
     }
     
+    /** @type {Record<string, string>} */
     let params = {};
+    /** @type {Route | null} */
     let match = null;
 
     for (const route of routes) {
@@ -65,6 +86,7 @@
         const pathSegments = path.split('/').filter(Boolean);
 
         if (routeSegments.length === pathSegments.length) {
+          /** @type {Record<string, string>} */
           const p = {};
           let isMatch = true;
           
@@ -98,18 +120,25 @@
 
     if (match && !match.public) {
         if (!isAuthenticated) {
-            try {
-                const profile = await fetchProfile();
-                console.log("Profile:", profile);
-                if (profile) {
-                    isAuthenticated = true;
-                } else {
-                    history.replaceState(null, '', '/signin');
-                    match = routes.find(r => r.path === '/signin');
+            let profile = null;
+            let reachedServer = false;
+            for (let attempt = 0; attempt < 3; attempt++) {
+                const data = await request('/api/get_my_profile');
+                if (data.result === -1) {
+                    console.error(data.msg);
+                    continue;
                 }
-            } catch (e) {
-                 history.replaceState(null, '', '/signin');
-                 match = routes.find(r => r.path === '/signin');
+                reachedServer = true;
+                profile = data.result === 0 ? data.data : null;
+                break;
+            }
+            if (profile) {
+                console.log("Profile:", profile);
+                isAuthenticated = true;
+            } else if (reachedServer) {
+                rememberReturnTo();
+                history.replaceState(null, '', '/signin');
+                match = routes.find(r => r.path === '/signin') || null;
             }
         }
     }
@@ -171,12 +200,20 @@
   </div>
 
   <Modal />
+  {#if isAuthLayout}
+    <div class="auth-preferences">
+      <ThemePicker />
+      <LanguagePicker />
+    </div>
+  {/if}
 </div>
 
 <style>
     .app-root {
         min-height: 100vh;
         font-family: Roboto, sans-serif;
+        background-color: var(--color-bg-body);
+        color: var(--color-text-main);
     }
 
     .hidden {
@@ -186,5 +223,38 @@
     .page-route-wrapper {
         width: 100%;
         height: 100%;
+    }
+
+    .auth-preferences {
+        position: fixed;
+        z-index: 50;
+        top: 0;
+        right: 0;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        height: 64px;
+        margin: 0;
+        padding: 0 16px;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-right: calc(16px + env(safe-area-inset-right, 0px));
+    }
+
+    .auth-preferences :global(.language-picker),
+    .auth-preferences :global(.theme-picker) {
+        margin-left: 0;
+    }
+
+    @media (min-width: 768px) {
+        .auth-preferences {
+            top: auto;
+            right: auto;
+            left: 0;
+            bottom: 0;
+            height: auto;
+            padding: 16px 24px;
+            padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+            padding-left: calc(24px + env(safe-area-inset-left, 0px));
+        }
     }
 </style>

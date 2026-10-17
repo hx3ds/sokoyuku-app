@@ -7,6 +7,7 @@
     import InfoStackSelect from '../InfoStack/InfoStackSelect.svelte';
     import InfoStackToggle from '../InfoStack/InfoStackToggle.svelte';
     import InfoStackItem from '../InfoStack/InfoStackItem.svelte';
+    import { dollarsToCents, t } from '../../i18n/locale.svelte.js';
 
     let { 
         show = $bindable(false), 
@@ -23,17 +24,30 @@
         access_point: '',
         path: '',
         max_chats: 1,
-        type: 'token',
-        charge: 100,
-        reply_window: 600,
+        type: 'subscription',
+        billing_interval: 'monthly',
+        charge: 0,
+        has_free_tier: false,
+        max_tier_charge: 0,
         private: false,
-        is_local: false
+        is_local: false,
+        call_support: false,
+        terms_of_use: '',
+        privacy_policy: ''
     });
 
-    // Reset form when modal opens
     $effect(() => {
         if (show) {
             resetForm();
+        }
+    });
+
+    $effect(() => {
+        if (newPrototype.is_local) {
+            newPrototype.private = true;
+            newPrototype.charge = 0;
+            newPrototype.max_tier_charge = 0;
+            newPrototype.has_free_tier = true;
         }
     });
 
@@ -44,11 +58,16 @@
             access_point: '',
             path: '',
             max_chats: 1,
-            type: 'token',
-            charge: 100,
-            reply_window: 600,
+            type: 'subscription',
+            billing_interval: 'monthly',
+            charge: 0,
+            has_free_tier: false,
+            max_tier_charge: 0,
             private: false,
-            is_local: false
+            is_local: false,
+            call_support: false,
+            terms_of_use: '',
+            privacy_policy: ''
         };
         createError = '';
         creating = false;
@@ -58,13 +77,25 @@
         creating = true;
         createError = '';
 
-        const res = await createPrototype({ ...newPrototype });
+        const payload = {
+            ...newPrototype,
+            status: newPrototype.status || 'active',
+            qr_platforms: Array.isArray(newPrototype.qr_platforms) ? newPrototype.qr_platforms : [],
+            type: 'subscription',
+            billing_interval: newPrototype.billing_interval || 'monthly',
+            call_support: Boolean(newPrototype.call_support),
+            charge: newPrototype.is_local ? 0 : dollarsToCents(newPrototype.charge),
+            has_free_tier: newPrototype.is_local ? true : Boolean(newPrototype.has_free_tier),
+            max_tier_charge: newPrototype.is_local ? 0 : dollarsToCents(newPrototype.max_tier_charge),
+            private: newPrototype.is_local ? true : newPrototype.private
+        };
+        const res = await createPrototype(payload);
 
         if (res.result === 0) {
             oncreated();
             close();
         } else {
-            createError = res.msg || 'Failed to create prototype';
+            createError = res.msg || t('Failed to create prototype');
         }
         creating = false;
     }
@@ -80,7 +111,7 @@
             <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg>
         {/snippet}
     <Dialog 
-        title="Create New Prototype" 
+        title={t('Create New Prototype')} 
         onclose={close} 
         maxWidth="max-w-4xl"
         icon={protoIcon}
@@ -93,7 +124,7 @@
         <InfoStackInput 
             title="Access Point" 
             bind:value={newPrototype.access_point} 
-            placeholder={newPrototype.is_local ? 'e.g. localhost:8080' : 'e.g. https://example.com'}
+            placeholder={newPrototype.is_local ? 'e.g. http://localhost:8080' : 'e.g. https://example.com'}
         />
         <InfoStackInput 
             title="Path" 
@@ -106,9 +137,19 @@
             rows={3} 
             placeholder="Describe what this prototype does..." 
         />
+        <InfoStackInput
+            title="Terms of Use URL"
+            bind:value={newPrototype.terms_of_use}
+            placeholder="Optional custom terms URL"
+        />
+        <InfoStackInput
+            title="Privacy Policy URL"
+            bind:value={newPrototype.privacy_policy}
+            placeholder="Optional custom privacy policy URL"
+        />
 
         <InfoStackItem>
-            <h4 style="font-weight: 600; color: var(--color-dark);">Configuration</h4>
+            <h4 style="font-weight: 600; color: var(--color-dark);">{t('Configuration')}</h4>
         </InfoStackItem>
 
         <InfoStackInput 
@@ -117,45 +158,64 @@
             bind:value={newPrototype.max_chats} 
             min="1" 
         />
-        <InfoStackInput
-            type="number"
-            title="Reply Window (sec)"
-            bind:value={newPrototype.reply_window}
-            min="0"
-        />
         <InfoStackSelect 
-            title="Type" 
-            bind:value={newPrototype.type}
+            title="Billing Interval" 
+            bind:value={newPrototype.billing_interval}
         >
-            <option value="token">token</option>
-            <option value="subscription">subscription</option>
+            <option value="daily">{t('daily')}</option>
+            <option value="monthly">{t('monthly')}</option>
         </InfoStackSelect>
-        <InfoStackToggle 
-            title="Private Visibility" 
-            description={newPrototype.private ? 'Only visible to you' : 'Visible to everyone'}
-            bind:checked={newPrototype.private} 
-        />
+        {#if newPrototype.is_local}
+            <InfoStackInput title="Private Visibility" value={t('Yes (required for local)')} readonly />
+        {:else}
+            <InfoStackToggle 
+                title="Private Visibility" 
+                description={newPrototype.private ? 'Only visible to you' : 'Visible to everyone'}
+                bind:checked={newPrototype.private} 
+            />
+        {/if}
         <InfoStackToggle
             title="Local Prototype"
-            description={newPrototype.is_local ? 'Use a local Conductor access point' : 'Use a remote Station access point'}
+            description={newPrototype.is_local ? 'Private local Conductor access point' : 'Use a remote Station access point'}
             bind:checked={newPrototype.is_local}
+        />
+        <InfoStackToggle
+            title="Call Support"
+            description={newPrototype.call_support ? 'Voice calls enabled on all platforms' : 'Voice calls disabled'}
+            bind:checked={newPrototype.call_support}
         />
 
         <InfoStackItem>
-            <h4 style="font-weight: 600; color: var(--color-dark);">Pricing</h4>
+            <h4 style="font-weight: 600; color: var(--color-dark);">{t('Pricing')}</h4>
         </InfoStackItem>
 
-        <InfoStackInput 
-            type="number" 
-            title="Charge (Credits)" 
-            bind:value={newPrototype.charge} 
-            min="0" 
-            step="0.01" 
-        />
+        {#if newPrototype.is_local}
+            <InfoStackInput title="Pricing" value={t('Free (required for local)')} readonly />
+        {:else}
+            <InfoStackToggle
+                title="Free Tier"
+                description={newPrototype.has_free_tier ? 'Optional free tier enabled' : 'No free tier'}
+                bind:checked={newPrototype.has_free_tier}
+            />
+            <InfoStackInput 
+                type="number" 
+                title="Pro Charge" 
+                bind:value={newPrototype.charge} 
+                min="0" 
+                step="0.01" 
+            />
+            <InfoStackInput 
+                type="number" 
+                title="Max Tier Charge" 
+                bind:value={newPrototype.max_tier_charge} 
+                min="0" 
+                step="0.01" 
+            />
+        {/if}
         
         {#if createError}
             <InfoStackItem>
-                <div style="padding: 0.75rem; background-color: #fef2f2; color: #dc2626; border-radius: 0.375rem; font-size: 0.875rem; border: 1px solid #fee2e2;">
+                <div style="padding: 0.75rem; background-color: var(--color-danger-soft); color: var(--color-danger-soft-text); border-radius: 0.375rem; font-size: 0.875rem; border: 1px solid var(--color-danger-soft);">
                     {createError}
                 </div>
             </InfoStackItem>
@@ -163,22 +223,15 @@
 
         <InfoStackItem>
             {#snippet actions()}
-                <div style="display: flex; gap: 0.75rem;">
-                    <Button variant="secondary" onclick={close} disabled={creating} aria-label="Cancel">
-                        <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                <Button variant="icon-button" onclick={handleCreatePrototype} disabled={creating} loading={creating} aria-label={t('Create Prototype')}>
+                    {#if creating}
+                        {t('Creating...')}
+                    {:else}
+                        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                         </svg>
-                    </Button>
-                    <Button variant="primary" onclick={handleCreatePrototype} disabled={creating} loading={creating} aria-label="Create Prototype">
-                        {#if creating}
-                            Creating...
-                        {:else}
-                            <svg style="width: 1.25rem; height: 1.25rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                            </svg>
-                        {/if}
-                    </Button>
-                </div>
+                    {/if}
+                </Button>
             {/snippet}
         </InfoStackItem>
     </Dialog>

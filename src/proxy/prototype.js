@@ -1,16 +1,82 @@
 import { request } from '../utils.js';
 
+function normalizeBillingInterval(type, billingInterval) {
+    return billingInterval || 'monthly';
+}
+
+function isHttpHttpsUrl(value) {
+    const text = String(value ?? '').trim();
+    if (!text || /\s/.test(text)) return false;
+    if (!/^https?:\/\//i.test(text)) return false;
+    if (typeof URL.canParse === 'function' && !URL.canParse(text)) return false;
+    const parsed = new URL(text);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    return Boolean((parsed.hostname || '').trim());
+}
+
+function normalizeAccessPoint(value, isLocal) {
+    const text = String(value ?? '').trim().replace(/\/+$/, '');
+    if (!text) {
+        if (isLocal) return { error: 'access_point is required for local prototypes' };
+        return { value: '' };
+    }
+    if (!isHttpHttpsUrl(text)) {
+        return { error: 'access_point must be a valid http or https URL' };
+    }
+    return { value: text };
+}
+
+function normalizePrototypeFields(data = {}) {
+    const type = 'subscription';
+    const isLocal = Boolean(data.is_local);
+    const charge = isLocal ? 0 : (data.charge ?? 0);
+    const maxTierCharge = isLocal ? 0 : (data.max_tier_charge ?? 0);
+    let hasFreeTier = Boolean(data.has_free_tier);
+    if (isLocal) {
+        hasFreeTier = true;
+    } else if (Number(charge) === 0 && Number(maxTierCharge) === 0 && data.has_free_tier == null) {
+        hasFreeTier = true;
+    }
+    return {
+        name: data.name ?? '',
+        description: data.description ?? '',
+        access_point: data.access_point ?? '',
+        path: data.path ?? '',
+        status: data.status ?? '',
+        private: isLocal ? true : Boolean(data.private),
+        max_chats: data.max_chats ?? 1,
+        charge,
+        has_free_tier: hasFreeTier,
+        max_tier_charge: maxTierCharge,
+        type,
+        billing_interval: normalizeBillingInterval(type, data.billing_interval),
+        is_local: isLocal,
+        qr_platforms: Array.isArray(data.qr_platforms) ? data.qr_platforms : [],
+        terms_of_use: data.terms_of_use ?? '',
+        privacy_policy: data.privacy_policy ?? '',
+        call_support: Boolean(data.call_support),
+    };
+}
+
 export function fetchPrototypes(params = {}) {
-    const defaultParams = {
+    const body = {
         query: '',
         offset: 0,
         limit: 20,
+        username: '',
         certified_only: false,
+        types: [],
         include_private: false,
+        ...params,
     };
-    return request('/api/search_prototypes', {
-        body: { ...defaultParams, ...params }
-    });
+    if (body.username == null) body.username = '';
+    if (!Array.isArray(body.types)) body.types = [];
+    if (body.certified_only == null) body.certified_only = false;
+    if (body.include_private == null) body.include_private = false;
+    if (body.query == null) body.query = '';
+    if (body.offset == null) body.offset = 0;
+    if (body.limit == null) body.limit = 20;
+    return request('/api/search_prototypes', { body });
 }
 
 export async function fetchPrototype(id) {
@@ -21,7 +87,11 @@ export async function fetchPrototype(id) {
 }
 
 export function createPrototype(data) {
-    return request('/api/add_prototype', { body: data });
+    const body = normalizePrototypeFields(data);
+    const access = normalizeAccessPoint(body.access_point, body.is_local);
+    if (access.error) return Promise.resolve({ result: 1, msg: access.error });
+    body.access_point = access.value;
+    return request('/api/add_prototype', { body });
 }
 
 export function deletePrototype(prototypeId) {
@@ -38,39 +108,49 @@ export function refreshPrototypeToken(prototypeId) {
 
 export async function updatePrototype(data) {
     const prototypeId = data?.prototype_id;
-    if (!prototypeId) return request('/api/change_prototype', { body: data });
+    if (!prototypeId) {
+        const body = {
+            prototype_id: data?.prototype_id ?? 0,
+            ...normalizePrototypeFields(data),
+        };
+        const access = normalizeAccessPoint(body.access_point, body.is_local);
+        if (access.error) return { result: 1, msg: access.error };
+        body.access_point = access.value;
+        return request('/api/change_prototype', { body });
+    }
 
     const requiredKeys = [
         'name',
         'description',
         'access_point',
+        'path',
         'status',
         'private',
         'max_chats',
         'charge',
         'type',
-        'reply_window',
+        'billing_interval',
+        'qr_platforms',
+        'terms_of_use',
+        'privacy_policy',
+        'call_support',
     ];
 
+    let source = data;
     const missingRequired = requiredKeys.some((key) => data?.[key] == null);
-    if (!missingRequired) return request('/api/change_prototype', { body: data });
+    if (missingRequired) {
+        const current = await fetchPrototype(prototypeId);
+        if (!current) return { result: 1, msg: 'Prototype not found' };
+        source = { ...current, ...data };
+    }
 
-    const current = await fetchPrototype(prototypeId);
-    if (!current) return { result: 1, msg: 'Prototype not found' };
-
-    const body = { ...current, ...data };
     const normalized = {
-        ...body,
-        name: body.name ?? '',
-        description: body.description ?? '',
-        access_point: body.access_point ?? '',
-        status: body.status ?? '',
-        private: body.private ?? false,
-        max_chats: body.max_chats ?? 1,
-        charge: body.charge ?? 0,
-        type: body.type ?? 'token',
-        reply_window: body.reply_window ?? 0,
+        prototype_id: prototypeId,
+        ...normalizePrototypeFields(source),
     };
+    const access = normalizeAccessPoint(normalized.access_point, normalized.is_local);
+    if (access.error) return { result: 1, msg: access.error };
+    normalized.access_point = access.value;
     return request('/api/change_prototype', { body: normalized });
 }
 
@@ -85,15 +165,21 @@ export async function fetchMyPrototypes() {
     return data.result === 0 ? data.data.prototypes : [];
 }
 
+export async function fetchMyPrototypePayoutDetails() {
+    try {
+        const data = await request('/api/get_my_prototype_payout_details');
+        if (data.result !== 0) return [];
+        const prototypes = data.data?.prototypes;
+        return Array.isArray(prototypes) ? prototypes : [];
+    } catch {
+        return [];
+    }
+}
+
 export async function fetchUserPrototypes(username) {
     const data = await request('/api/get_user_prototype_list', {
-        body: { username }
+        body: { username: username ?? '' }
     });
     return data.result === 0 ? data.data.prototypes : [];
 }
 
-export function certifyPrototype(prototypeId) {
-    return request('/api/certify_prototype', {
-        body: { prototype_id: prototypeId }
-    });
-}

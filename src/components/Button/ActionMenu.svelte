@@ -1,19 +1,18 @@
 <script>
     import Button from './Button.svelte';
+    import { t } from '../../i18n/locale.svelte.js';
 
     export let isOpen = false;
     export let menuClass = 'w-32';
     export let width = '';
     export let className = '';
-    export let size = '1.75rem';
     export let onclick = (e) => {};
 </script>
 
 <Button 
     variant="icon-button"
     onclick={onclick}
-    aria-label="Options" 
-    style="width: {size}; height: {size};"
+    aria-label={t('Options')} 
     className="action-menu-button {className}"
     menuOpen={isOpen}
     {menuClass}

@@ -1,17 +1,22 @@
 <script lang="ts">
     import { onMount } from 'svelte';
-    import { fetchProfile, updateProfile } from '../../proxy/user.js';
+    import { fetchProfile, updateProfile, getMyConductorPublicKey, setMyConductorPublicKey } from '../../proxy/user.js';
     import { signOut } from '../../proxy/auth.js';
     import { getStripeConnectStatus, createStripeConnectOnboardingLink } from '../../proxy/payout.js';
-    import { showError } from '../../components/Modal/state.svelte.js';
+    import { fetchPlatformSubscription, fetchSubscriptionPlans, createPlatformSubscriptionCheckout } from '../../proxy/subscription.js';
+    import { showConfirm, showError } from '../../components/Modal/state.svelte.js';
     
     import Loading from '../../components/Loading.svelte';
     import PageContainer from '../../components/PageContainer.svelte';
     import Button from '../../components/Button/Button.svelte';
+    import TokenModal from '../../components/Modal/TokenModal.svelte';
     import InfoStack from '../../components/InfoStack/InfoStack.svelte';
     import InfoStackItem from '../../components/InfoStack/InfoStackItem.svelte';
     import InfoStackInput from '../../components/InfoStack/InfoStackInput.svelte';
     import InfoStackTextarea from '../../components/InfoStack/InfoStackTextarea.svelte';
+    import InfoStackSelect from '../../components/InfoStack/InfoStackSelect.svelte';
+    import { formatDate as formatLocaleDate, t } from '../../i18n/locale.svelte.js';
+    import { theme, setTheme } from '../../store/theme.svelte.js';
 
     type Profile = {
         full_name: string;
@@ -22,11 +27,37 @@
 
     type ConnectStatus = {
         connected: boolean;
+        invalid_account?: boolean;
         account_id?: string;
         details_submitted?: boolean;
         charges_enabled?: boolean;
         payouts_enabled?: boolean;
+        tax_ready?: boolean;
+        tax_settings_status?: string;
+        tax_settings_active?: boolean;
+        tax_has_registration?: boolean;
     };
+
+    type PlatformPlan = {
+        plan_id: string;
+        name?: string | null;
+        description?: string | null;
+        price?: number | string | null;
+    };
+
+    type PlatformSubscription = {
+        status?: string | null;
+        current_period_start?: string | null;
+        current_period_end?: string | null;
+        cancel_at_period_end?: boolean | null;
+        plan?: {
+            name?: string | null;
+            description?: string | null;
+            price?: number | string | null;
+        } | null;
+    } | null;
+
+    const ACTIVE_PLATFORM_STATUSES = ['active', 'trialing', 'past_due'];
 
     let profile = $state<Profile | null>(null);
     let loading = $state(true);
@@ -44,22 +75,40 @@
     let connectStatus = $state<ConnectStatus | null>(null);
     let connectLoading = $state(false);
     let connectSubmitting = $state(false);
+    let platformSubscription = $state<PlatformSubscription>(null);
+    let platformPlans = $state<PlatformPlan[]>([]);
+    let platformSubscriptionSubmitting = $state(false);
+
+    let conductorPublicKey = $state('');
+    let conductorPublicKeyLoading = $state(false);
+    let showConductorPublicKeyModal = $state(false);
+    let conductorPublicKeyDraft = $state('');
+    let conductorPublicKeySaving = $state(false);
 
     // List Items Configuration
-    const devItems = [
-        { href: '/my-prototypes', title: 'My Prototypes' },
-        { href: '/notifications', title: 'Notifications' }
-    ];
+    const devItems = $derived([
+        { href: '/overview', title: t('Overview') },
+        { href: '/my-prototypes', title: t('My Prototypes') },
+        { href: '/notifications', title: t('Notifications') }
+    ]);
 
-    const billingItems = [
-        { href: '/credits', title: 'Credits' },
-        { href: '/my-subscriptions', title: 'My Subscriptions' },
-        { href: '/payment-history', title: 'Payment History' }
-    ];
+    const billingItems = $derived([
+        { href: '/my-subscriptions', title: t('My Subscriptions') },
+        { href: '/payment-history', title: t('Payment History') }
+    ]);
+
+    const payoutItems = $derived([
+        { href: '/payout-details', title: t('Payout Details'), description: t('Stripe Connect Standard · manage payouts in Stripe') }
+    ]);
+    const connectSetupComplete = $derived(
+        !!connectStatus?.connected && !!connectStatus?.details_submitted
+    );
 
     onMount(async () => {
         await loadProfile();
         await loadConnectStatus();
+        await loadConductorPublicKey();
+        await loadPlatformSubscription();
     });
 
     async function loadProfile() {
@@ -85,20 +134,140 @@
         connectLoading = false;
     }
 
-    async function handleStripeConnect() {
-        connectSubmitting = true;
+    async function loadConductorPublicKey() {
+        conductorPublicKeyLoading = true;
+        try {
+            const key = await getMyConductorPublicKey({ refresh: true });
+            conductorPublicKey = String(key || '');
+            conductorPublicKeyDraft = conductorPublicKey;
+        } catch (e) {
+            console.error('Error loading conductor public key:', e);
+        }
+        conductorPublicKeyLoading = false;
+    }
+
+    async function loadPlatformSubscription() {
+        try {
+            const [subscriptionRes, plans] = await Promise.all([
+                fetchPlatformSubscription(),
+                fetchSubscriptionPlans()
+            ]);
+            platformSubscription = subscriptionRes?.result === 0 ? (subscriptionRes.data as PlatformSubscription) : null;
+            platformPlans = Array.isArray(plans) ? (plans as PlatformPlan[]) : [];
+        } catch (e) {
+            console.error('Error loading Sokoyuku subscription:', e);
+            platformSubscription = null;
+            platformPlans = [];
+        }
+    }
+
+    function openConductorPublicKeyModal() {
+        conductorPublicKeyDraft = conductorPublicKey;
+        showConductorPublicKeyModal = true;
+    }
+
+    async function saveConductorPublicKey() {
+        const next = String(conductorPublicKeyDraft || '').trim();
+        if (next && !next.startsWith('lcpk1:')) {
+            await showError(t('Invalid conductor public key token. It must start with "lcpk1:".'));
+            return;
+        }
+        conductorPublicKeySaving = true;
+        try {
+            const res = await setMyConductorPublicKey(next);
+            if (res.result !== 0) {
+                await showError(t('Failed to update conductor public key: {msg}', { msg: res.msg }));
+                return;
+            }
+            conductorPublicKey = String(res.data?.conductor_public_key || '');
+            conductorPublicKeyDraft = conductorPublicKey;
+            showConductorPublicKeyModal = false;
+        } finally {
+            conductorPublicKeySaving = false;
+        }
+    }
+
+    function connectStatusLabel(status: ConnectStatus | null, loading: boolean) {
+        if (loading) return t('Checking status...');
+        if (status?.connected) {
+            if (status?.tax_ready) {
+                return status?.payouts_enabled
+                    ? t('Connected · Payouts enabled · Tax ready')
+                    : t('Connected · Tax ready');
+            }
+            return status?.payouts_enabled
+                ? t('Connected · Payouts enabled · Tax setup needed')
+                : t('Connected · Tax setup needed');
+        }
+        if (status?.invalid_account) return t('Not connected · Setup needed');
+        return t('Not connected');
+    }
+
+    async function startStripeConnectOnboarding(forceRecreate = false) {
         const res = await createStripeConnectOnboardingLink({
             returnUrl: `${window.location.origin}/profile`,
-            refreshUrl: `${window.location.origin}/profile`
+            refreshUrl: `${window.location.origin}/profile`,
+            forceRecreate
         });
-        connectSubmitting = false;
         if (res.result !== 0) {
-            await showError('Failed to start Stripe Connect setup: ' + res.msg);
+            await showError(t('Failed to start Stripe Connect setup: {msg}', { msg: res.msg || t('unknown error') }));
+            return;
+        }
+        if (res.data?.needs_recreate && !forceRecreate) {
+            const confirmed = await showConfirm(
+                res.data?.msg ||
+                    t('Stored Stripe Connect account was not found. Create a new Connect account?'),
+                t('Recreate Stripe Connect')
+            );
+            if (!confirmed) return;
+            await startStripeConnectOnboarding(true);
             return;
         }
         const url = res.data?.url;
         if (url) {
             window.location.href = url;
+            return;
+        }
+        await showError(t('Failed to start Stripe Connect setup: missing onboarding URL'));
+    }
+
+    async function handleStripeConnect() {
+        if (connectSetupComplete) {
+            const tab = window.open('https://dashboard.stripe.com', '_blank');
+            if (tab) tab.opener = null;
+            return;
+        }
+        connectSubmitting = true;
+        try {
+            await startStripeConnectOnboarding(false);
+        } finally {
+            connectSubmitting = false;
+        }
+    }
+
+    async function handlePlatformSubscriptionCheckout() {
+        const selectedPlanId = String(platformPlans?.[0]?.plan_id || '').trim();
+        if (!selectedPlanId) {
+            await showError(t('No Sokoyuku subscription plan is available right now.'));
+            return;
+        }
+
+        platformSubscriptionSubmitting = true;
+        try {
+            const res = await createPlatformSubscriptionCheckout({
+                plan_id: selectedPlanId,
+                success_url: `${window.location.origin}/profile?subscription_success=1`,
+                cancel_url: `${window.location.origin}/profile?subscription_cancel=1`
+            });
+            if (res.result !== 0) {
+                await showError(t('Failed to start Sokoyuku subscription checkout: {msg}', { msg: res.msg }));
+                return;
+            }
+            if (res.data?.url) {
+                window.location.href = res.data.url;
+            }
+        } finally {
+            platformSubscriptionSubmitting = false;
         }
     }
 
@@ -129,7 +298,7 @@
             };
             isEditing = false;
         } else {
-            await showError('Failed to update profile: ' + res.msg);
+            await showError(t('Failed to update profile: {msg}', { msg: res.msg }));
         }
     }
 
@@ -139,6 +308,33 @@
 
     async function handleSignOut() {
         await signOut();
+    }
+
+    function formatDate(dateString?: string | null) {
+        if (!dateString) return '';
+        return formatLocaleDate(dateString);
+    }
+
+    const isPlatformSubscriptionActive = $derived(
+        ACTIVE_PLATFORM_STATUSES.includes(String(platformSubscription?.status || '').toLowerCase())
+    );
+
+    const hasPlatformSubscriptionHistory = $derived(Boolean(platformSubscription));
+
+    const subscriptionStatusLabel = $derived.by(() => {
+        if (!isPlatformSubscriptionActive) return t('Free');
+        const periodEnd = formatDate(platformSubscription?.current_period_end);
+        return periodEnd ? t('Pro until {date}', { date: periodEnd }) : t('Pro');
+    });
+
+    const subscriptionActionLabel = $derived(hasPlatformSubscriptionHistory ? t('Renew') : t('Upgrade'));
+    const showPlatformSubscriptionAction = $derived(
+        !isPlatformSubscriptionActive || Boolean(platformSubscription?.cancel_at_period_end)
+    );
+
+    function handleThemeChange(event: Event) {
+        const target = event.currentTarget as HTMLSelectElement;
+        setTheme(target.value);
     }
 </script>
 
@@ -154,17 +350,22 @@
             oncancel={handleCancel}
             onsave={handleSave}
         >
+            {#snippet icon()}
+                <svg style="width: 1.125rem; height: 1.125rem; color: var(--color-primary);" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                </svg>
+            {/snippet}
             <InfoStackInput title="Full Name" bind:value={editData.full_name} readonly={!isEditing} />
             
             <InfoStackInput title="Email" value={isEmailVisible ? editData.email : '••••••••••'} readonly>
                 {#snippet end()}
-                    <Button variant="icon-button" onclick={toggleEmail} aria-label={isEmailVisible ? "Hide Email" : "Show Email"}>
+                    <Button variant="icon-button" onclick={toggleEmail} aria-label={isEmailVisible ? t('Hide Email') : t('Show Email')}>
                         {#if isEmailVisible}
-                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
                             </svg>
                         {:else}
-                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                             </svg>
@@ -176,6 +377,20 @@
             <InfoStackInput title="Username" value={editData.username} readonly />
 
             <InfoStackTextarea id="profileDescription" title="Description" bind:value={editData.description} readonly={!isEditing} placeholder="Tell us about yourself" />
+
+            <InfoStackInput title="Sokoyuku Subscription" value={subscriptionStatusLabel} readonly>
+                {#snippet end()}
+                    {#if showPlatformSubscriptionAction}
+                        <Button
+                            variant="text-button"
+                            onclick={handlePlatformSubscriptionCheckout}
+                            loading={platformSubscriptionSubmitting}
+                        >
+                            {subscriptionActionLabel}
+                        </Button>
+                    {/if}
+                {/snippet}
+            </InfoStackInput>
         </InfoStack>
 
         <!-- Development -->
@@ -192,29 +407,70 @@
             {/each}
         </InfoStack>
 
-        <InfoStack title="Payout" showTitle={false}>
-            <InfoStackItem
+        <InfoStack title="Payout">
+            <InfoStackInput
                 title="Stripe Connect"
-                description={connectLoading ? 'Checking status...' : (connectStatus?.connected ? `Connected${connectStatus?.payouts_enabled ? ' · Payouts enabled' : ''}` : 'Not connected')}
+                value={connectStatusLabel(connectStatus, connectLoading)}
+                readonly
             >
-                {#snippet actions()}
+                {#snippet end()}
                     <Button
                         variant="text-button"
                         onclick={handleStripeConnect}
                         loading={connectSubmitting}
                     >
-                        {connectStatus?.connected ? 'Update' : 'Connect'}
+                        {connectSetupComplete ? t('Manage') : connectStatus?.connected ? t('Update') : t('Connect')}
                     </Button>
                 {/snippet}
-            </InfoStackItem>
+            </InfoStackInput>
+
+            {#each payoutItems as item}
+                <InfoStackItem {...item} />
+            {/each}
         </InfoStack>
 
-        <!-- Sign Out -->
+        <InfoStack
+            title="Local Conductor"
+            loading={conductorPublicKeyLoading}
+        >
+            <InfoStackInput
+                title="Conductor Public Key"
+                value={conductorPublicKey ? '••••••••••' : t('Not set')}
+                readonly
+            >
+                {#snippet end()}
+                    <Button
+                        variant="icon-button"
+                        onclick={openConductorPublicKeyModal}
+                        aria-label={conductorPublicKey ? t('Show Conductor Public Key') : t('Set Conductor Public Key')}
+                    >
+                        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                    </Button>
+                {/snippet}
+            </InfoStackInput>
+        </InfoStack>
+
+        <InfoStack title="Appearance">
+            <InfoStackSelect
+                id="themeNightMode"
+                title="Night Mode"
+                value={theme.preference}
+                onchange={handleThemeChange}
+            >
+                <option value="day">{t('Day')}</option>
+                <option value="night">{t('Night')}</option>
+                <option value="system">{t('System')}</option>
+            </InfoStackSelect>
+        </InfoStack>
+
         <InfoStack title="Sign Out" showTitle={false}>
-            <InfoStackItem title="Sign Out">
+            <InfoStackItem title={t('Sign Out')}>
                 {#snippet actions()}
-                    <Button variant="icon-button" onclick={handleSignOut} aria-label="Sign Out">
-                        <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <Button variant="icon-button" onclick={handleSignOut} aria-label={t('Sign Out')}>
+                        <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
                         </svg>
                     </Button>
@@ -222,6 +478,21 @@
             </InfoStackItem>
         </InfoStack>
     {:else}
-        <div style="color: #ff3b30; text-align: center; padding: 2rem;">Failed to load profile.</div>
+        <div style="color: var(--color-danger); text-align: center; padding: 2rem;">{t('Failed to load profile.')}</div>
     {/if}
 </PageContainer>
+
+<TokenModal
+    bind:show={showConductorPublicKeyModal}
+    bind:token={conductorPublicKeyDraft}
+    loading={conductorPublicKeyLoading}
+    saving={conductorPublicKeySaving}
+    title="Conductor Public Key"
+    fieldTitle="Conductor Public Key"
+    editable={true}
+    placeholder="lcpk1:..."
+    copyButtonAriaLabel="Copy Conductor Public Key"
+    copySuccessMessage="Conductor public key copied to clipboard"
+    copyErrorMessage="Failed to copy conductor public key"
+    onSave={saveConductorPublicKey}
+/>

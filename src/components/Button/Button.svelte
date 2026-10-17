@@ -5,7 +5,8 @@
     export let padding = undefined;
     export let iconSize = undefined;
     export let onclick = undefined;
-    export let variant = 'icon-button'; // icon-button, text-button
+    export let type = 'button';
+    export let variant = 'icon-button';
 
     export let menuOpen = false;
     export let menuClass = '';
@@ -14,6 +15,7 @@
 
     export let tooltip = '';
     export let tooltipPosition = 'top';
+    export let accent = false;
 
     let showTooltip = false;
     let tooltipTimeout;
@@ -46,21 +48,23 @@
     on:mouseleave={handleMouseLeave}
 >
     <button 
-        type="button"
-        class="btn {variant} {className}" 
+        {...$$restProps}
+        {type}
+        class="btn {variant} {className}"
+        class:accent 
         style="{padding ? `padding: ${padding} !important;` : ''}{iconSize ? ` --icon-size: ${iconSize};` : ''}{$$restProps.style ? ` ${$$restProps.style}` : ''}"
         disabled={disabled || loading}
+        aria-busy={loading}
         aria-expanded={menuOpen}
         on:click={handleClick}
-        {...$$restProps}
     >
         {#if loading}
             <svg 
                 class="spinner" 
-                style="color: currentColor;" 
                 xmlns="http://www.w3.org/2000/svg" 
                 fill="none" 
                 viewBox="0 0 24 24"
+                aria-hidden="true"
             >
                 <circle class="spinner-track" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="spinner-path" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -98,37 +102,49 @@
 
     /* Icon Button Styles */
     .btn.icon-button {
+        width: 1.75rem;
+        height: 1.75rem;
+        flex-shrink: 0;
         background-color: transparent;
         border: none;
         padding: 0;
+        color: inherit;
+        --icon-size: 1.25em;
     }
 
-    .btn.icon-button:hover:not(:disabled) {
-        background-color: color-mix(in srgb, var(--color-primary), transparent 80%);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    .btn.icon-button.accent {
+        color: var(--color-primary);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .btn.icon-button:hover:not(:disabled) {
+            background-color: color-mix(in srgb, var(--color-primary), transparent 80%);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            color: var(--color-primary);
+        }
+
+        .btn.icon-button.accent:hover:not(:disabled) {
+            color: var(--color-primary-hover);
+        }
     }
     
     .btn.icon-button:active:not(:disabled) {
         box-shadow: none;
     }
-
-    .btn.icon-button:hover:not(:disabled) :global(svg) {
-        color: var(--color-primary);
-    }
     
     .btn.icon-button :global(svg) {
-        width: var(--icon-size, 1.25em);
-        height: var(--icon-size, 1.25em);
+        width: var(--icon-size, 1.25em) !important;
+        height: var(--icon-size, 1.25em) !important;
         flex-shrink: 0;
+        color: currentColor;
         transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    /* Text Button Styles */
     .btn.text-button {
         display: inline-flex;
-        background-color: var(--color-primary, #0088cc);
-        color: var(--color-primary-contrast, #ffffff);
-        padding: 0.5rem 1rem;
+        background-color: var(--color-primary);
+        color: var(--color-primary-contrast);
+        padding: 0.25rem 0.75rem;
         border-radius: 6px;
         font-weight: 500;
         font-family: inherit;
@@ -140,9 +156,11 @@
         user-select: none;
     }
 
-    .btn.text-button:hover:not(:disabled) {
-        filter: brightness(110%);
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    @media (hover: hover) and (pointer: fine) {
+        .btn.text-button:hover:not(:disabled) {
+            filter: brightness(110%);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
     }
 
     .btn.text-button:active:not(:disabled) {
@@ -155,9 +173,17 @@
         cursor: not-allowed;
     }
 
-    /* Spinner styles */
     .spinner {
+        width: var(--icon-size, 1.25em);
+        height: var(--icon-size, 1.25em);
+        flex-shrink: 0;
+        color: currentColor;
         animation: spin 1s linear infinite;
+    }
+
+    .btn.text-button .spinner {
+        width: 1.125rem;
+        height: 1.125rem;
     }
 
     @keyframes spin {
@@ -187,7 +213,7 @@
         background-color: var(--color-bg-surface);
         border: 1px solid var(--color-border);
         border-radius: 8px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0,0,0,0.05);
+        box-shadow: var(--shadow-md);
         z-index: 50;
         display: flex;
         flex-direction: column;
@@ -211,8 +237,8 @@
     /* Tooltip styles */
     .tooltip {
         position: absolute;
-        background-color: var(--color-text-main, #333);
-        color: var(--color-text-inverse, #fff);
+        background-color: var(--color-text-main);
+        color: var(--color-text-inverse);
         padding: 4px 8px;
         border-radius: 4px;
         font-size: 0.75rem;

@@ -1,9 +1,86 @@
 
 import { BASE_URL } from './config.js';
+import { t } from './i18n/locale.svelte.js';
+
+const PUBLIC_KEY_TOKEN_PREFIX = 'lcpk1:';
+const ENCRYPTED_TOKEN_PREFIX = 'lcenc1:';
+const RETURN_TO_KEY = 'returnTo';
+const AUTH_PATHS = new Set(['/signin', '/signup', '/change-password']);
+
+function safeReturnPath(value) {
+    if (typeof value !== 'string' || value.length === 0 || value.length > 2048) {
+        return '';
+    }
+    if (!value.startsWith('/') || value.startsWith('//') || value.includes('\\') || value.includes('://')) {
+        return '';
+    }
+    const path = value.split(/[?#]/, 1)[0];
+    if (!path.startsWith('/') || AUTH_PATHS.has(path)) {
+        return '';
+    }
+    return value;
+}
+
+export function rememberReturnTo() {
+    const next = safeReturnPath(window.location.pathname + window.location.search + window.location.hash);
+    if (!next) {
+        return;
+    }
+    try {
+        sessionStorage.setItem(RETURN_TO_KEY, next);
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+export function consumeReturnTo() {
+    let stored = '';
+    try {
+        stored = sessionStorage.getItem(RETURN_TO_KEY) ?? '';
+        sessionStorage.removeItem(RETURN_TO_KEY);
+    } catch (err) {
+        console.error(err);
+    }
+    return safeReturnPath(stored) || '/models';
+}
 
 export function validateEmail(email) {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return re.test(email);
+}
+
+/**
+ * @param {string} id
+ * @param {string} [message]
+ */
+export function showFieldHint(id, message) {
+    const el = document.getElementById(id);
+    if (!el || typeof el.reportValidity !== 'function') {
+        return false;
+    }
+    if (
+        !message &&
+        el instanceof HTMLInputElement &&
+        el.type === 'checkbox' &&
+        el.required &&
+        !el.checked
+    ) {
+        message = t('Please check this box if you want to proceed.');
+    }
+    if (typeof el.focus === 'function') {
+        el.focus({ preventScroll: true });
+    }
+    if (typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+    if (message) {
+        el.setCustomValidity(message);
+    }
+    const ok = el.reportValidity();
+    if (message) {
+        el.setCustomValidity('');
+    }
+    return ok;
 }
 
 export function validatePassword(password) {
@@ -51,8 +128,86 @@ export async function request(endpoint, { body, ...options } = {}) {
         console.error(`Error requesting ${endpoint}:`, err);
         return { 
             result: -1, 
-            msg: err.message || 'Connection error',
+            msg: err.message || t('Connection error'),
             ...(import.meta.env.DEV ? { error: err, stack: err.stack } : {})
         };
     }
+}
+
+function b64urlEncodeBytes(bytes) {
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+        const chunk = bytes.subarray(i, i + chunkSize);
+        binary += String.fromCharCode(...chunk);
+    }
+    return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function b64urlDecodeToBytes(s) {
+    const input = String(s || '').trim();
+    if (!input) throw new Error('empty base64url');
+    const padLen = (4 - (input.length % 4)) % 4;
+    const padded = input + '='.repeat(padLen);
+    const normalized = padded.replace(/-/g, '+').replace(/_/g, '/');
+    const binary = atob(normalized);
+    const out = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+        out[i] = binary.charCodeAt(i);
+    }
+    return out;
+}
+
+export function parsePublicKeyToken(token) {
+    const t = String(token || '').trim();
+    if (!t.startsWith(PUBLIC_KEY_TOKEN_PREFIX)) return null;
+    const raw = t.slice(PUBLIC_KEY_TOKEN_PREFIX.length);
+    try {
+        const decoded = b64urlDecodeToBytes(raw);
+        const json = new TextDecoder().decode(decoded);
+        const jwk = JSON.parse(json);
+        if (!jwk || String(jwk.kty || '').toUpperCase() !== 'RSA') return null;
+        if (!jwk.n || !jwk.e) return null;
+        return { kty: 'RSA', n: String(jwk.n), e: String(jwk.e) };
+    } catch {
+        return null;
+    }
+}
+
+export function isEncryptedToken(token) {
+    return String(token || '').trim().startsWith(ENCRYPTED_TOKEN_PREFIX);
+}
+
+export async function encryptWithPublicKeyToken(publicKeyToken, plaintext) {
+    const jwk = parsePublicKeyToken(publicKeyToken);
+    if (!jwk) throw new Error('invalid public key token');
+    if (!globalThis.crypto?.subtle) throw new Error('WebCrypto unavailable');
+
+    const publicKey = await crypto.subtle.importKey(
+        'jwk',
+        { ...jwk, alg: 'RSA-OAEP-256', ext: true, key_ops: ['encrypt'] },
+        { name: 'RSA-OAEP', hash: 'SHA-256' },
+        false,
+        ['encrypt']
+    );
+
+    const keyBytes = crypto.getRandomValues(new Uint8Array(32));
+    const nonce = crypto.getRandomValues(new Uint8Array(12));
+    const encKeyBuf = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, publicKey, keyBytes);
+
+    const aesKey = await crypto.subtle.importKey('raw', keyBytes, { name: 'AES-GCM' }, false, ['encrypt']);
+    const cipherBuf = await crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: nonce },
+        aesKey,
+        new TextEncoder().encode(String(plaintext ?? ''))
+    );
+
+    const payload = {
+        v: 1,
+        k: b64urlEncodeBytes(new Uint8Array(encKeyBuf)),
+        n: b64urlEncodeBytes(nonce),
+        c: b64urlEncodeBytes(new Uint8Array(cipherBuf)),
+    };
+    const rawPayload = new TextEncoder().encode(JSON.stringify(payload));
+    return ENCRYPTED_TOKEN_PREFIX + b64urlEncodeBytes(rawPayload);
 }

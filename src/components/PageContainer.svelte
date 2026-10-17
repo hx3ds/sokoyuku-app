@@ -5,23 +5,22 @@
     export let gap = "0.25rem";
 </script>
 
-<div class={className} {id}>
+<div class="page-shell {className}" {id}>
     <div class="{maxWidth} inner-container" style={gap ? `display: flex; flex-direction: column; gap: ${gap};` : ""}>
         <slot />
     </div>
 </div>
 
 <style>
-    :global(.page-container) {
-        padding-top: 0.5rem;
-        padding: 1rem;
+    .page-shell {
+        padding: 0.5rem;
         display: flex;
         justify-content: center;
     }
 
     @media (min-width: 768px) {
-        :global(.page-container) {
-            padding-top: 1rem;
+        .page-shell {
+            padding: 1rem;
         }
     }
 

@@ -1,6 +1,7 @@
 <script>
     import InfoStack from '../InfoStack/InfoStack.svelte';
     import Button from '../Button/Button.svelte';
+    import { t } from '../../i18n/locale.svelte.js';
 
     let { 
         title, 
@@ -35,12 +36,12 @@
             {icon}
             showTitle={!!title}
             className="dialog-stack"
-            style="box-shadow: 0 10px 40px rgba(0,0,0,0.15); max-height: calc(100vh - 2rem); display: flex; flex-direction: column;"
+            style="box-shadow: var(--shadow-md); max-height: calc(100vh - 2rem); display: flex; flex-direction: column;"
             {...rest}
         >
             {#snippet headerActions()}
-                 <Button variant="icon-button" onclick={onclose} aria-label="Close">
-                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12" /></svg>
+                 <Button variant="icon-button" onclick={onclose} aria-label={t('Close')}>
+                    <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 12h14" /></svg>
                 </Button>
             {/snippet}
             
@@ -69,7 +70,7 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
+        background-color: var(--color-overlay);
         backdrop-filter: blur(2px);
     }
 

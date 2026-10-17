@@ -8,6 +8,7 @@
     import NotFound from "../../components/NotFound.svelte";
     import { fetchUserProfile } from "../../proxy/user.js";
     import PageContainer from "../../components/PageContainer.svelte";
+    import { t } from "../../i18n/locale.svelte.js";
 
     let { username = "" } = $props();
     let user = $state(null);
@@ -36,15 +37,15 @@
         <InfoStack title="User Details" display="flex-col" gap="1rem">
             <InfoStackInput title="Username" id="user-username" value={user.username} readonly />
             <InfoStackInput title="Full Name" id="user-fullname" value={user.full_name} readonly />
-            <InfoStackTextarea title="Description" id="user-description" value={user.description || "No description"} readonly />
+            <InfoStackTextarea title="Description" id="user-description" value={user.description || t("No description")} readonly />
         </InfoStack>
 
         <!-- Prototypes Section -->
         <InfoStack title="Prototypes">
              <InfoStackItem 
                 href="/prototypes/{user.username}"
-                title="View Prototypes"
-                description="Browse prototypes created by {user.username}"
+                title={t("View Prototypes")}
+                description={t("Browse prototypes created by {username}", { username: user.username })}
             />
         </InfoStack>
     {/if}

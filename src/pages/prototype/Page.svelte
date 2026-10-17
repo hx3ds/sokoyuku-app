@@ -7,6 +7,7 @@
     import InfoStackInput from '../../components/InfoStack/InfoStackInput.svelte';
     import InfoStackTextarea from '../../components/InfoStack/InfoStackTextarea.svelte';
     import InfoStackSelect from '../../components/InfoStack/InfoStackSelect.svelte';
+    import InfoStackToggle from '../../components/InfoStack/InfoStackToggle.svelte';
     import Button from '../../components/Button/Button.svelte';
     import AddToModelButton from '../../components/Button/AddToModelButton.svelte';
     import PageContainer from '../../components/PageContainer.svelte';
@@ -15,6 +16,8 @@
     import { fetchPrototype, updatePrototype, getPrototypeToken, refreshPrototypeToken } from '../../proxy/prototype.js';
     import { prototypeStore } from '../../store/prototypes.svelte.js';
     import { showError } from '../../components/Modal/state.svelte.js';
+    import { centsToDollars, dollarsToCents, t, yesNo } from '../../i18n/locale.svelte.js';
+    import { LEGAL_CREATOR_CONTRACT_URL, LEGAL_MODEL_PRIVACY_URL } from '../../config.js';
 
     type Prototype = {
         prototype_id: number;
@@ -25,13 +28,22 @@
         path?: string | null;
         status?: string | null;
         type?: string | null;
+        billing_interval?: string | null;
         private?: boolean;
         max_chats?: number | string | null;
         charge?: number | string | null;
-        reply_window?: number | string | null;
+        has_free_tier?: boolean;
+        max_tier_charge?: number | string | null;
+        subscription_tiers?: Array<{ name: string; charge: number }>;
+        has_active_models?: boolean;
         certified?: boolean;
         next_prototype_id?: number | null;
         is_author?: boolean;
+        is_local?: boolean;
+        terms_of_use?: string | null;
+        privacy_policy?: string | null;
+        call_support?: boolean;
+        qr_platforms?: string[];
     };
 
     let { prototypeId = null } = $props() as { prototypeId?: string | number | null };
@@ -45,15 +57,40 @@
     let showTokenModal = $state(false);
     let tokenLoading = $state(false);
 
+    const hasActiveModels = $derived(Boolean(prototype?.has_active_models));
+    const isFreePrototype = $derived(
+        Number(prototype?.charge || 0) === 0 && Number(prototype?.max_tier_charge || 0) === 0
+    );
+    const lockTiers = $derived(hasActiveModels || isFreePrototype);
+    const termsUrl = $derived((prototype?.terms_of_use || '').trim() || LEGAL_CREATOR_CONTRACT_URL);
+    const privacyUrl = $derived((prototype?.privacy_policy || '').trim() || LEGAL_MODEL_PRIVACY_URL);
+    const termsLabel = $derived((prototype?.terms_of_use || '').trim() ? t('Custom Terms of Use') : t('Standard Contract'));
+    const privacyLabel = $derived((prototype?.privacy_policy || '').trim() ? t('Custom Privacy Policy') : t('Standard Model Privacy Policy'));
+
     $effect(() => {
         if (prototypeId) {
             loadPrototype();
         }
     });
 
+    $effect(() => {
+        if (!prototype) return;
+        if (!prototype.billing_interval) prototype.billing_interval = 'monthly';
+        if (prototype.has_free_tier == null) prototype.has_free_tier = Number(prototype.charge || 0) === 0 && Number(prototype.max_tier_charge || 0) === 0;
+        if (prototype.max_tier_charge == null) prototype.max_tier_charge = 0;
+    });
+
     async function loadPrototype() {
         loading = true;
-        prototype = await fetchPrototype(prototypeId);
+        const data = await fetchPrototype(prototypeId);
+        if (data) {
+            data.terms_of_use = data.terms_of_use ?? '';
+            data.privacy_policy = data.privacy_policy ?? '';
+            data.has_free_tier = Boolean(data.has_free_tier);
+            data.max_tier_charge = centsToDollars(data.max_tier_charge ?? 0);
+            data.charge = centsToDollars(data.charge ?? 0);
+        }
+        prototype = data;
         loading = false;
     }
 
@@ -76,13 +113,20 @@
             name: prototype.name ?? '',
             description: prototype.description ?? '',
             max_chats: Number.parseInt(String(prototype.max_chats ?? ''), 10) || 1,
-            charge: Number.parseFloat(String(prototype.charge ?? '')) || 0,
+            charge: Boolean(prototype.is_local) ? 0 : dollarsToCents(prototype.charge),
+            has_free_tier: Boolean(prototype.is_local) ? true : Boolean(prototype.has_free_tier),
+            max_tier_charge: Boolean(prototype.is_local) ? 0 : dollarsToCents(prototype.max_tier_charge),
             private: prototype.private ?? false,
             access_point: prototype.access_point ?? '',
-            path: prototype.path ?? null,
+            path: prototype.path ?? '',
             status: prototype.status ?? '',
-            type: prototype.type ?? 'token',
-            reply_window: Number.parseInt(String(prototype.reply_window ?? ''), 10) || 0
+            type: 'subscription',
+            billing_interval: prototype.billing_interval ?? 'monthly',
+            is_local: Boolean(prototype.is_local),
+            qr_platforms: Array.isArray(prototype.qr_platforms) ? prototype.qr_platforms : [],
+            call_support: Boolean(prototype.call_support),
+            terms_of_use: (prototype.terms_of_use ?? '').trim(),
+            privacy_policy: (prototype.privacy_policy ?? '').trim(),
         };
 
         const res = await updatePrototype(data);
@@ -92,7 +136,7 @@
             // Refresh to get clean state
             await loadPrototype();
         } else {
-            await showError('Failed to update prototype: ' + res.msg);
+            await showError(t('Failed to update prototype: {msg}', { msg: res.msg }));
         }
     }
 
@@ -103,7 +147,7 @@
         if (res.result === 0) {
             token = res.data.token;
         } else {
-            await showError('Failed to get token: ' + res.msg);
+            await showError(t('Failed to get token: {msg}', { msg: res.msg }));
         }
         tokenLoading = false;
     }
@@ -114,7 +158,7 @@
         if (res.result === 0) {
             token = res.data.token;
         } else {
-            await showError('Failed to refresh token: ' + res.msg);
+            await showError(t('Failed to refresh token: {msg}', { msg: res.msg }));
         }
         tokenLoading = false;
     }
@@ -136,19 +180,19 @@
                 {#if prototype!.is_author}
 
                     {#if !isEditing}
-                        <Button variant="icon-button" onclick={startEditing} aria-label="Edit prototype">
-                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <Button variant="icon-button" onclick={startEditing} aria-label={t('Edit prototype')}>
+                            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
                             </svg>
                         </Button>
                     {:else}
-                        <Button variant="icon-button" onclick={cancelEditing} aria-label="Cancel editing">
-                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <Button variant="icon-button" onclick={cancelEditing} aria-label={t('Cancel editing')}>
+                            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                             </svg>
                         </Button>
-                        <Button variant="icon-button" onclick={saveChanges} aria-label="Save changes">
-                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <Button variant="icon-button" onclick={saveChanges} aria-label={t('Save changes')}>
+                            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
                             </svg>
                         </Button>
@@ -160,9 +204,9 @@
             <!-- Details -->
             <InfoStackInput title="Name" id="protoName" bind:value={prototype!.name} readonly={!isEditing} />
             
-            <InfoStackInput title="Author" value={prototype!.username || 'Unknown'} readonly>
+            <InfoStackInput title="Author" value={prototype!.username || t('Unknown')} readonly>
                 {#snippet end()}
-                    <Link href="/user/{prototype!.username}" aria-label="Visit Profile">
+                    <Link href="/user/{prototype!.username}" icon aria-label={t('Visit Profile')}>
                         <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
                         </svg>
@@ -173,47 +217,88 @@
 
             <InfoStackTextarea title="Description" id="protoDescription" bind:value={prototype!.description} readonly={!isEditing} />
             
-            <InfoStackInput title="Access Point" id="accessPoint" bind:value={prototype!.access_point} readonly={!isEditing} />
-            
-            <InfoStackSelect title="Status" id="protoStatus" bind:value={prototype!.status} disabled={!isEditing}>
-                <option value="">Not Set</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-            </InfoStackSelect>
+            <InfoStackInput title="Local" value={yesNo(prototype!.is_local)} readonly />
+
+            <InfoStackInput title="Access Point" id="accessPoint" bind:value={prototype!.access_point} readonly={!isEditing || Boolean(prototype!.is_local)} />
+
+            {#if isEditing}
+                <InfoStackInput title="Terms of Use URL" id="protoTermsOfUse" bind:value={prototype!.terms_of_use} placeholder="Leave empty for Standard Contract" />
+                <InfoStackInput title="Privacy Policy URL" id="protoPrivacyPolicy" bind:value={prototype!.privacy_policy} placeholder="Leave empty for Standard Model Privacy Policy" />
+            {:else}
+                <InfoStackInput title="Terms of Use" value={termsLabel} readonly>
+                    {#snippet end()}
+                        <Link href={termsUrl} icon target="_blank" rel="noopener noreferrer" aria-label={t('Open {name}', { name: termsLabel })}>
+                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            </svg>
+                        </Link>
+                    {/snippet}
+                </InfoStackInput>
+                <InfoStackInput title="Privacy Policy" value={privacyLabel} readonly>
+                    {#snippet end()}
+                        <Link href={privacyUrl} icon target="_blank" rel="noopener noreferrer" aria-label={t('Open {name}', { name: privacyLabel })}>
+                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 0 0 3 8.25v10.5A2.25 2.25 0 0 0 5.25 21h10.5A2.25 2.25 0 0 0 18 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                            </svg>
+                        </Link>
+                    {/snippet}
+                </InfoStackInput>
+            {/if}
             
             <InfoStackInput title="Max Chats" type="number" id="maxChats" bind:value={prototype!.max_chats} readonly={!isEditing} min="1" />
             
-            <InfoStackSelect title="Private" id="protoPrivate" bind:value={prototype!.private} disabled={!isEditing}>
-                <option value={false}>No</option>
-                <option value={true}>Yes</option>
+            <InfoStackSelect title="Private" id="protoPrivate" bind:value={prototype!.private} disabled={!isEditing || Boolean(prototype!.is_local) || hasActiveModels}>
+                <option value={false}>{t('No')}</option>
+                <option value={true}>{t('Yes')}</option>
             </InfoStackSelect>
             
-            <InfoStackSelect title="Type" id="protoType" bind:value={prototype!.type} disabled={!isEditing}>
-                <option value="token">Token</option>
-                <option value="subscription">Subscription</option>
+            <InfoStackSelect title="Billing Interval" id="protoBillingInterval" bind:value={prototype!.billing_interval} disabled={!isEditing || hasActiveModels}>
+                <option value="daily">{t('Daily')}</option>
+                <option value="monthly">{t('Monthly')}</option>
             </InfoStackSelect>
+            {#if isEditing}
+                <InfoStackToggle
+                    title="Call Support"
+                    description={prototype!.call_support ? 'Voice calls enabled on all platforms' : 'Voice calls disabled'}
+                    bind:checked={prototype!.call_support}
+                />
+            {:else}
+                <InfoStackInput title="Call Support" value={yesNo(prototype!.call_support)} readonly />
+            {/if}
             
-            <InfoStackInput title="Charge" type="number" id="protoCharge" bind:value={prototype!.charge} readonly={!isEditing} step="0.01" min="0" />
+            {#if Boolean(prototype!.is_local)}
+                <InfoStackInput title="Pricing" value={t('Free (required for local)')} readonly />
+            {:else}
+                {#if isEditing && !lockTiers}
+                    <InfoStackToggle
+                        title="Free Tier"
+                        description={prototype!.has_free_tier ? 'Optional free tier enabled' : 'No free tier'}
+                        bind:checked={prototype!.has_free_tier}
+                    />
+                {:else}
+                    <InfoStackInput title="Free Tier" value={yesNo(prototype!.has_free_tier)} readonly />
+                {/if}
+                <InfoStackInput title="Pro Charge" type="number" id="protoCharge" bind:value={prototype!.charge} readonly={!isEditing || lockTiers} step="0.01" min="0" />
+                <InfoStackInput title="Max Tier Charge" type="number" id="protoMaxTierCharge" bind:value={prototype!.max_tier_charge} readonly={!isEditing || lockTiers} step="0.01" min="0" />
+            {/if}
             
-            <InfoStackInput title="Reply Window (sec)" type="number" id="replyWindow" bind:value={prototype!.reply_window} readonly={!isEditing} min="0" />
-
             {#if prototype!.certified}
-                <InfoStackInput title="Certification Status" value="Certified" readonly />
+                <InfoStackInput title="Certification Status" value={t('Certified')} readonly />
             {/if}
 
             {#if prototype!.next_prototype_id}
-                <InfoStackItem title="Next Version">
+                <InfoStackItem title={t('Next Version')}>
                     <Link href="/prototype/{prototype!.next_prototype_id}" block={true}>
-                        Version {prototype!.next_prototype_id}
+                        {t('Version {id}', { id: prototype!.next_prototype_id })}
                     </Link>
                 </InfoStackItem>
             {/if}
 
-            {#if prototype!.is_author}
+            {#if prototype!.is_author && !prototype!.is_local}
                 <InfoStackInput title="Token" value="••••••••••" readonly>
                     {#snippet end()}
-                        <Button variant="icon-button" onclick={openTokenModal} aria-label="Show Token">
-                            <svg style="width: 1rem; height: 1rem;" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <Button variant="icon-button" onclick={openTokenModal} aria-label={t('Show Token')}>
+                            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                             </svg>

@@ -22,9 +22,12 @@
     let isInteractive = $derived(!!(href || onclick));
     let showHover = $derived(hover === undefined ? isInteractive : hover);
     let hasDescription = $derived(!!(description || children));
+    let isExternalHref = $derived(/^https?:\/\//i.test(href));
 
+    /** @param {MouseEvent} e */
     function handleClick(e) {
-        if (!separateHover && e.target.closest('.actions')) return;
+        const target = e.target instanceof Element ? e.target : null;
+        if (!separateHover && target?.closest('.actions')) return;
         if (onclick) onclick(e);
     }
 </script>
@@ -47,7 +50,7 @@
         {/if}
 
         {#if href}
-            <Link {href} className="content-link">
+            <Link {href} className="content-link" target={isExternalHref ? '_blank' : undefined} rel={isExternalHref ? 'noopener noreferrer' : undefined}>
                 {@render content()}
             </Link>
         {:else}
@@ -62,7 +65,9 @@
             <div class="title-row">
                 <h4 class="title" class:label-title={isLabel}>{title}</h4>
                 {#if titleSuffix}
-                    {@render titleSuffix()}
+                    <div class="title-suffix">
+                        {@render titleSuffix()}
+                    </div>
                 {/if}
             </div>
         {/if}
@@ -105,7 +110,7 @@
     .chevron-icon {
         width: 1.25rem;
         height: 1.25rem;
-        color: #9ca3af;
+        color: var(--color-text-tertiary);
     }
 
     .list-item {
@@ -127,8 +132,10 @@
         align-items: center;
     }
 
-    .list-item.hoverable:hover {
-        background-color: #f6f8fa;
+    @media (hover: hover) and (pointer: fine) {
+        .list-item.hoverable:hover {
+            background-color: var(--color-bg-hover);
+        }
     }
 
     .start-slot {
@@ -163,9 +170,12 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
+        min-width: 0;
     }
 
     .title {
+        flex: 1 1 auto;
+        min-width: 0;
         font-weight: 500;
         color: var(--color-dark);
         white-space: nowrap;
@@ -173,15 +183,23 @@
         text-overflow: ellipsis;
     }
 
+    .title-suffix {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-shrink: 0;
+        min-width: 0;
+    }
+
     .title.label-title {
         font-weight: 400;
         color: var(--color-text-secondary);
-        font-size: 0.875rem;
+        font-size: 0.8rem;
     }
 
     .description {
         font-size: 0.75rem;
-        color: var(--color-text-muted, #586069);
+        color: var(--color-text-muted);
         padding-top: 0.125rem;
         line-height: 1.375;
         
@@ -213,7 +231,9 @@
         cursor: pointer;
     }
 
-    .main-content-wrapper.hoverable:hover {
-        background-color: #f6f8fa;
+    @media (hover: hover) and (pointer: fine) {
+        .main-content-wrapper.hoverable:hover {
+            background-color: var(--color-bg-hover);
+        }
     }
 </style>

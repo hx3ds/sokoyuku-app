@@ -2,6 +2,7 @@
     import InfoStackItem from './InfoStackItem.svelte';
 
     let {
+        id = undefined,
         title = '',
         description = '',
         checked = $bindable(),
@@ -13,19 +14,15 @@
         isLabel = true,
         ...rest
     } = $props();
-
-    function handleItemClick(e) {
-        if (e.target.closest('.checkbox-input')) return;
-        checked = !checked;
-    }
 </script>
 
-<InfoStackItem {title} {description} {className} {start} onclick={handleItemClick} {hover} {isLabel}>
+<InfoStackItem {title} {description} {className} {start} {hover} {isLabel}>
     {#if children}
         {@render children()}
     {/if}
     {#snippet actions()}
         <input 
+            {id}
             type="checkbox" 
             {required} 
             bind:checked 

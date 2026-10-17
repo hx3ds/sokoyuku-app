@@ -1,6 +1,118 @@
+<script lang="ts">
+    import { modelStore } from '../../store/models.svelte.js';
+    import { accountStore } from '../../store/accounts.svelte.js';
+    import { prototypeStore } from '../../store/prototypes.svelte.js';
+    import { subscriptionStore } from '../../store/subscription.svelte.js';
+    import { platformSettingsStore } from '../../store/platformSettings.svelte.js';
+    import { formatDate as formatLocaleDate, t } from '../../i18n/locale.svelte.js';
+
+    type PlatformSubscription = {
+        status?: string | null;
+        current_period_end?: string | null;
+    } | null;
+
+    type Account = {
+        account_group?: 'free' | 'pro' | string | null;
+        is_local?: boolean;
+        subscription_disabled?: boolean;
+    };
+
+    const ACTIVE_PLATFORM_STATUSES = ['active', 'trialing', 'past_due'];
+
+    const loading = $derived(
+        !modelStore.initialized || !accountStore.initialized || !prototypeStore.initialized || !subscriptionStore.initialized || !platformSettingsStore.initialized
+    );
+    const subscription = $derived(subscriptionStore.subscription as PlatformSubscription);
+    const models = $derived(modelStore.models);
+    const prototypes = $derived(prototypeStore.prototypes);
+    const accounts = $derived(accountStore.accounts as Account[]);
+
+    const limits = $derived(platformSettingsStore.settings?.limits);
+    const hasPlatformSubscriptionHistory = $derived(Boolean(subscription));
+    const isPlatformSubscriptionActive = $derived(
+        ACTIVE_PLATFORM_STATUSES.includes(String(subscription?.status || '').toLowerCase())
+    );
+    const modelLimit = $derived(Number(hasPlatformSubscriptionHistory ? limits?.models?.pro : limits?.models?.free) || 0);
+    const prototypeLimit = $derived(Number(hasPlatformSubscriptionHistory ? limits?.prototypes?.pro : limits?.prototypes?.free) || 0);
+    const freeNormalLimit = $derived(Number(limits?.accounts?.free?.normal) || 0);
+    const freeLocalLimit = $derived(Number(limits?.accounts?.free?.local) || 0);
+    const proNormalCap = $derived(Number(limits?.accounts?.pro?.normal) || 0);
+    const proLocalCap = $derived(Number(limits?.accounts?.pro?.local) || 0);
+    const activeProNormalAccounts = $derived(countAccounts(accounts, { group: 'pro', isLocal: false, disabled: false }));
+    const activeProLocalAccounts = $derived(countAccounts(accounts, { group: 'pro', isLocal: true, disabled: false }));
+    const disabledProNormalAccounts = $derived(countAccounts(accounts, { group: 'pro', isLocal: false, disabled: true }));
+    const disabledProLocalAccounts = $derived(countAccounts(accounts, { group: 'pro', isLocal: true, disabled: true }));
+    const freeNormalAccounts = $derived(countAccounts(accounts, { group: 'free', isLocal: false }));
+    const freeLocalAccounts = $derived(countAccounts(accounts, { group: 'free', isLocal: true }));
+    const proNormalLimit = $derived(isPlatformSubscriptionActive ? Math.max(0, proNormalCap - freeNormalLimit) : 0);
+    const proLocalLimit = $derived(isPlatformSubscriptionActive ? Math.max(0, proLocalCap - freeLocalLimit) : 0);
+
+    function countAccounts(
+        list: Account[],
+        filters: { group: 'free' | 'pro'; isLocal: boolean; disabled?: boolean | null }
+    ) {
+        return (Array.isArray(list) ? list : []).filter((account) => {
+            const group = String(account?.account_group || 'free').toLowerCase();
+            const isLocal = Boolean(account?.is_local);
+            const disabled = Boolean(account?.subscription_disabled);
+            if (group !== filters.group) return false;
+            if (isLocal !== filters.isLocal) return false;
+            if (filters.disabled === undefined || filters.disabled === null) return true;
+            return disabled === filters.disabled;
+        }).length;
+    }
+
+    function formatDate(dateString?: string | null) {
+        return formatLocaleDate(dateString);
+    }
+
+    function formatQuota(used: number, limit: number) {
+        return limit > 0 ? `${used}/${limit}` : t('{used}/Locked', { used });
+    }
+
+    const subscriptionSummary = $derived.by(() => {
+        if (!isPlatformSubscriptionActive) return t('Free');
+        const periodEnd = formatDate(subscription?.current_period_end);
+        return periodEnd ? t('Pro until {date}', { date: periodEnd }) : t('Pro');
+    });
+
+    const resourceSummary = $derived(t('Models {models} · Prototypes {prototypes}', {
+        models: formatQuota(models.length, modelLimit),
+        prototypes: formatQuota(prototypes.length, prototypeLimit),
+    }));
+
+    const accountSummary = $derived.by(() => {
+        const freeSummary = t('Free {normal} normal, {local} local', {
+            normal: formatQuota(freeNormalAccounts, freeNormalLimit),
+            local: formatQuota(freeLocalAccounts, freeLocalLimit),
+        });
+        const proSummary = t('Pro {normal} normal, {local} local', {
+            normal: formatQuota(activeProNormalAccounts, proNormalLimit),
+            local: formatQuota(activeProLocalAccounts, proLocalLimit),
+        });
+        const disabled = disabledProNormalAccounts + disabledProLocalAccounts;
+        return disabled > 0 ? `${freeSummary} · ${proSummary} · ${t('Disabled {count}', { count: disabled })}` : `${freeSummary} · ${proSummary}`;
+    });
+</script>
+
 <div class="right-sidebar">
-    <div class="recommendations-card">
-        <h3 class="recommendations-title">Recommendations</h3>
+    <div class="overview-card">
+        <h3 class="overview-title">{t('Overview')}</h3>
+        <p class="overview-copy">{t('A quick Sokoyuku snapshot for subscription and usage.')}</p>
+        <div class="overview-sections">
+            <div class="overview-section">
+                <div class="overview-section-title">{t('Sokoyuku Subscription')}</div>
+                <div class="overview-section-body">{loading ? t('Loading...') : subscriptionSummary}</div>
+            </div>
+            <div class="overview-section">
+                <div class="overview-section-title">{t('Resource Usage')}</div>
+                <div class="overview-section-body">{loading ? t('Loading...') : resourceSummary}</div>
+            </div>
+            <div class="overview-section">
+                <div class="overview-section-title">{t('Account Usage')}</div>
+                <div class="overview-section-body">{loading ? t('Loading...') : accountSummary}</div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -12,21 +124,54 @@
         padding-top: 3rem;
     }
 
-    .recommendations-card {
-        background: rgba(255, 255, 255, 0.95);
+    .overview-card {
+        background: var(--color-bg-surface);
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
-        border: 1px solid rgba(0, 0, 0, 0.08);
+        border: 1px solid var(--color-border);
         border-radius: 8px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.05);
+        box-shadow: var(--shadow-md);
         padding: 1.5rem;
     }
 
-    .recommendations-title {
+    .overview-title {
         font-size: 1.125rem;
         font-weight: 600;
-        color: #24292e;
-        padding-bottom: 1rem;
+        color: var(--color-text-main);
+    }
+
+    .overview-copy {
+        font-size: 0.875rem;
+        line-height: 1.5;
+        color: var(--color-text-secondary);
+        padding-top: 0.5rem;
+    }
+
+    .overview-sections {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding-top: 1rem;
+    }
+
+    .overview-section {
+        border-radius: 8px;
+        padding: 0.75rem;
+        background: var(--color-bg-secondary);
+        border: 1px solid var(--color-border);
+    }
+
+    .overview-section-title {
+        font-size: 0.9375rem;
+        font-weight: 600;
+        color: var(--color-text-main);
+    }
+
+    .overview-section-body {
+        font-size: 0.8125rem;
+        line-height: 1.45;
+        color: var(--color-text-secondary);
+        padding-top: 0.25rem;
     }
 
     @media (min-width: 1280px) {

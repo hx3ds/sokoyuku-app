@@ -2,6 +2,7 @@
     import Button from '../Button/Button.svelte';
     import Loading from '../Loading.svelte';
     import NotFound from '../NotFound.svelte';
+    import { t } from '../../i18n/locale.svelte.js';
 
     let {
         title = '',
@@ -51,7 +52,7 @@
                             {@render icon()}
                         </div>
                     {/if}
-                    <h3 class="header-title">{title}</h3>
+                    <h3 class="header-title">{t(title)}</h3>
                     <svg class="header-icon {expanded ? 'rotate-180' : ''}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
                 </button>
             {:else}
@@ -61,7 +62,7 @@
                             {@render icon()}
                         </div>
                     {/if}
-                    <h3 class="header-title">{title}</h3>
+                    <h3 class="header-title">{t(title)}</h3>
                 </div>
             {/if}
             <div class="header-actions">
@@ -71,22 +72,26 @@
                 
                 {#if editable || onedit}
                     {#if !isEditing}
-                        <Button variant="icon-button" onclick={onedit} aria-label="Edit">
+                        <Button variant="icon-button" onclick={onedit} aria-label={t('Edit')}>
                             <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
                             </svg>
                         </Button>
                     {:else}
-                        <Button variant="icon-button" onclick={oncancel} aria-label="Cancel">
-                            <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </Button>
-                        <Button variant="icon-button" onclick={onsave} aria-label="Save">
-                            <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                            </svg>
-                        </Button>
+                        {#if oncancel}
+                            <Button variant="icon-button" onclick={oncancel} aria-label={t('Cancel')}>
+                                <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </Button>
+                        {/if}
+                        {#if onsave}
+                            <Button variant="icon-button" onclick={onsave} aria-label={t('Save')}>
+                                <svg class="icon-sm" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                </svg>
+                            </Button>
+                        {/if}
                     {/if}
                 {/if}
                 
@@ -108,7 +113,7 @@
             {#if emptyContent}
                 {@render emptyContent()}
             {:else}
-                <NotFound text={emptyText} />
+                <NotFound text={t(emptyText)} />
             {/if}
         {:else}
             <div class="info-content {display}">
@@ -122,10 +127,10 @@
 
 <style>
     .list-section {
-        background-color: var(--color-bg-surface, white);
+        background-color: var(--color-bg-surface);
         border-radius: 8px;
-        border: 1px solid var(--color-border, #dadce0);
-        box-shadow: var(--shadow-sm, 0 2px 6px rgba(0, 0, 0, 0.08));
+        border: 1px solid var(--color-border);
+        box-shadow: var(--shadow-sm);
         padding: 0.5rem;
     }
 
@@ -136,7 +141,7 @@
         padding-top: 0.25rem;
         padding-bottom: 0.5rem;
         padding-right: 0.5rem;
-        border-bottom: 1px solid var(--color-border-muted, #e1e4e8);
+        border-bottom: 1px solid var(--color-border-muted);
     }
 
     .header-button {
@@ -158,8 +163,10 @@
         color: inherit;
     }
 
-    .header-button:hover {
-        background-color: var(--color-bg-subtle, #f6f8fa);
+    @media (hover: hover) and (pointer: fine) {
+        .header-button:hover {
+            background-color: var(--color-bg-subtle);
+        }
     }
 
     .header-static {
@@ -180,7 +187,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        color: var(--color-text-secondary, #6b7280);
+        color: var(--color-text-secondary);
     }
 
     .header-title {

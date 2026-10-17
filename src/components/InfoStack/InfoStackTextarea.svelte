@@ -1,6 +1,7 @@
 <script>
     import InfoStackItem from './InfoStackItem.svelte';
     import { tick, onMount } from 'svelte';
+    import { t } from '../../i18n/locale.svelte.js';
 
     let {
         title = '',
@@ -22,6 +23,7 @@
     } = $props();
 
     let textarea;
+    const restOnInput = rest.oninput;
 
     const resize = async () => {
         if (textarea && autosize) {
@@ -30,6 +32,13 @@
             textarea.style.height = `${textarea.scrollHeight}px`;
         }
     };
+
+    function handleInput(event) {
+        resize();
+        if (typeof restOnInput === 'function') {
+            restOnInput(event);
+        }
+    }
 
     onMount(() => {
         if (autosize) resize();
@@ -42,12 +51,12 @@
     });
 </script>
 
-<InfoStackItem {title} {description} {className} {start} {hover} {isLabel}>
+<InfoStackItem title={t(title)} description={t(description)} {className} {start} {hover} {isLabel}>
     {#snippet children()}
         <textarea 
             bind:this={textarea}
             bind:value 
-            {placeholder} 
+            placeholder={t(placeholder)} 
             {required} 
             {readonly}
             {disabled}
@@ -56,7 +65,7 @@
             class:editing={!readonly && !disabled}
             style:max-height={maxHeight}
             {...rest}
-            oninput={resize}
+            oninput={handleInput}
         ></textarea>
     {/snippet}
 </InfoStackItem>

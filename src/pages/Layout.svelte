@@ -1,11 +1,28 @@
 <script>
+  import { onMount } from 'svelte';
   import MobileHeader from '../components/Layout/MobileHeader.svelte';
   import Sidebar from '../components/Layout/Sidebar.svelte';
   import MobileBottomNav from '../components/Layout/MobileBottomNav.svelte';
   import RightSidebar from '../components/Layout/RightSidebar.svelte';
-  import Controls from '../components/Layout/Controls.svelte';
+  import { refreshOverview } from '../store/overview.svelte.js';
 
   let { children } = $props();
+
+  onMount(() => {
+    void refreshOverview();
+    const refresh = () => { void refreshOverview(); };
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refresh();
+    };
+    window.addEventListener('popstate', refresh);
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('popstate', refresh);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  });
 </script>
 
 <div class="layout-wrapper">
@@ -15,12 +32,8 @@
 
     <MobileBottomNav />
 
-    <!-- Main Content Area -->
     <main class="main-content">
         <div class="content-wrapper">
-            <div class="desktop-header-actions">
-                <Controls />
-             </div>
             <div id="page" class="page-container">
                 {@render children()}
             </div>
@@ -43,20 +56,18 @@
         display: flex;
         justify-content: center;
         min-height: 120vh;
-        padding-top: 64px; /* header height */
-        padding-bottom: 64px; /* bottom nav height */
+        padding-top: calc(64px + env(safe-area-inset-top, 0px));
+        padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+        padding-left: env(safe-area-inset-left, 0px);
+        padding-right: env(safe-area-inset-right, 0px);
     }
 
     .content-wrapper {
         width: 100%;
         max-width: 600px;
-        padding-left: 0.5rem;
-        padding-right: 0.5rem;
+        padding-left: 0;
+        padding-right: 0;
         padding-bottom: 2rem;
-    }
-
-    .desktop-header-actions {
-        display: none;
     }
 
     .page-container {
@@ -78,11 +89,9 @@
 
         .content-wrapper {
             max-width: 700px;
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
             padding-bottom: 2rem;
-        }
-        
-        .desktop-header-actions {
-            display: flex;
         }
     }
 
