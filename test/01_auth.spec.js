@@ -128,7 +128,7 @@ test.describe('Authentication Flow', () => {
 
   test('should localize legal agreement links', async ({ page }) => {
     await page.goto('/signin');
-    const picker = page.locator('.language-picker.floating');
+    const picker = page.locator('.auth-preferences .language-picker');
     await picker.getByRole('button', { name: 'Language' }).click();
     await picker.getByRole('option', { name: '日本語' }).click();
     await expect(page.getByRole('link', { name: '利用規約' })).toHaveAttribute('href', 'https://sokoyuku.com/legal/terms');
@@ -147,6 +147,36 @@ test.describe('Authentication Flow', () => {
     await expect(page.getByRole('link', { name: '服務條款' })).toBeVisible();
     await expect(page.getByRole('link', { name: '隱私權政策' })).toBeVisible();
     await expect(page.getByRole('link', { name: 'Cookie 政策' })).toBeVisible();
+  });
+
+  test('should switch day, night, and system mode on auth pages', async ({ page }) => {
+    await page.goto('/signin');
+    const picker = page.locator('.auth-preferences .theme-picker');
+    const trigger = picker.getByRole('button', { name: 'Night Mode' });
+    await expect(trigger).toHaveText('System');
+
+    await trigger.click();
+    await picker.getByRole('option', { name: 'Night', exact: true }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'night');
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('sokoyuku-theme'))).toBe('night');
+
+    await page.goto('/signup');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'night');
+    await trigger.click();
+    await picker.getByRole('option', { name: 'Day', exact: true }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'day');
+
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await trigger.click();
+    await picker.getByRole('option', { name: 'System', exact: true }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'night');
+
+    await page.emulateMedia({ colorScheme: 'light' });
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'day');
+
+    await page.goto('/change-password');
+    await expect(trigger).toBeVisible();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'day');
   });
 
   test('should return to the original url after sign-in', async ({ page }) => {

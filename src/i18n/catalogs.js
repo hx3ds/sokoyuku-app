@@ -371,6 +371,7 @@ export const catalogs = pack([
     ['Billing', '請求', '账单', '帳單'],
     ['Payout:', '報酬:', '结算：', '結算：'],
     ['Disabled', '無効', '已禁用', '已停用'],
+    ['Outdated', '期限切れ', '已过期', '已過期'],
     ['Active', '有効', '有效', '有效'],
     ['Stripe Connect', 'Stripe Connect', 'Stripe Connect', 'Stripe Connect'],
     ['Checking status...', 'ステータスを確認中...', '正在检查状态...', '正在檢查狀態...'],
@@ -517,7 +518,6 @@ export const catalogs = pack([
     ['Pending', '保留中', '待处理', '待處理'],
     ['Failed', '失敗', '失败', '失敗'],
     ['Cancelled', 'キャンセル済み', '已取消', '已取消'],
-    ['QR {platform}', 'QR {platform}', 'QR {platform}', 'QR {platform}'],
     ['account', 'アカウント', '账号', '帳號'],
     ['{platform} on {server}', '{platform}（{server}）', '{platform}（{server}）', '{platform}（{server}）'],
 ]);

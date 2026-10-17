@@ -57,11 +57,13 @@ function validateAccountTypeForScope(type, isLocal) {
     const normalized = normalizePlatformType(type);
     if (!normalized) return { ok: false, msg: 'type is required' };
     if (isLocal) {
-        const bare = normalized.startsWith('qr:') ? normalized.slice(3) : normalized;
-        if (!LOCAL_PLATFORM_TYPE_REGEX.test(bare)) {
+        if (normalized.startsWith('qr:')) {
+            return { ok: false, msg: 'Invalid account type' };
+        }
+        if (!LOCAL_PLATFORM_TYPE_REGEX.test(normalized)) {
             return { ok: false, msg: 'type must match ^[a-z][a-z0-9_-]{0,14}$' };
         }
-        return { ok: true, type: normalized.startsWith('qr:') ? `qr:${bare}` : bare };
+        return { ok: true, type: normalized };
     }
     if (!isBuiltinPublicAccountType(normalized) && normalized !== 'sokoyuku') {
         return { ok: false, msg: 'Invalid account type' };
@@ -75,7 +77,7 @@ function normalizeAccountGroup(value) {
 
 export function requiresProAccountGroup(type, isLocal) {
     if (isLocal) return false;
-    const platform = normalizePlatformType(type).replace(/^qr:/, '');
+    const platform = normalizePlatformType(type);
     const required = platformSettingsStore.settings?.pro_required_platforms ?? [];
     return platform !== '' && required.includes(platform);
 }
@@ -103,6 +105,13 @@ export function accountUsernameField(type) {
     if (raw === 'matrix') return { title: 'User ID', placeholder: 'e.g. @user:matrix.org' };
     if (raw === 'telegram') return { title: 'Bot username', placeholder: 'Enter bot username' };
     return { title: 'Account Username', placeholder: 'Enter username' };
+}
+
+/** Lowercase status key for {@link tStatus} (`user_account.status` + subscription flag). */
+export function accountStatusKey(account) {
+    if (account?.subscription_disabled) return 'disabled';
+    const status = String(account?.status || 'active').trim().toLowerCase();
+    return status || 'active';
 }
 
 export function accountTokenField(type) {

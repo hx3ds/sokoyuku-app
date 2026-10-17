@@ -89,6 +89,7 @@ export function t(key, vars) {
 
 const STATUS_KEYS = {
     active: 'Active',
+    disabled: 'Disabled',
     trialing: 'Trial',
     past_due: 'Past Due',
     canceled: 'Cancelled',
@@ -102,6 +103,8 @@ const STATUS_KEYS = {
     completed: 'Success',
     token: 'Token',
     subscription: 'Subscription',
+    outdated: 'Outdated',
+    inactive: 'Inactive',
 };
 
 export function tStatus(status) {
@@ -114,10 +117,6 @@ export function tStatus(status) {
 export function tAccountType(type) {
     const raw = String(type || '').trim();
     const lower = raw.toLowerCase();
-    if (lower.startsWith('qr:')) {
-        const inner = tAccountType(raw.slice(3));
-        return inner ? t('QR {platform}', { platform: inner }) : 'QR';
-    }
     if (lower === 'whatsapp_cloud') return t('WhatsApp Cloud API');
     if (lower === 'qq') return t('QQ');
     if (lower === 'telegram') return t('Telegram');

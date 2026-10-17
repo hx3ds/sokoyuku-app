@@ -35,6 +35,7 @@
         acct_type?: string | null;
         server?: string | null;
         account_group?: string | null;
+        status?: string | null;
         subscription_disabled?: boolean;
         is_last_used?: boolean;
     };
@@ -65,6 +66,7 @@
         server?: string | null;
         is_local?: boolean;
         account_group?: string | null;
+        status?: string | null;
         subscription_disabled?: boolean;
         created_at?: string | null;
         models?: Array<{ model_id: string; name: string }>;
@@ -570,19 +572,6 @@
         }
     }
 
-    async function handleOpenChat(chat: any) {
-        // Implement logic to open chat details or navigate
-        console.log('Open chat', chat);
-    }
-
-    async function handleAddAccountToChat(chatId: string) {
-        console.log('Add account to chat', chatId);
-    }
-
-    async function handleRemoveAccountFromChat(data: any) {
-        console.log('Remove account from chat', data);
-    }
-    
     // Account Management
     async function handleAddAccountSubmit(formData: any) {
         const res = await AccountAPI.addAccount(formData);
@@ -597,6 +586,7 @@
                     server: res.data.server,
                     is_local: res.data.is_local,
                     account_group: res.data.account_group,
+                    status: res.data.status || 'active',
                     subscription_disabled: Boolean(res.data.subscription_disabled)
                 });
             } else {
@@ -670,8 +660,6 @@
             
             <ActionMenu 
                 isOpen={activeMenu === model.model_id}
-                iconSize="1.5rem"
-                padding="0.25rem"
                 width="8rem"
                 onclick={(e: MouseEvent) => handleToggleMenu({ detail: { id: model.model_id, event: e } })}
             >
@@ -707,13 +695,12 @@
                 <span class="account-count-badge">{assignedModelBadgeText}</span>
             {/if}
             <div style="color: var(--color-text-secondary); font-size: 0.875rem;">
-                <span>{account.account_username} · {tAccountType(account.type)} · {t('Group: {group}', { group: tStatus(account.account_group || 'free') })} · {account.subscription_disabled ? t('Disabled') : t('Active')}</span>
+                <span>{account.account_username} · {tAccountType(account.type)} · {t('Group: {group}', { group: tStatus(account.account_group || 'free') })} · {tStatus(AccountAPI.accountStatusKey(account))}</span>
             </div>
         {/snippet}
 
         {#snippet actions()}
             <ActionMenu
-                iconSize="1.25rem" padding="0.25rem"
                 isOpen={activeMenu === (account.account_id ?? account.account_username)} 
                 width="8rem"
                 onclick={(e: MouseEvent) => handleToggleMenu({ detail: { id: account.account_id ?? account.account_username, event: e } })}
@@ -781,7 +768,7 @@
         {/snippet}
 
         {#snippet headerActions()}
-            <Button variant="icon-button" iconSize="1.25rem" padding="0.25rem" onclick={() => openModal('addAccount')} aria-label={t('Add account')}>
+            <Button variant="icon-button" onclick={() => openModal('addAccount')} aria-label={t('Add account')}>
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4.5v15m7.5-7.5h-15" /></svg>
             </Button>
         {/snippet}

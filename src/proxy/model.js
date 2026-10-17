@@ -9,6 +9,7 @@ function normalizeModelAccount(account) {
         server: account?.server || '',
         account_group: account?.account_group || 'free',
         subscription_disabled: Boolean(account?.subscription_disabled),
+        status: account?.status || 'active',
         is_last_used: Boolean(account?.is_last_used),
     };
 }

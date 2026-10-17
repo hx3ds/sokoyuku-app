@@ -9,6 +9,7 @@
     import InfoStackDivider from '../InfoStack/InfoStackDivider.svelte';
     import InfoStackBadge from '../InfoStack/InfoStackBadge.svelte';
     import { fetchModel, updateModel } from '../../proxy/model.js';
+    import { accountStatusKey } from '../../proxy/account.js';
     import { showError } from './state.svelte.js';
     import { formatDateTime, formatMoney, t, tAccountType, tStatus, yesNo } from '../../i18n/locale.svelte.js';
 
@@ -259,11 +260,11 @@
     function formatAccountValue(account) {
         const type = tAccountType(account?.acct_type || 'account');
         const group = t('Group: {group}', { group: tStatus(account?.account_group || 'free') });
-        const status = account?.subscription_disabled ? t('Disabled') : t('Active');
+        const accountStatusLabel = tStatus(accountStatusKey(account));
         if (String(account?.acct_type || '').toLowerCase() === 'matrix' && account?.server) {
-            return `${t('{platform} on {server}', { platform: type, server: account.server })} · ${group} · ${status}`;
+            return `${t('{platform} on {server}', { platform: type, server: account.server })} · ${group} · ${accountStatusLabel}`;
         }
-        return `${type} · ${group} · ${status}`;
+        return `${type} · ${group} · ${accountStatusLabel}`;
     }
 
     function getLastUsedModelAccount(value) {
@@ -313,13 +314,10 @@
         <InfoStackInput title="Local" value={yesNo(isLocal)} readonly />
         <InfoStackInput title="Max Chats" value={model.max_chats} readonly />
         <InfoStackInput title="Access Point" value={model.access_point} readonly />
-        <InfoStackInput title="Type" value={tStatus(model.type)} readonly />
-            {#if model.type === 'subscription'}
-            <InfoStackInput title="Tier" value={model.subscription_tier || '—'} readonly />
-            <InfoStackInput title="Pro Charge" value={formatMoney(model.charge || 0)} readonly />
-            {#if Number(model.max_tier_charge || 0) > 0}
-                <InfoStackInput title="Max Tier Charge" value={formatMoney(model.max_tier_charge)} readonly />
-            {/if}
+        <InfoStackInput title="Tier" value={model.subscription_tier || '—'} readonly />
+        <InfoStackInput title="Pro Charge" value={formatMoney(model.charge || 0)} readonly />
+        {#if Number(model.max_tier_charge || 0) > 0}
+            <InfoStackInput title="Max Tier Charge" value={formatMoney(model.max_tier_charge)} readonly />
         {/if}
         <InfoStackInput title="Available until" value={formatDate(model.period)} readonly />
         <InfoStackInput title="Last Used Account" value={formatAccountLabel(getLastUsedModelAccount(model))} readonly />

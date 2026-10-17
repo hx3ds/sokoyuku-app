@@ -22,6 +22,7 @@
   import NotFound from './pages/not_found/Page.svelte';
   import Modal from './components/Modal/Modal.svelte';
   import LanguagePicker from './components/LanguagePicker.svelte';
+  import ThemePicker from './components/ThemePicker.svelte';
   import './i18n/locale.svelte.js';
   import './store/theme.svelte.js';
 
@@ -200,7 +201,10 @@
 
   <Modal />
   {#if isAuthLayout}
-    <LanguagePicker floating />
+    <div class="auth-preferences">
+      <ThemePicker />
+      <LanguagePicker />
+    </div>
   {/if}
 </div>
 
@@ -219,5 +223,38 @@
     .page-route-wrapper {
         width: 100%;
         height: 100%;
+    }
+
+    .auth-preferences {
+        position: fixed;
+        z-index: 50;
+        top: 0;
+        right: 0;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        height: 64px;
+        margin: 0;
+        padding: 0 16px;
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-right: calc(16px + env(safe-area-inset-right, 0px));
+    }
+
+    .auth-preferences :global(.language-picker),
+    .auth-preferences :global(.theme-picker) {
+        margin-left: 0;
+    }
+
+    @media (min-width: 768px) {
+        .auth-preferences {
+            top: auto;
+            right: auto;
+            left: 0;
+            bottom: 0;
+            height: auto;
+            padding: 16px 24px;
+            padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+            padding-left: calc(24px + env(safe-area-inset-left, 0px));
+        }
     }
 </style>

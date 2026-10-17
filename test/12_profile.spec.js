@@ -283,13 +283,13 @@ test.describe('Profile Page', () => {
     const updatedDescription = `Updated Description ${suffix}`;
 
     await page.goto('/profile');
-    
-    await expect(page.getByRole('heading', { name: 'My Information' })).toBeVisible();
+    await expect(page.getByText('Loading...')).toHaveCount(0, { timeout: 15000 });
+    await expect(page.getByRole('heading', { name: 'My Information' })).toBeVisible({ timeout: 15000 });
     const fullNameInput = page.locator('.list-item').filter({ hasText: 'Full Name' }).locator('input');
     const descriptionInput = page.locator('#profileDescription');
     await expect(fullNameInput).toBeVisible();
     await expect(descriptionInput).toBeVisible();
-    
+
     // 2. Click Edit button
     const myInfoSection = page.locator('.list-section', {
       has: page.getByRole('heading', { name: 'My Information' }),

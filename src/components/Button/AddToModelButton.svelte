@@ -10,8 +10,6 @@
     export let prototypeId;
     export let prototypeName = '';
     export let className = '';
-    export let padding = undefined;
-    export let size = '1.75rem';
 
     let loading = false;
     let added = false;
@@ -50,8 +48,7 @@
 <Button 
     variant="icon-button"
     className="add-model-btn {className}"
-    style="width: {size}; height: {size}; {added ? 'color: var(--color-success);' : ''}"
-    {padding}
+    style={added ? 'color: var(--color-success);' : ''}
     onclick={handleClick}
     tooltip={t('Add to my models')}
     tooltipPosition="bottom"

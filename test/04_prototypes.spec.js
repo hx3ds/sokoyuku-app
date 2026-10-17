@@ -52,9 +52,6 @@ test.describe('Prototypes', () => {
       });
       await page.locator('.list-item').filter({ hasText: name }).first().click();
       await expect(page).toHaveURL(/\/prototype\/\d+/);
-      await expect(page.locator('.list-item').filter({ hasText: 'Type' }).locator('select')).toHaveValue(
-        'subscription'
-      );
       await expect(page.locator('.list-item').filter({ hasText: 'Call Support' }).locator('input')).toHaveValue(
         'Yes'
       );

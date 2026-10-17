@@ -1,7 +1,6 @@
 <script>
     import { LOCALES, locale, setLocale, t } from '../i18n/locale.svelte.js';
 
-    let { floating = false } = $props();
     let open = $state(false);
     let root = $state(/** @type {HTMLElement | null} */ (null));
 
@@ -29,7 +28,7 @@
 
 <svelte:window onclick={onWindowClick} onkeydown={onWindowKeydown} />
 
-<div class="language-picker" class:floating bind:this={root}>
+<div class="language-picker" bind:this={root}>
     <button
         type="button"
         class="trigger"
@@ -155,49 +154,12 @@
         font-weight: 500;
     }
 
-    .floating {
-        position: fixed;
-        z-index: 50;
-        top: 0;
-        right: 0;
-        height: 64px;
-        margin: 0;
-        padding: 0 16px;
-        padding-top: env(safe-area-inset-top, 0px);
-        padding-right: calc(16px + env(safe-area-inset-right, 0px));
-    }
-
-    .floating .menu {
-        bottom: auto;
-        top: calc(100% - 12px);
-        left: auto;
-        right: 0;
-    }
-
     @media (min-width: 768px) {
         .menu {
             top: auto;
             right: auto;
             left: 0;
             bottom: calc(100% + 0.5rem);
-        }
-
-        .floating {
-            top: auto;
-            right: auto;
-            left: 0;
-            bottom: 0;
-            height: auto;
-            width: auto;
-            padding: 16px 24px;
-            padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-        }
-
-        .floating .menu {
-            top: auto;
-            right: auto;
-            left: 0;
-            bottom: calc(100% - 8px);
         }
     }
 </style>

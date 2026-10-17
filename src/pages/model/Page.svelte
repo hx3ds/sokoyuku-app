@@ -19,6 +19,7 @@
         acct_type?: string | null;
         server?: string | null;
         account_group?: string | null;
+        status?: string | null;
         subscription_disabled?: boolean;
         is_last_used?: boolean;
     };
@@ -176,13 +177,10 @@
             <InfoStackInput title="Local" value={yesNo(isLocal)} readonly />
             <InfoStackInput title="Max Chats" value={model!.max_chats} readonly />
             <InfoStackInput title="Access Point" value={model!.access_point} readonly />
-            <InfoStackInput title="Type" value={tStatus(model!.type)} readonly />
-            {#if model!.type === 'subscription'}
-                <InfoStackInput title="Tier" value={model!.subscription_tier || '—'} readonly />
-                <InfoStackInput title="Pro Charge" value={formatMoney(model!.charge || 0)} readonly />
-                {#if Number(model!.max_tier_charge || 0) > 0}
-                    <InfoStackInput title="Max Tier Charge" value={formatMoney(model!.max_tier_charge)} readonly />
-                {/if}
+            <InfoStackInput title="Tier" value={model!.subscription_tier || '—'} readonly />
+            <InfoStackInput title="Pro Charge" value={formatMoney(model!.charge || 0)} readonly />
+            {#if Number(model!.max_tier_charge || 0) > 0}
+                <InfoStackInput title="Max Tier Charge" value={formatMoney(model!.max_tier_charge)} readonly />
             {/if}
             <InfoStackInput title="Available until" value={formatDate(model!.period)} readonly />
             <InfoStackInput
@@ -214,7 +212,7 @@
                             <div class="account-meta">
                                 <span>ID: {account.acct_id}</span>
                                 <span>{t('Group: {group}', { group: tStatus(account.account_group || 'free') })}</span>
-                                <span>{account.subscription_disabled ? t('Disabled') : t('Active')}</span>
+                                <span>{tStatus(account.subscription_disabled ? 'disabled' : (account.status || 'active'))}</span>
                             </div>
                         {/snippet}
                     </InfoStackItem>

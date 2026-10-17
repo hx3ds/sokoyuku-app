@@ -1,7 +1,6 @@
 <script>
     import Button from './Button.svelte';
     import { t } from '../../i18n/locale.svelte.js';
-    export let size = '1.75rem';
     export let onclick = undefined;
     export let className = '';
     export let active = false;
@@ -9,7 +8,7 @@
 
 <Button
     variant="icon-button"
-    style="width: {size}; height: {size}; {active ? 'color: var(--color-success);' : ''}"
+    style={active ? 'color: var(--color-success);' : ''}
     {onclick}
     aria-label={active ? t('Return to call') : t('Call')}
     className="{active ? 'call-active' : ''} {className}"

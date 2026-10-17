@@ -81,6 +81,9 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        width: 1.5rem;
+        height: 1.5rem;
+        flex-shrink: 0;
         color: inherit;
         padding: 0;
         background: transparent;

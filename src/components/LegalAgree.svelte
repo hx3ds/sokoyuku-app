@@ -40,6 +40,7 @@
 <style>
     .legal-agree {
         line-height: 1.375;
+        cursor: default;
     }
 
     .legal-agree a {
@@ -47,5 +48,6 @@
         font-weight: 500;
         text-decoration: none;
         transition: color 0.2s;
+        cursor: pointer;
     }
 </style>

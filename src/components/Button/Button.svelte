@@ -5,6 +5,7 @@
     export let padding = undefined;
     export let iconSize = undefined;
     export let onclick = undefined;
+    export let type = 'button';
     export let variant = 'icon-button';
 
     export let menuOpen = false;
@@ -47,7 +48,8 @@
     on:mouseleave={handleMouseLeave}
 >
     <button 
-        type="button"
+        {...$$restProps}
+        {type}
         class="btn {variant} {className}"
         class:accent 
         style="{padding ? `padding: ${padding} !important;` : ''}{iconSize ? ` --icon-size: ${iconSize};` : ''}{$$restProps.style ? ` ${$$restProps.style}` : ''}"
@@ -55,7 +57,6 @@
         aria-busy={loading}
         aria-expanded={menuOpen}
         on:click={handleClick}
-        {...$$restProps}
     >
         {#if loading}
             <svg 
@@ -101,10 +102,14 @@
 
     /* Icon Button Styles */
     .btn.icon-button {
+        width: 1.75rem;
+        height: 1.75rem;
+        flex-shrink: 0;
         background-color: transparent;
         border: none;
         padding: 0;
         color: inherit;
+        --icon-size: 1.25em;
     }
 
     .btn.icon-button.accent {
@@ -128,8 +133,8 @@
     }
     
     .btn.icon-button :global(svg) {
-        width: var(--icon-size, 1.25em);
-        height: var(--icon-size, 1.25em);
+        width: var(--icon-size, 1.25em) !important;
+        height: var(--icon-size, 1.25em) !important;
         flex-shrink: 0;
         color: currentColor;
         transition: color 0.2s cubic-bezier(0.4, 0, 0.2, 1);

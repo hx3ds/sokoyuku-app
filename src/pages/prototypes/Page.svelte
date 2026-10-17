@@ -100,10 +100,10 @@
                     {/snippet}
 
                     {#snippet actions()}
-                        <AddToModelButton prototypeId={prototype.prototype_id} prototypeName={prototype.name} size="2.25rem" padding="0.5rem"/>
+                        <AddToModelButton prototypeId={prototype.prototype_id} prototypeName={prototype.name} />
                         
                         {#if isOwner}
-                            <ActionMenu size="2rem"
+                            <ActionMenu
                                 isOpen={activeMenu === prototype.prototype_id} 
                                 width="6rem"
                                 onclick={(e) => toggleMenu(prototype.prototype_id, e)}

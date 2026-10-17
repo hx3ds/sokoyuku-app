@@ -6,7 +6,6 @@
     export let menuClass = 'w-32';
     export let width = '';
     export let className = '';
-    export let size = '1.75rem';
     export let onclick = (e) => {};
 </script>
 
@@ -14,7 +13,6 @@
     variant="icon-button"
     onclick={onclick}
     aria-label={t('Options')} 
-    style="width: {size}; height: {size};"
     className="action-menu-button {className}"
     menuOpen={isOpen}
     {menuClass}

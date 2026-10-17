@@ -1,6 +1,22 @@
 import { test, expect } from './fixtures.js';
 import { addAccountButton, cleanupAccountByUsername, createLocalTelegramBotToken, uniqueSuffix } from './utils.js';
 
+const ACCOUNT_TYPE_LABELS = {
+  telegram: 'Telegram',
+  matrix: 'Matrix',
+  discord: 'Discord',
+  qq: 'QQ',
+  whatsapp_cloud: 'WhatsApp Cloud API',
+  __custom__: 'Custom',
+};
+
+async function selectAccountType(dialog, value) {
+  const label = ACCOUNT_TYPE_LABELS[value];
+  if (!label) throw new Error(`Unknown account type: ${value}`);
+  await dialog.locator('#type').click();
+  await dialog.getByRole('option', { name: label, exact: true }).click();
+}
+
 test.describe('Models', () => {
   test('should create and remove an account', async ({ page, request }) => {
     const suffix = uniqueSuffix();
@@ -89,7 +105,7 @@ test.describe('Models', () => {
 
     await expect(dialog.locator('a[href="https://core.telegram.org/bots"]')).toBeVisible();
 
-    await dialog.locator('select').selectOption('matrix');
+    await selectAccountType(dialog, 'matrix');
     await expect(dialog.locator('a[href="https://spec.matrix.org/latest/client-server-api/#login"]')).toBeVisible();
     await expect(dialog.getByText('Requires an active Pro subscription.')).toBeVisible();
     await expect(dialog.getByPlaceholder('e.g. https://matrix.org')).toBeVisible();
@@ -98,13 +114,13 @@ test.describe('Models', () => {
     await dialog.getByPlaceholder('Enter access token').fill('matrix-token');
     await dialog.getByPlaceholder('e.g. https://matrix.org').fill('https://matrix.example.org');
 
-    await dialog.locator('select').selectOption('discord');
+    await selectAccountType(dialog, 'discord');
     await expect(dialog.locator('a[href="https://discord.com/developers/docs/quick-start/getting-started"]')).toBeVisible();
     await expect(dialog.getByPlaceholder('Enter Application ID')).toBeVisible();
     await dialog.getByPlaceholder('Enter Application ID').fill('1234567890');
     await dialog.getByPlaceholder('Enter bot token').fill('discord-token');
 
-    await dialog.locator('select').selectOption('qq');
+    await selectAccountType(dialog, 'qq');
     await expect(dialog.locator('a[href="https://bot.q.qq.com/wiki/develop/api-v2/"]')).toBeVisible();
     await expect(dialog.getByText('Requires an active Pro subscription.')).toBeVisible();
     await expect(dialog.getByPlaceholder('Enter AppID')).toBeVisible();
@@ -117,7 +133,7 @@ test.describe('Models', () => {
     await dialog.getByText('Local Account', { exact: true }).click();
     await expect(dialog.getByText('Requires an active Pro subscription.')).toBeVisible();
 
-    await dialog.locator('select').selectOption('whatsapp_cloud');
+    await selectAccountType(dialog, 'whatsapp_cloud');
     await expect(dialog.locator('a[href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started/"]')).toBeVisible();
     await expect(dialog.getByPlaceholder('Enter phone number ID')).toBeVisible();
     await expect(dialog.getByPlaceholder('Enter access token')).toBeVisible();
@@ -128,17 +144,17 @@ test.describe('Models', () => {
 
     await dialog.getByText('Local Account', { exact: true }).click();
     await expect(dialog.getByText('Requires an active Pro subscription.')).toHaveCount(0);
-    await expect(dialog.locator('select').locator('option[value="__custom__"]')).toHaveCount(1);
-    await dialog.locator('select').selectOption('__custom__');
+    await expect(dialog.locator('.options-source option[value="__custom__"]')).toHaveCount(1);
+    await selectAccountType(dialog, '__custom__');
     await expect(dialog.locator('a[href^="https://"]')).toHaveCount(0);
     await expect(dialog.getByPlaceholder('e.g. my_platform')).toBeVisible();
     await dialog.getByPlaceholder('e.g. my_platform').fill('WeChat');
     await expect(dialog.getByPlaceholder('e.g. my_platform')).toHaveValue('wechat');
     await dialog.getByText('Local Account', { exact: true }).click();
-    await expect(dialog.locator('select').locator('option[value="__custom__"]')).toHaveCount(0);
-    await expect(dialog.locator('select')).toHaveValue('telegram');
+    await expect(dialog.locator('.options-source option[value="__custom__"]')).toHaveCount(0);
+    await expect(dialog.locator('#type')).toContainText('Telegram');
 
-    await dialog.locator('select').selectOption('whatsapp_cloud');
+    await selectAccountType(dialog, 'whatsapp_cloud');
     await expect(dialog.getByPlaceholder('Enter phone number ID')).toBeVisible();
     await dialog.getByPlaceholder('Enter phone number ID').fill('5551112222');
     await dialog.getByPlaceholder('Enter access token').fill('wa-access-token');
