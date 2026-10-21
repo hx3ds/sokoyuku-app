@@ -120,7 +120,6 @@ export function tAccountType(type) {
     if (lower === 'whatsapp_cloud') return t('WhatsApp Cloud API');
     if (lower === 'qq') return t('QQ');
     if (lower === 'telegram') return t('Telegram');
-    if (lower === 'matrix') return t('Matrix');
     if (lower === 'discord') return t('Discord');
     if (lower === 'sokoyuku') return 'Sokoyuku';
     if (!raw) return t('account');

@@ -129,6 +129,47 @@ export async function openCreatePrototypeDialog(page) {
   return dialog;
 }
 
+export async function createRemotePrototypeViaApi(page, options) {
+  const res = await page.request.post(`${API_BASE}/api/add_prototype`, {
+    data: {
+      name: options.name,
+      description: options.description || '',
+      access_point:
+        options.accessPoint || (options.isLocal ? 'http://localhost:8882' : 'https://tgbd.sokoyuku.com'),
+      path: options.path || 'prototypes.passive',
+      status: 'active',
+      private: Boolean(options.isLocal || options.private),
+      max_chats: options.maxChats ?? 1,
+      charge: options.charge ?? 0,
+      type: 'subscription',
+      billing_interval: options.billingInterval || 'monthly',
+      is_local: Boolean(options.isLocal),
+      qr_platforms: [],
+      terms_of_use: options.termsOfUse || '',
+      privacy_policy: options.privacyPolicy || '',
+      has_free_tier: options.freeTier ?? true,
+      ...(options.callSupport != null ? { call_support: Boolean(options.callSupport) } : {}),
+    },
+  });
+  const body = await res.json();
+  expect(body.result, `add_prototype: ${JSON.stringify(body)}`).toBe(0);
+  return body.data;
+}
+
+export async function waitForCallSupportOnMyPrototypes(page) {
+  await expect
+    .poll(
+      async () => {
+        const res = await page.request.post(`${API_BASE}/api/get_my_prototype_list`, { data: {} });
+        const body = await res.json();
+        const list = body?.data?.prototypes || [];
+        return list.some((p) => Object.prototype.hasOwnProperty.call(p, 'call_support'));
+      },
+      { timeout: 15000, message: 'Consul my-prototype list never included call_support' }
+    )
+    .toBe(true);
+}
+
 export async function createRemotePrototypeViaUi(page, options) {
   const name = options.name;
   const dialog = await openCreatePrototypeDialog(page);
@@ -144,7 +185,9 @@ export async function createRemotePrototypeViaUi(page, options) {
     await dialog.getByPlaceholder('Describe what this prototype does...').fill(options.description);
   }
   if (options.callSupport) {
-    await dialog.locator('.list-item').filter({ hasText: 'Call Support' }).click();
+    const toggle = dialog.locator('.list-item').filter({ hasText: 'Call Support' });
+    await expect(toggle, 'Call Support is shown only after Consul includes call_support on a prototype').toBeVisible();
+    await toggle.click();
   }
   if (options.charge != null) {
     await dialog.locator('.list-item').filter({ hasText: 'Pro Charge' }).locator('input').fill(String(options.charge));

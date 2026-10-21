@@ -157,10 +157,15 @@
         managedCallSessions = model?.model_id ? callStore.sessionsForModel(model.model_id) : [];
     }
 
+    function modelsOfferCalls() {
+        return (modelStoreAny.models as Model[]).some((model) => model.call_support === true);
+    }
+
     onMount(async () => {
         await loadData();
-        await refreshActiveCalls();
         document.addEventListener('click', closeMenu);
+        if (!modelsOfferCalls()) return;
+        await refreshActiveCalls();
         window.addEventListener('focus', refreshActiveCalls);
         document.addEventListener('visibilitychange', onVisibilityChange);
         activeCallPoll = setInterval(() => {

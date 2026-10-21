@@ -3,12 +3,14 @@ import {
   addToMyModels,
   cleanupModelByName,
   cleanupPrototypeByName,
+  createRemotePrototypeViaApi,
   createRemotePrototypeViaUi,
   loadStationConductorPublicKey,
   mockClipboard,
   openCreatePrototypeDialog,
   saveConductorPublicKeyViaUi,
   uniqueSuffix,
+  waitForCallSupportOnMyPrototypes,
 } from './utils.js';
 
 test.describe('Prototypes', () => {
@@ -42,8 +44,17 @@ test.describe('Prototypes', () => {
   });
 
   test('should create a subscription prototype with call support', async ({ page }) => {
+    const seed = `E2E Sub Seed ${uniqueSuffix()}`;
     const name = `E2E Sub Proto ${uniqueSuffix()}`;
     try {
+      // Empty my-prototypes hides Call Support until Consul returns the field on a list item.
+      await createRemotePrototypeViaApi(page, { name: seed });
+      await waitForCallSupportOnMyPrototypes(page);
+      await page.goto('/my-prototypes');
+      await expect(page.locator('.list-item').filter({ hasText: seed }).first()).toBeVisible({
+        timeout: 15000,
+      });
+
       await createRemotePrototypeViaUi(page, {
         name,
         callSupport: true,
@@ -59,6 +70,7 @@ test.describe('Prototypes', () => {
       await expect(page.locator('#maxChats')).toHaveValue('3');
     } finally {
       await cleanupPrototypeByName(page, name);
+      await cleanupPrototypeByName(page, seed);
     }
   });
 

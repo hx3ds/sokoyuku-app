@@ -86,7 +86,6 @@ test.describe('Local Conductor E2E', () => {
           qr_platforms: [],
           terms_of_use: '',
           privacy_policy: '',
-          call_support: false,
           has_free_tier: true,
         },
       });

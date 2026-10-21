@@ -1,4 +1,5 @@
 <script>
+    import { untrack } from 'svelte';
     import { createPrototype } from '../../proxy/prototype.js';
     import Dialog from './Dialog.svelte';
     import Button from '../Button/Button.svelte';
@@ -11,6 +12,7 @@
 
     let { 
         show = $bindable(false), 
+        calls = false,
         onclose = () => {},
         oncreated = () => {} 
     } = $props();
@@ -31,14 +33,13 @@
         max_tier_charge: 0,
         private: false,
         is_local: false,
-        call_support: false,
         terms_of_use: '',
         privacy_policy: ''
     });
 
     $effect(() => {
         if (show) {
-            resetForm();
+            untrack(() => resetForm());
         }
     });
 
@@ -65,9 +66,9 @@
             max_tier_charge: 0,
             private: false,
             is_local: false,
-            call_support: false,
             terms_of_use: '',
-            privacy_policy: ''
+            privacy_policy: '',
+            ...(calls ? { call_support: false } : {}),
         };
         createError = '';
         creating = false;
@@ -83,7 +84,6 @@
             qr_platforms: Array.isArray(newPrototype.qr_platforms) ? newPrototype.qr_platforms : [],
             type: 'subscription',
             billing_interval: newPrototype.billing_interval || 'monthly',
-            call_support: Boolean(newPrototype.call_support),
             charge: newPrototype.is_local ? 0 : dollarsToCents(newPrototype.charge),
             has_free_tier: newPrototype.is_local ? true : Boolean(newPrototype.has_free_tier),
             max_tier_charge: newPrototype.is_local ? 0 : dollarsToCents(newPrototype.max_tier_charge),
@@ -179,11 +179,13 @@
             description={newPrototype.is_local ? 'Private local Conductor access point' : 'Use a remote Station access point'}
             bind:checked={newPrototype.is_local}
         />
-        <InfoStackToggle
-            title="Call Support"
-            description={newPrototype.call_support ? 'Voice calls enabled on all platforms' : 'Voice calls disabled'}
-            bind:checked={newPrototype.call_support}
-        />
+        {#if calls}
+            <InfoStackToggle
+                title="Call Support"
+                description={newPrototype.call_support ? 'Voice calls enabled on all platforms' : 'Voice calls disabled'}
+                bind:checked={newPrototype.call_support}
+            />
+        {/if}
 
         <InfoStackItem>
             <h4 style="font-weight: 600; color: var(--color-dark);">{t('Pricing')}</h4>

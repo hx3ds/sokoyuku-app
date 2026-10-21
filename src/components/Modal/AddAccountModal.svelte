@@ -52,7 +52,7 @@
     });
 
     $effect(() => {
-        if (resolvedType !== 'matrix' && resolvedType !== 'whatsapp_cloud') {
+        if (resolvedType !== 'whatsapp_cloud') {
             form.server = '';
         }
     });
@@ -99,7 +99,6 @@
         required
     >
         <option value="telegram">{t('Telegram')}</option>
-        <option value="matrix">{t('Matrix')}</option>
         <option value="discord">{t('Discord')}</option>
         <option value="qq">{t('QQ')}</option>
         <option value="whatsapp_cloud">{t('WhatsApp Cloud API')}</option>
@@ -151,16 +150,6 @@
         <InfoStackItem>
             <p class="text-sm" style="color: var(--color-text-secondary); margin: 0;">{t('Requires an active Pro subscription.')}</p>
         </InfoStackItem>
-    {/if}
-    {#if resolvedType === 'matrix'}
-        <InfoStackInput 
-            id="server" 
-            type="text" 
-            bind:value={form.server} 
-            title="Homeserver"
-            placeholder="e.g. https://matrix.org"
-            required
-        />
     {/if}
     <InfoStackTextarea 
         id="desc" 
