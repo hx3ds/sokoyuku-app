@@ -54,7 +54,7 @@
     });
 
     $effect(() => {
-        if (resolvedType !== 'matrix' && resolvedType !== 'whatsapp_cloud') {
+        if (resolvedType !== 'whatsapp_cloud') {
             editForm.server = '';
         }
     });
@@ -90,7 +90,7 @@
 
     function tokenPlaceholder() {
         if (editForm.is_local) return 'Enter new token to encrypt';
-        if (resolvedType === 'whatsapp_cloud' || resolvedType === 'matrix') return 'Enter new access token to change';
+        if (resolvedType === 'whatsapp_cloud') return 'Enter new access token to change';
         if (resolvedType === 'qq') return 'Enter new AppSecret to change';
         if (resolvedType === 'telegram' || resolvedType === 'discord') return 'Enter new bot token to change';
         return 'Enter new token to change';
@@ -119,7 +119,6 @@
         {#if isEditing}
             <InfoStackSelect title="Type" bind:value={editForm.type} required>
                 <option value="telegram">{t('Telegram')}</option>
-                <option value="matrix">{t('Matrix')}</option>
                 <option value="discord">{t('Discord')}</option>
                 <option value="qq">{t('QQ')}</option>
                 <option value="whatsapp_cloud">{t('WhatsApp Cloud API')}</option>
@@ -136,14 +135,6 @@
                     required
                 />
             {/if}
-            {#if resolvedType === 'matrix'}
-                <InfoStackInput
-                    title="Homeserver"
-                    bind:value={editForm.server}
-                    placeholder="e.g. https://matrix.org"
-                    required
-                />
-            {/if}
             {#if resolvedType === 'whatsapp_cloud'}
                 <InfoStackInput
                     title="App Secret"
@@ -154,13 +145,6 @@
             {/if}
         {:else}
             <InfoStackInput title="Type" value={tAccountType(account.type || 'telegram')} readonly />
-            {#if (account.type || 'telegram') === 'matrix'}
-                <InfoStackInput
-                    title="Homeserver"
-                    value={account.is_local ? '••••••••' : (account.server || '')}
-                    readonly
-                />
-            {/if}
         {/if}
 
         <InfoStackInput title="Local" value={yesNo(account.is_local)} readonly />

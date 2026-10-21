@@ -3,7 +3,6 @@ import { addAccountButton, cleanupAccountByUsername, createLocalTelegramBotToken
 
 const ACCOUNT_TYPE_LABELS = {
   telegram: 'Telegram',
-  matrix: 'Matrix',
   discord: 'Discord',
   qq: 'QQ',
   whatsapp_cloud: 'WhatsApp Cloud API',
@@ -95,7 +94,7 @@ test.describe('Models', () => {
     }
   });
 
-    test('should fill Matrix, Discord, QQ, and WhatsApp account forms', async ({ page }) => {
+    test('should fill Discord, QQ, and WhatsApp account forms', async ({ page }) => {
     await page.goto('/models');
     await addAccountButton(page).click();
     const dialog = page.locator('.dialog-wrapper').filter({
@@ -104,15 +103,6 @@ test.describe('Models', () => {
     await expect(dialog).toBeVisible();
 
     await expect(dialog.locator('a[href="https://core.telegram.org/bots"]')).toBeVisible();
-
-    await selectAccountType(dialog, 'matrix');
-    await expect(dialog.locator('a[href="https://spec.matrix.org/latest/client-server-api/#login"]')).toBeVisible();
-    await expect(dialog.getByText('Requires an active Pro subscription.')).toBeVisible();
-    await expect(dialog.getByPlaceholder('e.g. https://matrix.org')).toBeVisible();
-    await dialog.getByPlaceholder('Enter name').fill('Matrix Account');
-    await dialog.getByPlaceholder('e.g. @user:matrix.org').fill('@e2e:example.org');
-    await dialog.getByPlaceholder('Enter access token').fill('matrix-token');
-    await dialog.getByPlaceholder('e.g. https://matrix.org').fill('https://matrix.example.org');
 
     await selectAccountType(dialog, 'discord');
     await expect(dialog.locator('a[href="https://discord.com/developers/docs/quick-start/getting-started"]')).toBeVisible();

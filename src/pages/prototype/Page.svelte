@@ -124,10 +124,12 @@
             billing_interval: prototype.billing_interval ?? 'monthly',
             is_local: Boolean(prototype.is_local),
             qr_platforms: Array.isArray(prototype.qr_platforms) ? prototype.qr_platforms : [],
-            call_support: Boolean(prototype.call_support),
             terms_of_use: (prototype.terms_of_use ?? '').trim(),
             privacy_policy: (prototype.privacy_policy ?? '').trim(),
         };
+        if (Object.prototype.hasOwnProperty.call(prototype, 'call_support')) {
+            data.call_support = Boolean(prototype.call_support);
+        }
 
         const res = await updatePrototype(data);
         if (res.result === 0) {
@@ -256,14 +258,16 @@
                 <option value="daily">{t('Daily')}</option>
                 <option value="monthly">{t('Monthly')}</option>
             </InfoStackSelect>
-            {#if isEditing}
-                <InfoStackToggle
-                    title="Call Support"
-                    description={prototype!.call_support ? 'Voice calls enabled on all platforms' : 'Voice calls disabled'}
-                    bind:checked={prototype!.call_support}
-                />
-            {:else}
-                <InfoStackInput title="Call Support" value={yesNo(prototype!.call_support)} readonly />
+            {#if Object.prototype.hasOwnProperty.call(prototype!, 'call_support')}
+                {#if isEditing}
+                    <InfoStackToggle
+                        title="Call Support"
+                        description={prototype!.call_support ? 'Voice calls enabled on all platforms' : 'Voice calls disabled'}
+                        bind:checked={prototype!.call_support}
+                    />
+                {:else}
+                    <InfoStackInput title="Call Support" value={yesNo(prototype!.call_support)} readonly />
+                {/if}
             {/if}
             
             {#if Boolean(prototype!.is_local)}

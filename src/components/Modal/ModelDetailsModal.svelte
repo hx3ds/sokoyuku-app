@@ -261,9 +261,6 @@
         const type = tAccountType(account?.acct_type || 'account');
         const group = t('Group: {group}', { group: tStatus(account?.account_group || 'free') });
         const accountStatusLabel = tStatus(accountStatusKey(account));
-        if (String(account?.acct_type || '').toLowerCase() === 'matrix' && account?.server) {
-            return `${t('{platform} on {server}', { platform: type, server: account.server })} · ${group} · ${accountStatusLabel}`;
-        }
         return `${type} · ${group} · ${accountStatusLabel}`;
     }
 

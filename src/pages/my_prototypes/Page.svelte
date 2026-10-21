@@ -18,6 +18,7 @@
     import InfoStackBadge from '../../components/InfoStack/InfoStackBadge.svelte';
 
     let showAddModal: boolean = $state(false);
+    let calls = $derived(prototypeStore.prototypes.some((prototype) => Object.prototype.hasOwnProperty.call(prototype, 'call_support')));
     let activeMenu: number | null = $state(null);
     let addingToModels: Record<string, boolean> = $state({});
 
@@ -121,7 +122,8 @@
 </PageContainer>
 
 <AddPrototypeModal 
-    bind:show={showAddModal} 
+    bind:show={showAddModal}
+    {calls}
     oncreated={() => prototypeStore.load()}
 />
 

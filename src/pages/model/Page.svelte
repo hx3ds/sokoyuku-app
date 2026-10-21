@@ -200,7 +200,7 @@
                 {#each getModelAccounts(model) as account (account.acct_id)}
                     <InfoStackItem
                         title={formatAccountLabel(account)}
-                        description={account.acct_type === 'matrix' && account.server ? t('{platform} on {server}', { platform: tAccountType(account.acct_type), server: account.server }) : tAccountType(account.acct_type || 'account')}
+                        description={tAccountType(account.acct_type || 'account')}
                     >
                         {#snippet titleSuffix()}
                             {#if account.is_last_used}

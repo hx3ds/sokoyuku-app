@@ -2,17 +2,13 @@ import { request, encryptWithPublicKeyToken, isEncryptedToken } from '../utils.j
 import { getMyConductorPublicKey } from './user.js';
 import { platformSettingsStore } from '../store/platformSettings.svelte.js';
 
-export const BUILTIN_PUBLIC_ACCOUNT_TYPES = ['telegram', 'matrix', 'discord', 'qq', 'whatsapp_cloud'];
+export const BUILTIN_PUBLIC_ACCOUNT_TYPES = ['telegram', 'discord', 'qq', 'whatsapp_cloud'];
 export const CUSTOM_ACCOUNT_TYPE_VALUE = '__custom__';
 export const LOCAL_PLATFORM_TYPE_REGEX = /^[a-z][a-z0-9_-]{0,14}$/;
 export const ACCOUNT_SETUP_DOCS = {
     telegram: {
         href: 'https://core.telegram.org/bots',
         title: 'Bots: An introduction for developers',
-    },
-    matrix: {
-        href: 'https://spec.matrix.org/latest/client-server-api/#login',
-        title: 'Client-Server API',
     },
     discord: {
         href: 'https://discord.com/developers/docs/quick-start/getting-started',
@@ -102,7 +98,6 @@ export function accountUsernameField(type) {
     if (raw === 'discord') return { title: 'Application ID', placeholder: 'Enter Application ID' };
     if (raw === 'whatsapp_cloud') return { title: 'Phone number ID', placeholder: 'Enter phone number ID' };
     if (raw === 'qq') return { title: 'AppID', placeholder: 'Enter AppID' };
-    if (raw === 'matrix') return { title: 'User ID', placeholder: 'e.g. @user:matrix.org' };
     if (raw === 'telegram') return { title: 'Bot username', placeholder: 'Enter bot username' };
     return { title: 'Account Username', placeholder: 'Enter username' };
 }
@@ -116,7 +111,7 @@ export function accountStatusKey(account) {
 
 export function accountTokenField(type) {
     const raw = normalizePlatformType(type);
-    if (raw === 'whatsapp_cloud' || raw === 'matrix') return { title: 'Access token', placeholder: 'Enter access token' };
+    if (raw === 'whatsapp_cloud') return { title: 'Access token', placeholder: 'Enter access token' };
     if (raw === 'qq') return { title: 'AppSecret', placeholder: 'Enter AppSecret' };
     if (raw === 'telegram' || raw === 'discord') return { title: 'Bot token', placeholder: 'Enter bot token' };
     return { title: 'Account Token', placeholder: 'Enter token' };

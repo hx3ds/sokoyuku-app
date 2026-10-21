@@ -10,6 +10,7 @@
     let { modelId = null } = $props() as { modelId?: string | null };
 
     let loading = $state(true);
+    let available = $state(false);
     let status = $state('');
     let error = $state('');
     let modelName = $state('');
@@ -126,11 +127,15 @@
             const model = await fetchModel(currentModelId);
             if (gen !== startGen) return;
             if (!model) {
-                error = t('Model not found');
-                loading = false;
+                goToModels();
                 return;
             }
             modelName = model.name || t('Model');
+            if (!Object.prototype.hasOwnProperty.call(model, 'call_support')) {
+                goToModels();
+                return;
+            }
+            available = true;
             if (!model.call_support || model.type !== 'subscription') {
                 error = t('This model does not support calls');
                 loading = false;
@@ -322,6 +327,7 @@
 </script>
 
 <PageContainer id="page-call">
+  {#if available}
     <div class="call-card" class:ended={ended && !error} class:failed={!!error}>
         <div class="call-top">
             {#if !error && !ended}
@@ -380,6 +386,7 @@
             {/if}
         </div>
     </div>
+  {/if}
 </PageContainer>
 
 <style>

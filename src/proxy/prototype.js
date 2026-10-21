@@ -37,7 +37,7 @@ function normalizePrototypeFields(data = {}) {
     } else if (Number(charge) === 0 && Number(maxTierCharge) === 0 && data.has_free_tier == null) {
         hasFreeTier = true;
     }
-    return {
+    const fields = {
         name: data.name ?? '',
         description: data.description ?? '',
         access_point: data.access_point ?? '',
@@ -54,8 +54,11 @@ function normalizePrototypeFields(data = {}) {
         qr_platforms: Array.isArray(data.qr_platforms) ? data.qr_platforms : [],
         terms_of_use: data.terms_of_use ?? '',
         privacy_policy: data.privacy_policy ?? '',
-        call_support: Boolean(data.call_support),
     };
+    if (Object.prototype.hasOwnProperty.call(data, 'call_support')) {
+        fields.call_support = Boolean(data.call_support);
+    }
+    return fields;
 }
 
 export function fetchPrototypes(params = {}) {
@@ -133,7 +136,6 @@ export async function updatePrototype(data) {
         'qr_platforms',
         'terms_of_use',
         'privacy_policy',
-        'call_support',
     ];
 
     let source = data;
