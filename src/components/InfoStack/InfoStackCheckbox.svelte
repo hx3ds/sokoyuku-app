@@ -36,9 +36,9 @@
     .checkbox-input {
         width: 1rem;
         height: 1rem;
-        border: 1px solid var(--color-border);
+        border: 1.5px solid var(--color-text-secondary);
         border-radius: 4px;
-        background-color: var(--color-bg-surface);
+        background-color: var(--color-bg-secondary);
         outline: none;
         cursor: pointer;
         appearance: none;
@@ -46,6 +46,7 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        flex-shrink: 0;
     }
     
     .checkbox-input:checked {
