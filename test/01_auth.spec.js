@@ -72,6 +72,59 @@ test.describe('Authentication Flow', () => {
     await expect(page).toHaveURL(/\/signin/);
   });
 
+  test('shows too many requests when consul rate-limits get code', async ({ page }) => {
+    await page.route('**/api/request_verification_code', async (route) => {
+      await route.fulfill({
+        status: 429,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          result: 1,
+          msg: 'Too many verification emails requested for this address',
+          retry_after_seconds: 10,
+        }),
+      });
+    });
+
+    await page.goto('/signup');
+    await page.locator('#signupEmail').fill('rate-limit@example.com');
+    await page.getByRole('button', { name: 'Get Code' }).click();
+
+    await expect(page.getByText('Too many requests, please try later')).toBeVisible();
+    await expect(page.getByText('Connection error')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Get Code' })).toBeVisible();
+  });
+
+  test('shows too many requests when cloudflare rate-limits get code', async ({ page }) => {
+    await page.route('**/api/request_verification_code', async (route) => {
+      await route.fulfill({
+        status: 429,
+        contentType: 'text/plain',
+        headers: { 'retry-after': '10' },
+        body: 'error code: 1015\n',
+      });
+    });
+
+    await page.goto('/signup');
+    await page.locator('#signupEmail').fill('rate-limit@example.com');
+    await page.getByRole('button', { name: 'Get Code' }).click();
+
+    await expect(page.getByText('Too many requests, please try later')).toBeVisible();
+    await expect(page.getByText('Connection error')).toHaveCount(0);
+  });
+
+  test('shows too many requests when cloudflare 1015 is a failed fetch', async ({ page }) => {
+    await page.route('**/api/request_verification_code', async (route) => {
+      await route.abort('failed');
+    });
+
+    await page.goto('/signup');
+    await page.locator('#signupEmail').fill('rate-limit@example.com');
+    await page.getByRole('button', { name: 'Get Code' }).click();
+
+    await expect(page.getByText('Too many requests, please try later')).toBeVisible();
+    await expect(page.getByText('Connection error')).toHaveCount(0);
+  });
+
   test('should show error for invalid password sign-in', async ({ page }) => {
     await page.route('**/api/sign_in', async (route) => {
       await route.fulfill({

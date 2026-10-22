@@ -73,6 +73,7 @@ export const catalogs = pack([
     ['Agree to terms before social sign in', 'ソーシャルログインの前に利用規約に同意してください', '社交登录前请先同意服务条款', '社交登入前請先同意服務條款'],
     ['Please check this box if you want to proceed.', '続行するにはこのボックスにチェックを入れてください。', '若要继续，请勾选此框。', '若要繼續，請勾選此方塊。'],
     ['Connection error', '接続エラー', '连接错误', '連線錯誤'],
+    ['Too many requests, please try later', 'リクエストが多すぎます。しばらくしてからお試しください', '请求过多，请稍后再试', '請求過多，請稍後再試'],
     ['Loading...', '読み込み中...', '加载中...', '載入中...'],
     ['Not Found', '見つかりません', '未找到', '找不到'],
     ['Page Not Found', 'ページが見つかりません', '页面未找到', '找不到頁面'],

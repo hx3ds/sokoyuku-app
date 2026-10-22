@@ -1,4 +1,29 @@
 import { request } from '../utils.js';
+import { t } from '../i18n/locale.svelte.js';
+
+function rateLimitMessage() {
+    return t('Too many requests, please try later');
+}
+
+function isVerificationCodeRateLimit(result) {
+    if (!result || result === true) {
+        return false;
+    }
+    // Cloudflare 1015 has no CORS, so fetch throws and request() returns result -1.
+    if (result.result === -1) {
+        return true;
+    }
+    if (result.retry_after_seconds != null) {
+        return true;
+    }
+    const msg = String(result.msg || '').toLowerCase();
+    return (
+        msg.includes('too many') ||
+        msg.includes('rate limit') ||
+        msg.includes('please wait before requesting') ||
+        msg.includes('1015')
+    );
+}
 
 export async function signOut() {
     const res = await request('/api/sign_out');
@@ -50,14 +75,18 @@ export function signUp({ email, code, full_name, username, password }) {
     });
 }
 
-export function requestVerificationCode(email, status, captchaToken) {
-    return request('/api/request_verification_code', {
+export async function requestVerificationCode(email, status, captchaToken) {
+    const result = await request('/api/request_verification_code', {
         body: {
             email: email ?? '',
             status: status ?? '',
             captcha_token: captchaToken ?? '',
         }
     });
+    if (isVerificationCodeRateLimit(result)) {
+        return { result: 1, msg: rateLimitMessage() };
+    }
+    return result;
 }
 
 export function checkUsername(username) {
